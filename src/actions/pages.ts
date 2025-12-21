@@ -49,7 +49,8 @@ export interface PageActions {
     changeRiseFlag: (data: { index: number, enable: boolean }) => action;
     changeMirrorFlag: (data: { index: number, enable: boolean }) => action;
     copyCurrentPageToClipboard: () => action;
-    pastePageFromClipboard: () => action;
+    cutCurrentPage: () => action;
+    insertPageFromClipboard: () => action;
 }
 
 export const pageActions: Readonly<PageActions> = {
@@ -486,7 +487,64 @@ export const pageActions: Readonly<PageActions> = {
 
         return undefined;
     },
-    pastePageFromClipboard: () => (state): NextState => {
+    cutCurrentPage: () => (state): NextState => {
+        const currentIndex = state.fumen.currentIndex;
+        const pages = state.fumen.pages;
+        const pagesObj = new Pages(pages);
+
+        // 現在のページのフィールドを取得（ライン消去なし、ピース配置前の状態）
+        const field = pagesObj.getField(currentIndex, PageFieldOperation.Command);
+
+        // 現在のページを独立したKeyPageとして構築
+        const currentPage = pages[currentIndex];
+        const singlePage: Page = {
+            index: 0,
+            field: { obj: field.copy() },
+            comment: {
+                text: currentPage.comment.text !== undefined
+                    ? currentPage.comment.text
+                    : (currentPage.comment.ref !== undefined
+                        ? pages[currentPage.comment.ref].comment.text
+                        : ''),
+            },
+            flags: { ...currentPage.flags },
+            piece: currentPage.piece,
+        };
+
+        // 非同期でエンコードしてクリップボードにコピー
+        (async () => {
+            try {
+                const encoded = await encode([singlePage]);
+                const url = `v115@${encoded}`;
+
+                // クリップボードにコピー
+                const element = document.createElement('pre');
+                element.style.position = 'fixed';
+                element.style.left = '-100%';
+                element.textContent = url;
+                document.body.appendChild(element);
+
+                const selection = document.getSelection();
+                if (selection) {
+                    selection.selectAllChildren(element);
+                    const success = document.execCommand('copy');
+                    if (success) {
+                        M.toast({ html: 'Cut to clipboard', classes: 'top-toast', displayLength: 1000 });
+                    } else {
+                        M.toast({ html: 'Failed to cut', classes: 'top-toast', displayLength: 1500 });
+                    }
+                }
+
+                document.body.removeChild(element);
+            } catch (error) {
+                M.toast({ html: `Failed to cut: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        // ページを削除
+        return pageActions.removePage({ index: currentIndex })(state);
+    },
+    insertPageFromClipboard: () => (state): NextState => {
         const currentIndex = state.fumen.currentIndex;
 
         (async () => {
@@ -504,14 +562,14 @@ export const pageActions: Readonly<PageActions> = {
                 const fumenData = fumenMatch[0];
 
                 // デコード
-                const pages = await decode(fumenData);
+                const decodedPages = await decode(fumenData);
 
                 // 次のページに挿入（mainを使用して状態を更新）
-                main.appendPages({ pages, pageIndex: currentIndex + 1 });
-                M.toast({ html: 'Pasted from clipboard', classes: 'top-toast', displayLength: 1000 });
+                main.appendPages({ pages: decodedPages, pageIndex: currentIndex + 1 });
+                M.toast({ html: 'Inserted from clipboard', classes: 'top-toast', displayLength: 1000 });
             } catch (error) {
                 console.error(error);
-                M.toast({ html: `Failed to paste: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                M.toast({ html: `Failed to insert: ${error}`, classes: 'top-toast', displayLength: 1500 });
             }
         })();
 

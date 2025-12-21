@@ -11,7 +11,7 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
     modePiece: Piece | undefined;
     colorize: boolean;
     actions: {
-        removePage: (data: { index: number }) => void;
+        cutCurrentPage: () => void;
         insertNewPage: (data: { index: number }) => void;
         changeToFlagsMode: () => void;
         changeToUtilsMode: () => void;
@@ -22,7 +22,7 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
         selectPieceColor: (data: { piece: Piece }) => void;
         selectInferencePieceColor: () => void;
         copyCurrentPageToClipboard: () => void;
-        pastePageFromClipboard: () => void;
+        insertPageFromClipboard: () => void;
     };
 }) => {
     const toolButtonMargin = 3;
@@ -60,11 +60,11 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
             backgroundColorClass: 'white',
             textColor: '#333',
             borderColor: '#333',
-            datatest: 'btn-paste-from-clipboard',
-            key: 'btn-paste-from-clipboard',
-            onclick: () => actions.pastePageFromClipboard(),
+            datatest: 'btn-insert-from-clipboard',
+            key: 'btn-insert-from-clipboard',
+            onclick: () => actions.insertPageFromClipboard(),
         }, iconContents({
-            description: 'paste',
+            description: 'insert',
             iconSize: 22,
             iconName: 'content_paste',
         })),
@@ -90,13 +90,13 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
             backgroundColorClass: 'white',
             textColor: '#333',
             borderColor: '#333',
-            datatest: 'btn-remove-page',
-            key: 'btn-remove-page',
-            onclick: () => actions.removePage({ index: currentIndex }),
+            datatest: 'btn-cut-page',
+            key: 'btn-cut-page',
+            onclick: () => actions.cutCurrentPage(),
         }, iconContents({
-            description: 'remove',
+            description: 'cut',
             iconSize: 22,
-            iconName: 'remove_circle_outline',
+            iconName: 'content_cut',
         })),
         toolButton({
             borderWidth: 1,
