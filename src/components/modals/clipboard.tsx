@@ -154,20 +154,20 @@ export const ClipboardModal: Component<ClipboardModalProps> = ({ actions, pages 
                               method="get" target="_blank"
                         >
                             <input type="hidden" name="url" id="url"
-                                   value="https://knewjade.github.io/fumen-for-mobile/#?d=v115@vhAAgH"
+                                   value="https://61bi-234469.github.io/fumen-for-mobile-ts/#?d=v115@vhAAgH"
                             />
 
                             <div>
                                 <ClipboardButton
                                     key="btn-knewjade"
-                                    onclick={clipboard('https://knewjade.github.io/fumen-for-mobile/#?d=')}
+                                    onclick={clipboard('https://61bi-234469.github.io/fumen-for-mobile-ts/#?d=')}
                                 >
                                     THIS SITE
                                 </ClipboardButton>
 
                                 <ClipboardIconButton
                                     key="btn-knewjade-tinyurl"
-                                    onclick={tinyurl('https://knewjade.github.io/fumen-for-mobile/#?d=')}>
+                                    onclick={tinyurl('https://61bi-234469.github.io/fumen-for-mobile-ts/#?d=')}>
                                     archive
                                 </ClipboardIconButton>
                             </div>

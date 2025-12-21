@@ -44,7 +44,7 @@ export function extract(str: string): { version: '115' | '110', data: string } {
 
     // v115@~
     {
-        const match = str.match(/[vmd]115@/);
+        const match = str.match(/[vmdVMD]115@/);
         if (match !== undefined && match !== null && match.index !== undefined) {
             const sub = data.substr(match.index + 5);
             return format('115', sub);
@@ -53,7 +53,7 @@ export function extract(str: string): { version: '115' | '110', data: string } {
 
     // v110@~
     {
-        const match = str.match(/[vmd]110@/);
+        const match = str.match(/[vmdVMD]110@/);
         if (match !== undefined && match !== null && match.index !== undefined) {
             const sub = data.substr(match.index + 5);
             return format('110', sub);

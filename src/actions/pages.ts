@@ -553,7 +553,12 @@ export const pageActions: Readonly<PageActions> = {
                 const text = await navigator.clipboard.readText();
 
                 // fumen URLからデータ部分を抽出
-                const fumenMatch = text.match(/v115@[a-zA-Z0-9+/?]+/);
+                // 対応形式:
+                // - v115@～, d115@～, D115@～, m115@～, M115@～, V115@～
+                // - https://fumen.zui.jp/?D115@～
+                // - https://knewjade.github.io/fumen-for-mobile/#?d=v115@～
+                // - https://61bi-234469.github.io/fumen-for-mobile-ts/#?d=v115@～
+                const fumenMatch = text.match(/[vdVDmM]115@[a-zA-Z0-9+/?]+/);
                 if (!fumenMatch) {
                     M.toast({ html: 'No fumen data in clipboard', classes: 'top-toast', displayLength: 1500 });
                     return;
@@ -561,7 +566,7 @@ export const pageActions: Readonly<PageActions> = {
 
                 const fumenData = fumenMatch[0];
 
-                // デコード
+                // デコード (decode関数はv/d/D/V/m/M全てに対応済み)
                 const decodedPages = await decode(fumenData);
 
                 // 次のページに挿入（mainを使用して状態を更新）
