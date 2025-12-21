@@ -2,6 +2,7 @@ import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { ToolButton } from './tool_button';
 import { ToolText } from './tool_text';
+import { ToolTextButton } from './tool_text_button';
 import { ModeTypes } from '../../lib/enums';
 import { ColorPalette } from '../../lib/colors';
 
@@ -21,6 +22,7 @@ interface Props {
         pauseAnimation: () => void;
         backPage: (data: { loop: boolean }) => void;
         nextPageOrNewPage: () => void;
+        duplicatePageToGray: (data: { index: number }) => void;
         changeToDrawingToolMode: () => void;
         undo: () => void;
         redo: () => void;
@@ -84,9 +86,15 @@ export const EditorTools: Component<Props> = (
                             actions={{ onclick: () => actions.nextPageOrNewPage() }}/>
 
                 <ToolButton iconName="home" datatest="btn-drawing-tool" width={40} height={height - 10}
-                            key="btn-drawing-tool" fontSize={30} marginRight={40} colors={colors}
+                            key="btn-drawing-tool" fontSize={30} marginRight={10} colors={colors}
                             actions={{ onclick: () => actions.changeToDrawingToolMode() }}
                             enable={modeType !== ModeTypes.DrawingTool}/>
+
+                <ToolTextButton datatest="btn-new-gray" width={35} height={height - 10}
+                            key="btn-new-gray" fontSize={16} marginRight={40} colors={colors}
+                            actions={{ onclick: () => actions.duplicatePageToGray({ index: currentPage }) }}>
+                    +g
+                </ToolTextButton>
 
                 <ToolButton iconName="menu" datatest="btn-open-menu" sticky={true}
                             key="btn-open-menu" width={40} height={height - 10} fontSize={32} colors={colors}
