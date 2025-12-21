@@ -13,7 +13,6 @@ import { px, style } from '../../lib/types';
 import { comment } from '../../components/comment';
 import { page_slider } from '../../components/page_slider';
 import { toolMode } from './tool_mode';
-import { blockMode } from './block_mode';
 import { pieceMode } from './piece_mode';
 import { fillMode } from './fill_mode';
 import { flagsMode } from './flags_mode';
@@ -112,8 +111,8 @@ const getLayout = (
     const pieceButtonsSize = {
         width: Math.min((canvasSize.width - fieldSize.width) * 0.6, 80),
         height: Math.min(
-            fieldSize.height / (1.25 * 9 + 0.25),
-            40,
+            fieldSize.height / (1.25 * 18 + 0.25),
+            30,
         ),
     };
 
@@ -206,14 +205,6 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     const getChildren = () => {
         const getMode = () => {
             switch (state.mode.type) {
-            case ModeTypes.Drawing: {
-                return blockMode({
-                    layout,
-                    actions,
-                    colorize: guideLineColor,
-                    modePiece: state.mode.piece,
-                });
-            }
             case ModeTypes.DrawingTool: {
                 return toolMode({
                     layout,
@@ -221,6 +212,8 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     keyPage,
                     touchType: state.mode.touch,
                     currentIndex: state.fumen.currentIndex,
+                    modePiece: state.mode.piece,
+                    colorize: guideLineColor,
                 });
             }
             case ModeTypes.Piece: {
@@ -286,6 +279,18 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     layout,
                     actions,
                     currentIndex: state.fumen.currentIndex,
+                    colorize: guideLineColor,
+                });
+            }
+            default: {
+                // ModeTypes.Drawing等の未対応モードはtoolModeにフォールバック
+                return toolMode({
+                    layout,
+                    actions,
+                    keyPage,
+                    touchType: state.mode.touch,
+                    currentIndex: state.fumen.currentIndex,
+                    modePiece: state.mode.piece,
                     colorize: guideLineColor,
                 });
             }

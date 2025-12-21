@@ -163,6 +163,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 mode: {
                     ...newState.mode,
                     piece,
+                    touch: TouchTypes.Drawing,
                 },
             }),
         ]);
@@ -174,6 +175,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                 mode: {
                     ...newState.mode,
                     piece: undefined,
+                    touch: TouchTypes.Drawing,
                 },
             }),
         ]);

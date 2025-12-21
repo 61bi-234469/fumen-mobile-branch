@@ -1,28 +1,32 @@
-import { TouchTypes } from '../../lib/enums';
+import { Piece, TouchTypes } from '../../lib/enums';
 import { div } from '@hyperapp/html';
-import { iconContents, keyButton, toolButton, toolSpace } from '../editor_buttons';
+import { colorButton, iconContents, inferenceButton, keyButton, toolButton, toolSpace } from '../editor_buttons';
 import { EditorLayout, toolStyle } from './editor';
 
-export const toolMode = ({ layout, currentIndex, keyPage, touchType, actions }: {
+export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, colorize, actions }: {
     layout: EditorLayout;
     currentIndex: number;
     keyPage: boolean;
     touchType: TouchTypes;
+    modePiece: Piece | undefined;
+    colorize: boolean;
     actions: {
         removePage: (data: { index: number }) => void;
         duplicatePage: (data: { index: number }) => void;
         openPage: (data: { index: number }) => void;
         insertNewPage: (data: { index: number }) => void;
-        changeToDrawingMode: () => void;
         changeToFlagsMode: () => void;
         changeToUtilsMode: () => void;
         changeToDrawPieceMode: () => void;
         changeToFillMode: () => void;
         changeToRef: (data: { index: number }) => void;
         changeToKey: (data: { index: number }) => void;
+        selectPieceColor: (data: { piece: Piece }) => void;
+        selectInferencePieceColor: () => void;
     };
 }) => {
-    const toolButtonMargin = 5;
+    const toolButtonMargin = 3;
+    const pieces = [Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray];
 
     return div({ style: toolStyle(layout) }, [
         keyButton({
@@ -36,7 +40,7 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, actions }: 
             flexGrow: 100,
             width: layout.buttons.size.width,
             margin: toolButtonMargin,
-            key: 'div-space',
+            key: 'div-space-top',
         }),
         toolButton({
             borderWidth: 1,
@@ -135,21 +139,19 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, actions }: 
             iconSize: 20,
             iconName: 'extension',
         })),
-        toolButton({
-            borderWidth: 3,
+        toolSpace({
+            flexGrow: undefined,
             width: layout.buttons.size.width,
-            margin: toolButtonMargin,
-            backgroundColorClass: 'red',
-            textColor: '#fff',
-            borderColor: touchType === TouchTypes.Drawing ? '#fff' : '#f44336',
-            borderType: touchType === TouchTypes.Drawing ? 'double' : undefined,
-            datatest: 'btn-block-mode',
-            key: 'btn-block-mode',
-            onclick: () => actions.changeToDrawingMode(),
-        }, iconContents({
-            description: 'block',
-            iconSize: 22,
-            iconName: 'edit',
-        })),
-    ]);
+            margin: 1,
+            key: 'div-space-separator',
+        }),
+    ].concat(pieces.map(piece => (
+        colorButton({ layout, piece, colorize, onclick: actions.selectPieceColor, highlight: modePiece === piece })
+    ))).concat([
+        inferenceButton({
+            layout,
+            actions,
+            highlight: modePiece === undefined,
+        }),
+    ]));
 };
