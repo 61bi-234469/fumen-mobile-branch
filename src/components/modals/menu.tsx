@@ -38,6 +38,7 @@ interface MenuProps {
         reopenCurrentPage: () => void;
         openFumenModal: () => void;
         openUserSettingsModal: () => void;
+        openInExternalSite: () => void;
     };
 }
 
@@ -121,6 +122,15 @@ export const MenuModal: Component<MenuProps> = (
                                            actions.openClipboardModal();
                                        }}>
                             {i18n.Menu.Buttons.Clipboard()}
+                        </SettingButton>
+
+                        <SettingButton key="btn-external-site" datatest="btn-external-site" href="#"
+                                       icons={[{ name: 'launch', size: 30 }]}
+                                       onclick={() => {
+                                           actions.openInExternalSite();
+                                           actions.closeMenuModal();
+                                       }}>
+                            {i18n.Menu.Buttons.ExternalSite()}
                         </SettingButton>
 
                         <SettingButton key="btn-new-fumen" datatest="btn-new-fumen" href="#"

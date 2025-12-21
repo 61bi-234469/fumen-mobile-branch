@@ -29,6 +29,7 @@ export interface UtilsActions {
     appendPages: (data: { pages: Page[], pageIndex: number }) => action;
     refresh: () => action;
     openInPC: () => action;
+    openInExternalSite: () => action;
     ontapCanvas: (e: any) => action;
 }
 
@@ -99,6 +100,30 @@ export const utilsActions: Readonly<UtilsActions> = {
                     })
                     .catch((error) => {
                         M.toast({ html: `Failed to open in PC: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                    });
+
+                return undefined;
+            },
+        ]);
+    },
+    openInExternalSite: () => (state): NextState => {
+        return sequence(state, [
+            actions.removeUnsettledItemsInField(),
+            (state) => {
+                // テト譜の変換（v115@をD115@に置き換え）
+                const encodePromise = (async () => {
+                    const encoded = await encode(state.fumen.pages);
+                    return `D115@${encoded}`;
+                });
+
+                encodePromise()
+                    .then((data) => {
+                        // 外部テト譜サイトのURL
+                        const url = `https://fumen.zui.jp/?${data}`;
+                        window.open(url, '_blank');
+                    })
+                    .catch((error) => {
+                        M.toast({ html: `Failed to open: ${error}`, classes: 'top-toast', displayLength: 1500 });
                     });
 
                 return undefined;

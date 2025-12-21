@@ -46,6 +46,9 @@ export const resources = {
         Title: 'クリップボードにコピー',
     },
     Menu: {
+        Buttons: {
+            ExternalSite: 'External',
+        },
         Messages: {
             NoAvailableCommentButton: 'Writableモードのときだけ変更できます',
         },
