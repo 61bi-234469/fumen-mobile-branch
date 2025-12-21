@@ -1,4 +1,4 @@
-import { action, actions } from '../actions';
+import { action, actions, main } from '../actions';
 import { NextState, sequence } from './commons';
 import { AnimationState, Piece, TouchTypes } from '../lib/enums';
 import { Move, Page, PreCommand } from '../lib/fumen/types';
@@ -18,6 +18,9 @@ import {
 import { State } from '../states';
 import { FumenError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
+import { decode, encode } from '../lib/fumen/fumen';
+
+declare const M: any;
 
 export interface PageActions {
     reopenCurrentPage: () => action;
@@ -45,6 +48,8 @@ export interface PageActions {
     changeLockFlag: (data: { index: number, enable: boolean }) => action;
     changeRiseFlag: (data: { index: number, enable: boolean }) => action;
     changeMirrorFlag: (data: { index: number, enable: boolean }) => action;
+    copyCurrentPageToClipboard: () => action;
+    pastePageFromClipboard: () => action;
 }
 
 export const pageActions: Readonly<PageActions> = {
@@ -424,6 +429,93 @@ export const pageActions: Readonly<PageActions> = {
             clearPast({ pageIndex: state.fumen.currentIndex }),
             actions.reopenCurrentPage(),
         ]);
+    },
+    copyCurrentPageToClipboard: () => (state): NextState => {
+        const currentIndex = state.fumen.currentIndex;
+        const pages = state.fumen.pages;
+        const pagesObj = new Pages(pages);
+
+        // 現在のページのフィールドを取得（ライン消去なし、ピース配置前の状態）
+        const field = pagesObj.getField(currentIndex, PageFieldOperation.Command);
+
+        // 現在のページを独立したKeyPageとして構築
+        const currentPage = pages[currentIndex];
+        const singlePage: Page = {
+            index: 0,
+            field: { obj: field.copy() },
+            comment: {
+                text: currentPage.comment.text !== undefined
+                    ? currentPage.comment.text
+                    : (currentPage.comment.ref !== undefined
+                        ? pages[currentPage.comment.ref].comment.text
+                        : ''),
+            },
+            flags: { ...currentPage.flags },
+            piece: currentPage.piece, // ピースも含める（ライン消去前の状態）
+        };
+
+        // 非同期でエンコードしてクリップボードにコピー
+        (async () => {
+            try {
+                const encoded = await encode([singlePage]);
+                const url = `v115@${encoded}`;
+
+                // クリップボードにコピー
+                const element = document.createElement('pre');
+                element.style.position = 'fixed';
+                element.style.left = '-100%';
+                element.textContent = url;
+                document.body.appendChild(element);
+
+                const selection = document.getSelection();
+                if (selection) {
+                    selection.selectAllChildren(element);
+                    const success = document.execCommand('copy');
+                    if (success) {
+                        M.toast({ html: 'Copied to clipboard', classes: 'top-toast', displayLength: 1000 });
+                    } else {
+                        M.toast({ html: 'Failed to copy', classes: 'top-toast', displayLength: 1500 });
+                    }
+                }
+
+                document.body.removeChild(element);
+            } catch (error) {
+                M.toast({ html: `Failed to copy: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        return undefined;
+    },
+    pastePageFromClipboard: () => (state): NextState => {
+        const currentIndex = state.fumen.currentIndex;
+
+        (async () => {
+            try {
+                // クリップボードからテキストを読み取り
+                const text = await navigator.clipboard.readText();
+
+                // fumen URLからデータ部分を抽出
+                const fumenMatch = text.match(/v115@[a-zA-Z0-9+/?]+/);
+                if (!fumenMatch) {
+                    M.toast({ html: 'No fumen data in clipboard', classes: 'top-toast', displayLength: 1500 });
+                    return;
+                }
+
+                const fumenData = fumenMatch[0];
+
+                // デコード
+                const pages = await decode(fumenData);
+
+                // 次のページに挿入（mainを使用して状態を更新）
+                main.appendPages({ pages, pageIndex: currentIndex + 1 });
+                M.toast({ html: 'Pasted from clipboard', classes: 'top-toast', displayLength: 1000 });
+            } catch (error) {
+                console.error(error);
+                M.toast({ html: `Failed to paste: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        return undefined;
     },
 };
 

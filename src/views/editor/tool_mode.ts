@@ -12,8 +12,6 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
     colorize: boolean;
     actions: {
         removePage: (data: { index: number }) => void;
-        duplicatePage: (data: { index: number }) => void;
-        openPage: (data: { index: number }) => void;
         insertNewPage: (data: { index: number }) => void;
         changeToFlagsMode: () => void;
         changeToUtilsMode: () => void;
@@ -23,6 +21,8 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
         changeToKey: (data: { index: number }) => void;
         selectPieceColor: (data: { piece: Piece }) => void;
         selectInferencePieceColor: () => void;
+        copyCurrentPageToClipboard: () => void;
+        pastePageFromClipboard: () => void;
     };
 }) => {
     const toolButtonMargin = 3;
@@ -60,13 +60,24 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
             backgroundColorClass: 'white',
             textColor: '#333',
             borderColor: '#333',
-            datatest: 'btn-duplicate-page',
-            key: 'btn-duplicate-page',
-            onclick: () => {
-                const nextPage = currentIndex + 1;
-                actions.duplicatePage({ index: nextPage });
-                actions.openPage({ index: nextPage });
-            },
+            datatest: 'btn-paste-from-clipboard',
+            key: 'btn-paste-from-clipboard',
+            onclick: () => actions.pastePageFromClipboard(),
+        }, iconContents({
+            description: 'paste',
+            iconSize: 22,
+            iconName: 'content_paste',
+        })),
+        toolButton({
+            borderWidth: 1,
+            width: layout.buttons.size.width,
+            margin: toolButtonMargin,
+            backgroundColorClass: 'white',
+            textColor: '#333',
+            borderColor: '#333',
+            datatest: 'btn-copy-to-clipboard',
+            key: 'btn-copy-to-clipboard',
+            onclick: () => actions.copyCurrentPageToClipboard(),
         }, iconContents({
             description: 'copy',
             iconSize: 22,
