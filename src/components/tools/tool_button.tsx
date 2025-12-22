@@ -106,6 +106,11 @@ export const ToolButton: Component<Props & SizedIconProps> = (
         longPressState.activeKey = null;
     } : undefined;
 
+    // 長押しでコンテキストメニューが出ないようにする
+    const oncontextmenu = onlongpress !== undefined ? (event: Event) => {
+        event.preventDefault();
+    } : undefined;
+
     // 長押しがある場合はPointer Eventsで処理、ない場合は従来のonclick
     if (onlongpress !== undefined) {
         return (
@@ -117,6 +122,7 @@ export const ToolButton: Component<Props & SizedIconProps> = (
                onpointerup={onpointerup}
                onpointercancel={onpointercancel}
                onpointerleave={onpointerleave}
+               oncontextmenu={oncontextmenu}
                onclick={(event: MouseEvent) => {
                    event.stopPropagation();
                    event.preventDefault();
