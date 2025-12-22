@@ -23,6 +23,7 @@ export interface ConvertActions {
     convertToGray: () => action;
     clearField: () => action;
     convertToMirror: () => action;
+    convertAllToMirror: () => action;
 }
 
 export const convertActions: Readonly<ConvertActions> = {
@@ -210,6 +211,12 @@ export const convertActions: Readonly<ConvertActions> = {
         return sequence(state, [
             actions.removeUnsettledItems(),
             convertToMirror(),
+        ]);
+    },
+    convertAllToMirror: () => (state): NextState => {
+        return sequence(state, [
+            actions.removeUnsettledItems(),
+            convertAllToMirror(),
         ]);
     },
 };
@@ -410,6 +417,67 @@ const convertToMirror = () => (state: State): NextState => {
         }
 
         tasks.push(toSinglePageTask(index, primitivePage, page));
+    }
+
+    return sequence(state, [
+        actions.registerHistoryTask({ task: toPageTaskStack(tasks, currentIndex) }),
+        () => ({
+            fumen: {
+                ...state.fumen,
+                pages,
+            },
+        }),
+        actions.reopenCurrentPage(),
+    ]);
+};
+
+const convertAllToMirror = () => (state: State): NextState => {
+    const currentIndex = state.fumen.currentIndex;
+    const pages = state.fumen.pages;
+    const pagesObj = new Pages(pages);
+    const tasks: OperationTask[] = [];
+
+    // すべてのページを反転させる
+    for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+        const page = pages[pageIndex];
+
+        // ページをKeyにする
+        if (page.field.obj === undefined) {
+            pagesObj.toKeyPage(pageIndex);
+            tasks.push(toKeyPageTask(pageIndex));
+        }
+
+        if (page.comment.ref !== undefined) {
+            pagesObj.freezeComment(pageIndex);
+            tasks.push(toFreezeCommentTask(pageIndex));
+        }
+
+        const primitivePage = toPrimitivePage(page);
+
+        const initField = pagesObj.getField(pageIndex, PageFieldOperation.Command);
+        const goalField = new Field({});
+
+        for (let y = -1; y < 23; y += 1) {
+            for (let x = 0; x < 10; x += 1) {
+                const piece = initField.get(9 - x, y);
+                goalField.add(x, y, mirrorPiece(piece));
+            }
+        }
+
+        if (page.piece !== undefined) {
+            page.piece = mirrorMove(page.piece);
+        }
+
+        const comment = pagesObj.getComment(pageIndex);
+        if (isQuizCommentResult(comment)) {
+            const mirror = mirrorQuiz(comment.quiz);
+            pagesObj.setComment(pageIndex, mirror);
+        }
+
+        const prevField = pagesObj.getField(pageIndex, PageFieldOperation.None);
+        page.commands = parseToCommands(prevField, goalField);
+
+        tasks.push(toSinglePageTask(pageIndex, primitivePage, page));
     }
 
     return sequence(state, [

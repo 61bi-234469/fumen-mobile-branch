@@ -47,7 +47,7 @@ export const resources = {
     },
     Menu: {
         Buttons: {
-            ExternalSite: 'External',
+            ExternalSite: 'Export List',
         },
         Messages: {
             NoAvailableCommentButton: 'Writableモードのときだけ変更できます',

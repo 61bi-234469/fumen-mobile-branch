@@ -75,7 +75,7 @@ export const resources = {
             GhostOff: 'GhostOff',
             UserSettings: 'Settings',
             SavePlayfieldToImage: 'Image/field',
-            ExternalSite: 'External',
+            ExternalSite: 'Export List',
         },
         Messages: {
             NoAvailableCommentButton: 'Available only when writable mode',

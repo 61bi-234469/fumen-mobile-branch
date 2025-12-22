@@ -21,7 +21,8 @@ interface Props {
         startAnimation: () => void;
         pauseAnimation: () => void;
         backPage: (data: { loop: boolean }) => void;
-        nextPageOrNewPage: () => void;
+        nextPage: (data: { loop: boolean }) => void;
+        duplicatePageOnly: (data: { index: number }) => void;
         duplicatePageToGray: (data: { index: number }) => void;
         changeToDrawingToolMode: () => void;
         undo: () => void;
@@ -58,7 +59,6 @@ export const EditorTools: Component<Props> = (
     const themeColor = `page-footer tools ${palette.baseClass}`;
 
     const pages = `${currentPage} / ${maxPage}`;
-    const rightIconName = currentPage < maxPage ? 'navigate_next' : 'add';
 
     return (
         <nav datatest="tools" className={themeColor} style={navProperties}>
@@ -81,19 +81,24 @@ export const EditorTools: Component<Props> = (
                     {pages}
                 </ToolText>
 
-                <ToolButton iconName={rightIconName} datatest="btn-next-page" width={35} height={height - 10}
+                <ToolButton iconName="navigate_next" datatest="btn-next-page" width={35} height={height - 10}
                             key="btn-next-page" fontSize={33.75} marginRight={10} colors={colors}
-                            actions={{ onclick: () => actions.nextPageOrNewPage() }}/>
+                            actions={{ onclick: () => actions.nextPage({ loop: false }) }}
+                            enable={currentPage < maxPage}/>
 
                 <ToolButton iconName="home" datatest="btn-drawing-tool" width={40} height={height - 10}
-                            key="btn-drawing-tool" fontSize={30} marginRight={10} colors={colors}
+                            key="btn-drawing-tool" fontSize={30} marginRight={5} colors={colors}
                             actions={{ onclick: () => actions.changeToDrawingToolMode() }}
                             enable={modeType !== ModeTypes.DrawingTool}/>
+
+                <ToolButton iconName="add" datatest="btn-insert-page" width={35} height={height - 10}
+                            key="btn-insert-page" fontSize={30} marginRight={5} colors={colors}
+                            actions={{ onclick: () => actions.duplicatePageOnly({ index: currentPage }) }}/>
 
                 <ToolTextButton datatest="btn-new-gray" width={35} height={height - 10}
                             key="btn-new-gray" fontSize={16} marginRight={40} colors={colors}
                             actions={{ onclick: () => actions.duplicatePageToGray({ index: currentPage }) }}>
-                    +g
+                    +G
                 </ToolTextButton>
 
                 <ToolButton iconName="menu" datatest="btn-open-menu" sticky={true}

@@ -33,6 +33,7 @@ export interface PageActions {
     removePage: (data: { index: number }) => action;
     duplicatePage: (data: { index: number }) => action;
     duplicatePageToGray: (data: { index: number }) => action;
+    duplicatePageOnly: (data: { index: number }) => action;
     removeUnsettledItems: () => action;
     backLoopPage: () => action;
     nextLoopPage: () => action;
@@ -196,6 +197,15 @@ export const pageActions: Readonly<PageActions> = {
             pageActions.insertPage({ index }),
             actions.openPage({ index }),
             actions.convertToGray(),
+        ]);
+    },
+    duplicatePageOnly: ({ index }) => (state): NextState => {
+        // insertPageを使用することで、LOCKフラグがONの場合はライン消去が適用される
+        // (insertKeyPageはPageFieldOperation.Allを使用するため)
+        // duplicatePageToGrayと同じだが、グレー変換を行わない
+        return sequence(state, [
+            pageActions.insertPage({ index }),
+            actions.openPage({ index }),
         ]);
     },
     removePage: ({ index }) => (state): NextState => {
