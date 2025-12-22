@@ -52,6 +52,9 @@ export interface PageActions {
     copyCurrentPageToClipboard: () => action;
     cutCurrentPage: () => action;
     insertPageFromClipboard: () => action;
+    copyAllPagesToClipboard: () => action;
+    cutAllPages: () => action;
+    replaceAllFromClipboard: () => action;
 }
 
 export const pageActions: Readonly<PageActions> = {
@@ -551,7 +554,11 @@ export const pageActions: Readonly<PageActions> = {
             }
         })();
 
-        // ページを削除
+        // ページを削除（1ページしかない場合は新規fumenをロード）
+        if (pages.length <= 1) {
+            main.loadNewFumen();
+            return undefined;
+        }
         return pageActions.removePage({ index: currentIndex })(state);
     },
     insertPageFromClipboard: () => (state): NextState => {
@@ -585,6 +592,114 @@ export const pageActions: Readonly<PageActions> = {
             } catch (error) {
                 console.error(error);
                 M.toast({ html: `Failed to insert: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        return undefined;
+    },
+    copyAllPagesToClipboard: () => (state): NextState => {
+        const pages = state.fumen.pages;
+
+        // 非同期でエンコードしてクリップボードにコピー
+        (async () => {
+            try {
+                const encoded = await encode(pages);
+                const url = `v115@${encoded}`;
+
+                // クリップボードにコピー
+                const element = document.createElement('pre');
+                element.style.position = 'fixed';
+                element.style.left = '-100%';
+                element.textContent = url;
+                document.body.appendChild(element);
+
+                const selection = document.getSelection();
+                if (selection) {
+                    selection.selectAllChildren(element);
+                    const success = document.execCommand('copy');
+                    if (success) {
+                        const msg = `Copied all ${pages.length} pages`;
+                        M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
+                    } else {
+                        M.toast({ html: 'Failed to copy', classes: 'top-toast', displayLength: 1500 });
+                    }
+                }
+
+                document.body.removeChild(element);
+            } catch (error) {
+                M.toast({ html: `Failed to copy: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        return undefined;
+    },
+    cutAllPages: () => (state): NextState => {
+        const pages = state.fumen.pages;
+        const pageCount = pages.length;
+
+        // ページ情報のスナップショットを同期的にエンコード開始
+        // （参照が変更される前にエンコード処理を開始する）
+        const encodePromise = encode(pages);
+
+        // 非同期でクリップボードにコピー
+        (async () => {
+            try {
+                const encoded = await encodePromise;
+                const url = `v115@${encoded}`;
+
+                // クリップボードにコピー
+                const element = document.createElement('pre');
+                element.style.position = 'fixed';
+                element.style.left = '-100%';
+                element.textContent = url;
+                document.body.appendChild(element);
+
+                const selection = document.getSelection();
+                if (selection) {
+                    selection.selectAllChildren(element);
+                    const success = document.execCommand('copy');
+                    if (success) {
+                        // コピー成功後に新しい空のfumenをロード
+                        main.loadNewFumen();
+                        M.toast({ html: `Cut all ${pageCount} pages`, classes: 'top-toast', displayLength: 1000 });
+                    } else {
+                        M.toast({ html: 'Failed to cut', classes: 'top-toast', displayLength: 1500 });
+                    }
+                }
+
+                document.body.removeChild(element);
+            } catch (error) {
+                M.toast({ html: `Failed to cut: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        return undefined;
+    },
+    replaceAllFromClipboard: () => (state): NextState => {
+        (async () => {
+            try {
+                // クリップボードからテキストを読み取り
+                const text = await navigator.clipboard.readText();
+
+                // fumen URLからデータ部分を抽出
+                const fumenMatch = text.match(/[vdVDmM]115@[a-zA-Z0-9+/?]+/);
+                if (!fumenMatch) {
+                    M.toast({ html: 'No fumen data in clipboard', classes: 'top-toast', displayLength: 1500 });
+                    return;
+                }
+
+                const fumenData = fumenMatch[0];
+
+                // デコード
+                const decodedPages = await decode(fumenData);
+
+                // 全ページを置き換え（loadFumenを使用）
+                main.loadFumen({ fumen: fumenData });
+                const msg = `Replaced with ${decodedPages.length} pages`;
+                M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
+            } catch (error) {
+                console.error(error);
+                M.toast({ html: `Failed to replace: ${error}`, classes: 'top-toast', displayLength: 1500 });
             }
         })();
 
