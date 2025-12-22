@@ -21,8 +21,14 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
         changeToKey: (data: { index: number }) => void;
         selectPieceColor: (data: { piece: Piece }) => void;
         selectInferencePieceColor: () => void;
+        changeToMovePieceMode: () => void;
+        spawnPiece: (data: { piece: Piece, guideline: boolean }) => void;
+        clearFieldAndPiece: () => void;
         copyCurrentPageToClipboard: () => void;
         insertPageFromClipboard: () => void;
+        copyAllPagesToClipboard: () => void;
+        cutAllPages: () => void;
+        replaceAllFromClipboard: () => void;
     };
 }) => {
     const toolButtonMargin = 3;
@@ -63,6 +69,7 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
             datatest: 'btn-insert-from-clipboard',
             key: 'btn-insert-from-clipboard',
             onclick: () => actions.insertPageFromClipboard(),
+            onlongpress: () => actions.replaceAllFromClipboard(),
         }, iconContents({
             description: 'insert',
             iconSize: 22,
@@ -78,6 +85,7 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
             datatest: 'btn-copy-to-clipboard',
             key: 'btn-copy-to-clipboard',
             onclick: () => actions.copyCurrentPageToClipboard(),
+            onlongpress: () => actions.copyAllPagesToClipboard(),
         }, iconContents({
             description: 'copy',
             iconSize: 22,
@@ -93,6 +101,7 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
             datatest: 'btn-cut-page',
             key: 'btn-cut-page',
             onclick: () => actions.cutCurrentPage(),
+            onlongpress: () => actions.cutAllPages(),
         }, iconContents({
             description: 'cut',
             iconSize: 22,
@@ -151,7 +160,19 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
             key: 'div-space-separator',
         }),
     ].concat(pieces.map(piece => (
-        colorButton({ layout, piece, colorize, onclick: actions.selectPieceColor, highlight: modePiece === piece })
+        colorButton({
+            layout,
+            piece,
+            colorize,
+            onclick: actions.selectPieceColor,
+            highlight: modePiece === piece,
+            onlongpress: piece === Piece.Empty ? () => {
+                actions.clearFieldAndPiece();
+            } : piece !== Piece.Gray ? (data) => {
+                actions.spawnPiece(data);
+                actions.changeToMovePieceMode();
+            } : undefined,
+        })
     ))).concat([
         inferenceButton({
             layout,

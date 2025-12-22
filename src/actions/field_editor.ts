@@ -40,6 +40,8 @@ export interface FieldEditorActions {
 
     clearPiece(): action;
 
+    clearFieldAndPiece(): action;
+
     rotateToLeft(): action;
 
     rotateToRight(): action;
@@ -243,6 +245,12 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             fieldEditorActions.resetInferencePiece(),
             actions.registerHistoryTask({ task: toSinglePageTask(pageIndex, prevPage, page) }),
             actions.reopenCurrentPage(),
+        ]);
+    },
+    clearFieldAndPiece: () => (state): NextState => {
+        return sequence(state, [
+            actions.clearField(),
+            fieldEditorActions.clearPiece(),
         ]);
     },
     rotateToLeft: () => (state): NextState => {
