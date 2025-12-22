@@ -22,6 +22,8 @@ interface Props {
         pauseAnimation: () => void;
         backPage: (data: { loop: boolean }) => void;
         nextPage: (data: { loop: boolean }) => void;
+        firstPage: () => void;
+        lastPage: () => void;
         duplicatePageOnly: (data: { index: number }) => void;
         duplicatePageToGray: (data: { index: number }) => void;
         changeToDrawingToolMode: () => void;
@@ -74,7 +76,10 @@ export const EditorTools: Component<Props> = (
 
                 <ToolButton iconName="navigate_before" datatest="btn-back-page" width={35} height={height - 10}
                             key="btn-back-page" fontSize={33.75} marginRight={5} colors={colors}
-                            actions={{ onclick: () => actions.backPage({ loop: false }) }} enable={1 < currentPage}/>
+                            actions={{
+                                onclick: () => actions.backPage({ loop: false }),
+                                onlongpress: () => actions.firstPage(),
+                            }} enable={1 < currentPage}/>
 
                 <ToolText datatest="text-pages" height={height - 10}
                           minWidth={75} fontSize={18} marginRight={5}>
@@ -83,7 +88,10 @@ export const EditorTools: Component<Props> = (
 
                 <ToolButton iconName="navigate_next" datatest="btn-next-page" width={35} height={height - 10}
                             key="btn-next-page" fontSize={33.75} marginRight={10} colors={colors}
-                            actions={{ onclick: () => actions.nextPage({ loop: false }) }}
+                            actions={{
+                                onclick: () => actions.nextPage({ loop: false }),
+                                onlongpress: () => actions.lastPage(),
+                            }}
                             enable={currentPage < maxPage}/>
 
                 <ToolButton iconName="home" datatest="btn-drawing-tool" width={40} height={height - 10}

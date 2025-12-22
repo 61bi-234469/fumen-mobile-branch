@@ -20,6 +20,8 @@ interface Props {
         pauseAnimation: () => void;
         backPage: (data: { loop: boolean }) => void;
         nextPage: (data: { loop: boolean }) => void;
+        firstPage: () => void;
+        lastPage: () => void;
     };
 }
 
@@ -68,7 +70,10 @@ export const ReaderTools: Component<Props> = (
 
                 <ToolButton iconName="navigate_before" datatest="btn-back-page" width={35} height={height - 10}
                             key="btn-back-page" fontSize={33.75} marginRight={5} colors={palette}
-                            actions={{ onclick: () => actions.backPage({ loop }) }} enable={loop || 1 < currentPage}/>
+                            actions={{
+                                onclick: () => actions.backPage({ loop }),
+                                onlongpress: () => actions.firstPage(),
+                            }} enable={loop || 1 < currentPage}/>
 
                 <ToolText datatest="text-pages" height={height - 10}
                           minWidth={75} fontSize={18} marginRight={5}>
@@ -78,7 +83,10 @@ export const ReaderTools: Component<Props> = (
                 <ToolButton iconName="navigate_next" datatest="btn-next-page" width={35} height={height - 10}
                             key="btn-next-page" fontSize={33.75} marginRight={10} colors={palette}
                             enable={loop || currentPage < maxPage}
-                            actions={{ onclick: () => actions.nextPage({ loop }) }}/>
+                            actions={{
+                                onclick: () => actions.nextPage({ loop }),
+                                onlongpress: () => actions.lastPage(),
+                            }}/>
 
                 <ToolButton iconName="mode_edit" datatest="btn-writable-in-reader" width={40} height={height - 10}
                             key="btn-writable-in-reader" fontSize={33.75} marginRight={10} colors={palette}
