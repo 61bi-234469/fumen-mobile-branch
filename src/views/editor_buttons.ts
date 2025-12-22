@@ -5,12 +5,13 @@ import { VNode } from 'hyperapp';
 import { parsePieceName, parseRotationName, Piece, Rotation } from '../lib/enums';
 import { BlockIcon } from '../components/atomics/icons';
 
-export const colorButton = ({ layout, piece, highlight, colorize, onclick }: {
+export const colorButton = ({ layout, piece, highlight, colorize, onclick, onlongpress }: {
     layout: EditorLayout,
     piece: Piece,
     highlight: boolean,
     colorize: boolean,
     onclick: (data: { piece: Piece }) => void,
+    onlongpress?: (data: { piece: Piece, guideline: boolean }) => void,
 }) => {
     const borderWidth = highlight ? 3 : 1;
 
@@ -25,6 +26,7 @@ export const colorButton = ({ layout, piece, highlight, colorize, onclick }: {
         datatest: `btn-piece-${pieceName.toLowerCase()}`,
         key: `btn-piece-${pieceName.toLowerCase()}`,
         onclick: () => onclick({ piece }),
+        onlongpress: onlongpress ? () => onlongpress({ piece, guideline: colorize }) : undefined,
     });
 };
 
@@ -46,7 +48,7 @@ export const rotationButton = ({ layout, rotation, highlight }: {
     });
 };
 
-export const svgButton = ({ src, datatest, key, layout, highlight, height, borderWidth, onclick }: {
+export const svgButton = ({ src, datatest, key, layout, highlight, height, borderWidth, onclick, onlongpress }: {
     src: string;
     datatest: string;
     key: string;
@@ -55,6 +57,7 @@ export const svgButton = ({ src, datatest, key, layout, highlight, height, borde
     height: number;
     borderWidth: number;
     onclick?: (event: MouseEvent) => void;
+    onlongpress?: () => void;
 }) => {
     const contents = [
         img({
@@ -71,6 +74,7 @@ export const svgButton = ({ src, datatest, key, layout, highlight, height, borde
         datatest,
         key,
         onclick,
+        onlongpress,
         width: layout.buttons.size.width,
         margin: 5,
         backgroundColorClass: 'white',
@@ -194,10 +198,24 @@ export const keyButton = (
     }));
 };
 
+// 長押し検出のための定数
+const LONG_PRESS_DURATION = 500; // 500ms
+
+// 長押し状態のグローバル管理（再レンダリングでリセットされないようにする）
+const longPressState: {
+    timer: ReturnType<typeof setTimeout> | null;
+    triggered: boolean;
+    activeKey: string | null;
+} = {
+    timer: null,
+    triggered: false,
+    activeKey: null,
+};
+
 export const toolButton = (
     {
         width, backgroundColorClass, textColor, borderColor, borderWidth = 1, borderType = 'solid',
-        datatest, key, onclick, flexGrow, margin, enable = true,
+        datatest, key, onclick, onlongpress, flexGrow, margin, enable = true,
     }: {
         flexGrow?: number;
         width: number;
@@ -211,14 +229,90 @@ export const toolButton = (
         key: string;
         enable?: boolean;
         onclick?: (event: MouseEvent) => void;
+        onlongpress?: () => void;
     },
     contents: string | number | (string | number | VNode<{}>)[],
 ) => {
+    const clearPressTimer = () => {
+        if (longPressState.timer !== null) {
+            clearTimeout(longPressState.timer);
+            longPressState.timer = null;
+        }
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+        if (!enable) return;
+
+        // 他のボタンの長押し状態をクリア
+        clearPressTimer();
+        longPressState.triggered = false;
+        longPressState.activeKey = key;
+
+        if (onlongpress) {
+            longPressState.timer = setTimeout(() => {
+                longPressState.triggered = true;
+                longPressState.timer = null;
+                onlongpress();
+            }, LONG_PRESS_DURATION);
+        }
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+        if (!enable) return;
+
+        // このボタンがアクティブな場合のみ処理
+        if (longPressState.activeKey !== key) {
+            return;
+        }
+
+        clearPressTimer();
+
+        // 長押しがトリガーされていない場合のみクリックを実行
+        if (!longPressState.triggered && onclick) {
+            onclick(event as unknown as MouseEvent);
+        }
+
+        longPressState.triggered = false;
+        longPressState.activeKey = null;
+        event.stopPropagation();
+        event.preventDefault();
+    };
+
+    const handlePointerCancel = () => {
+        if (longPressState.activeKey === key) {
+            clearPressTimer();
+            longPressState.triggered = false;
+            longPressState.activeKey = null;
+        }
+    };
+
+    const handleContextMenu = (event: Event) => {
+        // 長押しでコンテキストメニューが出ないようにする
+        if (onlongpress) {
+            event.preventDefault();
+        }
+    };
+
+    // 長押しがある場合はpointerイベントを使用、ない場合は従来のonclick
+    const eventHandlers = onlongpress ? {
+        onpointerdown: handlePointerDown,
+        onpointerup: handlePointerUp,
+        onpointercancel: handlePointerCancel,
+        onpointerleave: handlePointerCancel,
+        oncontextmenu: handleContextMenu,
+    } : {
+        onclick: onclick !== undefined ? (event: MouseEvent) => {
+            onclick(event);
+            event.stopPropagation();
+            event.preventDefault();
+        } : undefined,
+    };
+
     return a({
         datatest,
         key,
         href: '#',
-        class: `${onclick !== undefined ? 'waves-effect ' : ''}`
+        class: `${onclick !== undefined || onlongpress !== undefined ? 'waves-effect ' : ''}`
             + `z-depth-0 btn ${backgroundColorClass} ${enable ? '' : 'disabled'}`,
         style: style({
             flexGrow,
@@ -230,12 +324,10 @@ export const toolButton = (
             maxWidth: px(width),
             textAlign: 'center',
             cursor: 'pointer',
+            touchAction: 'none', // タッチデバイスでのスクロールを防ぐ
+            userSelect: 'none', // テキスト選択を防ぐ
         }),
-        onclick: onclick !== undefined ? (event: MouseEvent) => {
-            onclick(event);
-            event.stopPropagation();
-            event.preventDefault();
-        } : undefined,
+        ...eventHandlers,
     }, [
         div({
             style: {
