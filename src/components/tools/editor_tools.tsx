@@ -96,7 +96,7 @@ export const EditorTools: Component<Props> = (
                             actions={{ onclick: () => actions.duplicatePageOnly({ index: currentPage }) }}/>
 
                 <ToolTextButton datatest="btn-new-gray" width={35} height={height - 10}
-                            key="btn-new-gray" fontSize={16} marginRight={40} colors={colors}
+                            key="btn-new-gray" fontSize={16} marginRight={5} colors={colors}
                             actions={{ onclick: () => actions.duplicatePageToGray({ index: currentPage }) }}>
                     +G
                 </ToolTextButton>
