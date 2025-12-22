@@ -8,8 +8,7 @@ export const fillMode = ({ layout, modePiece, colorize, actions }: {
     modePiece: Piece | undefined;
     colorize: boolean;
     actions: {
-        selectPieceColor: (data: { piece: Piece }) => void;
-        selectInferencePieceColor: () => void;
+        selectFillPieceColor: (data: { piece: Piece }) => void;
     };
 }) => {
     const pieces = [Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray];
@@ -24,6 +23,6 @@ export const fillMode = ({ layout, modePiece, colorize, actions }: {
             key: 'div-space',
         }),
     ].concat(pieces.map(piece => (
-        colorButton({ layout, piece, colorize, onclick: actions.selectPieceColor, highlight: modePiece === piece })
+        colorButton({ layout, piece, colorize, onclick: actions.selectFillPieceColor, highlight: modePiece === piece })
     ))));
 };

@@ -34,6 +34,8 @@ export interface FieldEditorActions {
 
     selectPieceColor(data: { piece: Piece }): action;
 
+    selectFillPieceColor(data: { piece: Piece }): action;
+
     selectInferencePieceColor(): action;
 
     spawnPiece(data: { piece: Piece, guideline: boolean }): action;
@@ -166,6 +168,17 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
                     ...newState.mode,
                     piece,
                     touch: TouchTypes.Drawing,
+                },
+            }),
+        ]);
+    },
+    selectFillPieceColor: ({ piece }) => (state): NextState => {
+        return sequence(state, [
+            actions.removeUnsettledItems(),
+            newState => ({
+                mode: {
+                    ...newState.mode,
+                    piece,
                 },
             }),
         ]);
