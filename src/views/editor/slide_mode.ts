@@ -8,6 +8,7 @@ export const slideMode = ({ layout, actions }: {
         shiftToLeft: () => void;
         shiftToRight: () => void;
         shiftToUp: () => void;
+        shiftToUpWithGray: () => void;
         shiftToBottom: () => void;
         changeToUtilsMode: () => void;
     };
@@ -21,6 +22,21 @@ export const slideMode = ({ layout, actions }: {
             margin: toolButtonMargin,
             key: 'div-space',
         }),
+        toolButton({
+            borderWidth: 1,
+            width: layout.buttons.size.width,
+            margin: toolButtonMargin,
+            backgroundColorClass: 'grey',
+            textColor: '#fff',
+            borderColor: '#9e9e9e',
+            datatest: 'btn-slide-to-up-with-gray',
+            key: 'btn-slide-to-up-with-gray',
+            onclick: () => actions.shiftToUpWithGray(),
+        }, iconContents({
+            description: '',
+            iconSize: 22,
+            iconName: 'keyboard_arrow_up',
+        })),
         toolButton({
             borderWidth: 1,
             width: layout.buttons.size.width,

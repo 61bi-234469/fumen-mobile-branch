@@ -63,6 +63,10 @@ export class Field {
         this.playField.shiftToUp();
     }
 
+    shiftToUpWithGray(): void {
+        this.playField.shiftToUpWithGray();
+    }
+
     shiftToBottom(): void {
         this.playField.shiftToBottom();
     }
@@ -230,6 +234,11 @@ export class PlayField {
     shiftToUp(): void {
         const blanks = Array.from({ length: 10 }).map(() => Piece.Empty);
         this.pieces = blanks.concat(this.pieces).slice(0, this.length);
+    }
+
+    shiftToUpWithGray(): void {
+        const grays = Array.from({ length: 10 }).map(() => Piece.Gray);
+        this.pieces = grays.concat(this.pieces).slice(0, this.length);
     }
 
     shiftToBottom(): void {
