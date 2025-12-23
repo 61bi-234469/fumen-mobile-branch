@@ -67,8 +67,9 @@ export const EditorTools: Component<Props> = (
         <nav datatest="tools" className={themeColor} style={navProperties}>
             <div className="nav-wrapper" style={divProperties}>
 
-                <ToolButton iconName="view_list" datatest="btn-list-view" width={40} height={height - 10}
-                            key="btn-list-view" fontSize={30} marginRight={10} colors={colors}
+                <ToolButton iconName="view_list" datatest="btn-list-view" stickyLeft={true}
+                            width={40} height={height - 10}
+                            key="btn-list-view" fontSize={30} colors={colors}
                             actions={{ onclick: () => actions.changeToListViewScreen() }}/>
 
                 <ToolButton iconName="undo" datatest="btn-undo" width={35} height={height - 10}

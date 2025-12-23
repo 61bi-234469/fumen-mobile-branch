@@ -53,8 +53,9 @@ export const ReaderTools: Component<Props> = (
         <nav datatest="tools" className={themeColor} style={navProperties}>
             <div className="nav-wrapper" style={divProperties}>
 
-                <ToolButton iconName="view_list" datatest="btn-list-view" width={40} height={height - 10}
-                            key="btn-list-view" fontSize={30} marginRight={15} colors={palette}
+                <ToolButton iconName="view_list" datatest="btn-list-view" stickyLeft={true}
+                            width={40} height={height - 10}
+                            key="btn-list-view" fontSize={30} colors={palette}
                             actions={{ onclick: () => actions.changeToListViewScreen() }}/>
 
                 <ToolButton iconName={animationState !== 'pause' ? 'pause' : 'play_arrow'} datatest="btn-play-anime"
