@@ -18,6 +18,7 @@ interface Props {
     actions: {
         openFumenModal: () => void;
         openMenuModal: () => void;
+        changeToListViewScreen: () => void;
         startAnimation: () => void;
         pauseAnimation: () => void;
         backPage: (data: { loop: boolean }) => void;
@@ -66,8 +67,12 @@ export const EditorTools: Component<Props> = (
         <nav datatest="tools" className={themeColor} style={navProperties}>
             <div className="nav-wrapper" style={divProperties}>
 
+                <ToolButton iconName="view_list" datatest="btn-list-view" width={40} height={height - 10}
+                            key="btn-list-view" fontSize={30} marginRight={10} colors={colors}
+                            actions={{ onclick: () => actions.changeToListViewScreen() }}/>
+
                 <ToolButton iconName="undo" datatest="btn-undo" width={35} height={height - 10}
-                            key="btn-undo" fontSize={33.75} marginLeft={35} marginRight={5} colors={colors}
+                            key="btn-undo" fontSize={33.75} marginRight={5} colors={colors}
                             actions={{ onclick: () => actions.undo() }} enable={0 < undoCount || 0 < inferenceCount}/>
 
                 <ToolButton iconName="redo" datatest="btn-redo" width={35} height={height - 10}

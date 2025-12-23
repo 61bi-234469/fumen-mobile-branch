@@ -270,9 +270,19 @@ const ScreenField = (state: State, actions: Actions, layout: any) => {
 
 const Tools = (state: State, actions: Actions, height: number, palette: ColorPalette) => {
     return ReaderTools({
-        actions,
         height,
         palette,
+        actions: {
+            changeToDrawerScreen: actions.changeToDrawerScreen,
+            changeToListViewScreen: actions.changeToListViewScreen,
+            openMenuModal: actions.openMenuModal,
+            startAnimation: actions.startAnimation,
+            pauseAnimation: actions.pauseAnimation,
+            backPage: actions.backPage,
+            nextPage: actions.nextPage,
+            firstPage: actions.firstPage,
+            lastPage: actions.lastPage,
+        },
         currentPage: state.fumen.currentIndex + 1,
         maxPage: state.fumen.maxPage,
         animationState: state.play.status,

@@ -19,6 +19,7 @@ import { mementoActions, MementoActions } from './actions/memento';
 import { CommentActions, commentActions } from './actions/comment';
 import { convertActions, ConvertActions } from './actions/convert';
 import { userSettingsActions, UserSettingsActions } from './actions/user_settings';
+import { listViewActions, ListViewActions } from './actions/list_view';
 import { i18n } from './locales/keys';
 import { getURLQuery, Query } from './params';
 import { localStorageWrapper } from './memento';
@@ -35,7 +36,8 @@ export type Actions = AnimationActions
     & FieldEditorActions
     & CommentActions
     & ConvertActions
-    & UserSettingsActions;
+    & UserSettingsActions
+    & ListViewActions;
 
 export const actions: Readonly<Actions> = {
     ...animationActions,
@@ -49,6 +51,7 @@ export const actions: Readonly<Actions> = {
     ...commentActions,
     ...convertActions,
     ...userSettingsActions,
+    ...listViewActions,
 };
 
 // Mounting

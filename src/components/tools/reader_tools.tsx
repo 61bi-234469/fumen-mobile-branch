@@ -15,6 +15,7 @@ interface Props {
     loop: boolean;
     actions: {
         changeToDrawerScreen: (data: { refresh?: boolean }) => void;
+        changeToListViewScreen: () => void;
         openMenuModal: () => void;
         startAnimation: () => void;
         pauseAnimation: () => void;
@@ -51,6 +52,10 @@ export const ReaderTools: Component<Props> = (
     return (
         <nav datatest="tools" className={themeColor} style={navProperties}>
             <div className="nav-wrapper" style={divProperties}>
+
+                <ToolButton iconName="view_list" datatest="btn-list-view" width={40} height={height - 10}
+                            key="btn-list-view" fontSize={30} marginRight={15} colors={palette}
+                            actions={{ onclick: () => actions.changeToListViewScreen() }}/>
 
                 <ToolButton iconName={animationState !== 'pause' ? 'pause' : 'play_arrow'} datatest="btn-play-anime"
                             key="btn-play-anime" width={40} height={height - 10} fontSize={40} colors={palette}

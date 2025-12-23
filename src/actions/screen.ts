@@ -8,6 +8,7 @@ import { gradientPieces } from './user_settings';
 export interface ScreenActions {
     changeToReaderScreen: () => action;
     changeToDrawerScreen: (data: { refresh?: boolean }) => action;
+    changeToListViewScreen: () => action;
     changeToDrawingMode: () => action;
     changeToDrawingToolMode: () => action;
     changeToFlagsMode: () => action;
@@ -46,6 +47,19 @@ export const modeActions: Readonly<ScreenActions> = {
         return sequence(state, [
             animationActions.pauseAnimation(),
             refresh ? actions.changeToDrawingToolMode() : undefined,
+        ]);
+    },
+    changeToListViewScreen: () => (state): NextState => {
+        return sequence(state, [
+            actions.fixInferencePiece(),
+            actions.resetInferencePiece(),
+            animationActions.pauseAnimation(),
+            () => ({
+                mode: {
+                    ...state.mode,
+                    screen: Screens.ListView,
+                },
+            }),
         ]);
     },
     changeToDrawingMode: () => (state): NextState => {

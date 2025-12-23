@@ -347,9 +347,24 @@ const Events = (state: State, actions: Actions) => {
 
 const Tools = (state: State, actions: Actions, height: number, palette: ColorPalette) => {
     return EditorTools({
-        actions,
         height,
         palette,
+        actions: {
+            openFumenModal: actions.openFumenModal,
+            openMenuModal: actions.openMenuModal,
+            changeToListViewScreen: actions.changeToListViewScreen,
+            startAnimation: actions.startAnimation,
+            pauseAnimation: actions.pauseAnimation,
+            backPage: actions.backPage,
+            nextPage: actions.nextPage,
+            firstPage: actions.firstPage,
+            lastPage: actions.lastPage,
+            duplicatePageOnly: actions.duplicatePageOnly,
+            duplicatePageToGray: actions.duplicatePageToGray,
+            changeToDrawingToolMode: actions.changeToDrawingToolMode,
+            undo: actions.undo,
+            redo: actions.redo,
+        },
         currentPage: state.fumen.currentIndex + 1,
         maxPage: state.fumen.maxPage,
         modeType: state.mode.type,

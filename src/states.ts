@@ -92,6 +92,13 @@ export interface State {
         undoCount: number;
         redoCount: number;
     };
+    listView: {
+        dragState: {
+            draggingIndex: number | null;
+            dropTargetIndex: number | null;
+        };
+        scale: number;
+    };
     version: string;
     platform: Platforms;
 }
@@ -182,6 +189,13 @@ export const initState: Readonly<State> = {
     history: {
         undoCount: 0,
         redoCount: 0,
+    },
+    listView: {
+        dragState: {
+            draggingIndex: null,
+            dropTargetIndex: null,
+        },
+        scale: 1.0,
     },
     version: VERSION,
     platform: getPlatform(),

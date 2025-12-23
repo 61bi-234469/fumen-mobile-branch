@@ -45,6 +45,7 @@ export enum FieldConstants {
 export enum Screens {
     Reader = 'Reader',
     Editor = 'Editor',
+    ListView = 'ListView',
 }
 
 export enum ModeTypes {

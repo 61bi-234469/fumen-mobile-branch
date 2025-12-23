@@ -12,6 +12,8 @@ export const Palette = (screen: Screens): ColorPalette => {
         switch (screen) {
         case Screens.Editor:
             return 'red';
+        case Screens.ListView:
+            return 'indigo';
         default:
             return 'teal';
         }
@@ -21,6 +23,8 @@ export const Palette = (screen: Screens): ColorPalette => {
         switch (screen) {
         case Screens.Editor:
             return '#f44336';
+        case Screens.ListView:
+            return '#3f51b5';
         default:
             return '#009688';
         }
@@ -30,6 +34,8 @@ export const Palette = (screen: Screens): ColorPalette => {
         switch (screen) {
         case Screens.Editor:
             return '#d32f2f';
+        case Screens.ListView:
+            return '#303f9f';
         default:
             return '#00796b';
         }
