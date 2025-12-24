@@ -10,6 +10,7 @@ interface Props {
     palette: ColorPalette;
     actions: {
         changeToEditorFromListView: () => void;
+        convertAllToMirror: () => void;
     };
 }
 
@@ -67,6 +68,20 @@ export const ListViewTools: Component<Props> = (
                 >
                     {`${maxPage} pages`}
                 </ToolText>
+
+                <ToolButton
+                    iconName="compare_arrows"
+                    datatest="btn-all-mirror"
+                    width={40}
+                    height={height - 10}
+                    key="btn-all-mirror"
+                    fontSize={24}
+                    sticky={true}
+                    colors={palette}
+                    actions={{
+                        onclick: () => actions.convertAllToMirror(),
+                    }}
+                />
             </div>
         </nav>
     );

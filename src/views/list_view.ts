@@ -164,6 +164,7 @@ export const view: View<State, Actions> = (state, actions) => {
             palette,
             actions: {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
+                convertAllToMirror: () => actions.convertAllToMirror(),
             },
             height: TOOLS_HEIGHT,
             maxPage: state.fumen.maxPage,
