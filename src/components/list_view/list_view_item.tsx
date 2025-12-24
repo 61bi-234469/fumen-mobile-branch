@@ -72,6 +72,7 @@ export const ListViewItem: Component<Props> = ({
         display: 'block',
         borderRadius: '2px',
         border: '1px solid #666',
+        pointerEvents: 'none',
     });
 
     const pageNumberStyle = style({
