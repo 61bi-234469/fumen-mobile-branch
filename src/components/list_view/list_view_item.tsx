@@ -108,6 +108,9 @@ export const ListViewItem: Component<Props> = ({
             ondragend={() => {
                 actions.onDragEnd();
             }}
+            oncontextmenu={(e: Event) => {
+                e.preventDefault();
+            }}
         >
             <img
                 src={thumbnailSrc}
