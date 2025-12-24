@@ -11,21 +11,25 @@ export interface ListViewActions {
     changeToEditorFromListView: () => action;
     setListViewDragState: (data: { draggingIndex: number | null; dropTargetIndex: number | null }) => action;
     setListViewScale: (data: { scale: number }) => action;
-    reorderPage: (data: { fromIndex: number; toIndex: number }) => action;
+    reorderPage: (data: { fromIndex: number; toSlotIndex: number }) => action;
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
     navigateToPageFromListView: (data: { pageIndex: number }) => action;
 }
 
 export const toReorderPageTask = (
     fromIndex: number,
-    toIndex: number,
+    toSlotIndex: number,
     primitivePrevPages: PrimitivePage[],
 ): OperationTask => {
+    // Calculate actual target index from slot
+    const actualTargetIndex = fromIndex < toSlotIndex
+        ? toSlotIndex - 1
+        : toSlotIndex;
+
     return {
         replay: (pages: Page[]) => {
-            const newPages = reorderPagesInternal([...pages], fromIndex, toIndex);
-            const newIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
-            return { pages: newPages, index: newIndex };
+            const newPages = reorderPagesInternal([...pages], fromIndex, actualTargetIndex);
+            return { pages: newPages, index: actualTargetIndex };
         },
         revert: (pages: Page[]) => {
             return { pages: primitivePrevPages.map(toPage), index: fromIndex };
@@ -127,18 +131,23 @@ export const listViewActions: Readonly<ListViewActions> = {
             },
         };
     },
-    reorderPage: ({ fromIndex, toIndex }) => (state): NextState => {
-        if (fromIndex === toIndex) {
+    reorderPage: ({ fromIndex, toSlotIndex }) => (state): NextState => {
+        // Calculate actual target index from slot
+        // Slot N means "insert at position N after removal"
+        // If fromIndex < toSlotIndex, after removal the slot index shifts by -1
+        const actualTargetIndex = fromIndex < toSlotIndex
+            ? toSlotIndex - 1
+            : toSlotIndex;
+
+        if (fromIndex === actualTargetIndex) {
             return undefined;
         }
 
         const primitivePrevPages = state.fumen.pages.map(toPrimitivePage);
 
-        const newPages = reorderPagesInternal([...state.fumen.pages], fromIndex, toIndex);
+        const newPages = reorderPagesInternal([...state.fumen.pages], fromIndex, actualTargetIndex);
 
-        const newIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
-
-        const task = toReorderPageTask(fromIndex, toIndex, primitivePrevPages);
+        const task = toReorderPageTask(fromIndex, toSlotIndex, primitivePrevPages);
 
         return sequence(state, [
             actions.registerHistoryTask({ task }),
@@ -146,7 +155,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 fumen: {
                     ...state.fumen,
                     pages: newPages,
-                    currentIndex: newIndex,
+                    currentIndex: actualTargetIndex,
                 },
                 listView: {
                     ...state.listView,

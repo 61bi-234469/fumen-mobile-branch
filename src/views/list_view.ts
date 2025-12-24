@@ -54,22 +54,49 @@ export const view: View<State, Actions> = (state, actions) => {
     const gap = 8;
     const padding = 10;
 
-    const getDropTargetFromTouch = (touchX: number, touchY: number, gridElement: HTMLElement): number | null => {
+    // Returns slot index (0 = before first page, N = after last page)
+    const getDropSlotFromTouch = (touchX: number, touchY: number, gridElement: HTMLElement): number | null => {
         const rect = gridElement.getBoundingClientRect();
         const x = touchX - rect.left - padding;
         const y = touchY - rect.top - padding + gridElement.scrollTop;
 
-        if (x < 0 || y < 0) return null;
+        if (y < 0) return null;
 
         const col = Math.floor(x / (itemSize + gap));
         const row = Math.floor(y / (itemSize + 80 + gap));
 
-        if (col < 0 || col >= COLUMNS) return null;
+        if (row < 0) return null;
 
-        const index = row * COLUMNS + col;
-        if (index < 0 || index >= state.fumen.pages.length) return null;
+        const pageCount = state.fumen.pages.length;
 
-        return index;
+        // Calculate position within the item
+        const xInItem = x - col * (itemSize + gap);
+        const isLeftHalf = xInItem < itemSize / 2;
+
+        // Calculate page index at this grid position
+        const pageIndex = row * COLUMNS + col;
+
+        let slotIndex: number;
+
+        if (col < 0) {
+            // Left of first column - slot at start of row
+            slotIndex = row * COLUMNS;
+        } else if (col >= COLUMNS) {
+            // Right of last column - slot at end of row
+            slotIndex = Math.min((row + 1) * COLUMNS, pageCount);
+        } else if (pageIndex >= pageCount) {
+            // Beyond last page - slot after last page
+            slotIndex = pageCount;
+        } else if (isLeftHalf) {
+            // Left half of item - slot before this item
+            slotIndex = pageIndex;
+        } else {
+            // Right half of item - slot after this item
+            slotIndex = pageIndex + 1;
+        }
+
+        // Clamp to valid range [0, pageCount]
+        return Math.max(0, Math.min(pageCount, slotIndex));
     };
 
     const handleTouchMoveForDrag = (e: TouchEvent) => {
@@ -83,18 +110,22 @@ export const view: View<State, Actions> = (state, actions) => {
         const gridElement = container.querySelector('[key="list-view-grid-container"]') as HTMLElement;
         if (!gridElement) return;
 
-        const targetIndex = getDropTargetFromTouch(touch.clientX, touch.clientY, gridElement);
+        const draggingIndex = state.listView.dragState.draggingIndex;
+        const targetSlot = getDropSlotFromTouch(touch.clientX, touch.clientY, gridElement);
 
-        if (targetIndex !== null && targetIndex !== state.listView.dragState.draggingIndex) {
-            if (state.listView.dragState.dropTargetIndex !== targetIndex) {
+        // Skip no-op slots (slots N and N+1 for page N result in no movement)
+        const isNoOpSlot = targetSlot === draggingIndex || targetSlot === draggingIndex + 1;
+
+        if (targetSlot !== null && !isNoOpSlot) {
+            if (state.listView.dragState.dropTargetIndex !== targetSlot) {
                 actions.setListViewDragState({
-                    draggingIndex: state.listView.dragState.draggingIndex,
-                    dropTargetIndex: targetIndex,
+                    draggingIndex,
+                    dropTargetIndex: targetSlot,
                 });
             }
         } else if (state.listView.dragState.dropTargetIndex !== null) {
             actions.setListViewDragState({
-                draggingIndex: state.listView.dragState.draggingIndex,
+                draggingIndex,
                 dropTargetIndex: null,
             });
         }
@@ -108,12 +139,12 @@ export const view: View<State, Actions> = (state, actions) => {
 
         touchDragActive = false;
         const fromIndex = state.listView.dragState.draggingIndex;
-        const toIndex = state.listView.dragState.dropTargetIndex;
+        const toSlotIndex = state.listView.dragState.dropTargetIndex;
 
-        if (fromIndex !== null && toIndex !== null && fromIndex !== toIndex) {
+        if (fromIndex !== null && toSlotIndex !== null) {
             actions.reorderPage({
                 fromIndex,
-                toIndex,
+                toSlotIndex,
             });
         }
 
@@ -183,11 +214,32 @@ export const view: View<State, Actions> = (state, actions) => {
                             dropTargetIndex: null,
                         });
                     },
-                    onDragOver: (pageIndex: number) => {
-                        if (state.listView.dragState.draggingIndex !== pageIndex) {
+                    onDragOver: (pageIndex: number, e: DragEvent) => {
+                        const draggingIndex = state.listView.dragState.draggingIndex;
+                        if (draggingIndex === null) return;
+
+                        // Calculate slot based on mouse position within item
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        const xInItem = e.clientX - rect.left;
+                        const isLeftHalf = xInItem < rect.width / 2;
+                        const slotIndex = isLeftHalf ? pageIndex : pageIndex + 1;
+
+                        // Skip no-op slots
+                        const isNoOpSlot = slotIndex === draggingIndex || slotIndex === draggingIndex + 1;
+                        if (isNoOpSlot) {
+                            if (state.listView.dragState.dropTargetIndex !== null) {
+                                actions.setListViewDragState({
+                                    draggingIndex,
+                                    dropTargetIndex: null,
+                                });
+                            }
+                            return;
+                        }
+
+                        if (state.listView.dragState.dropTargetIndex !== slotIndex) {
                             actions.setListViewDragState({
-                                draggingIndex: state.listView.dragState.draggingIndex,
-                                dropTargetIndex: pageIndex,
+                                draggingIndex,
+                                dropTargetIndex: slotIndex,
                             });
                         }
                     },
@@ -197,12 +249,13 @@ export const view: View<State, Actions> = (state, actions) => {
                             dropTargetIndex: null,
                         });
                     },
-                    onDrop: (pageIndex: number) => {
+                    onDrop: () => {
                         const fromIndex = state.listView.dragState.draggingIndex;
-                        if (fromIndex !== null && fromIndex !== pageIndex) {
+                        const toSlotIndex = state.listView.dragState.dropTargetIndex;
+                        if (fromIndex !== null && toSlotIndex !== null) {
                             actions.reorderPage({
                                 fromIndex,
-                                toIndex: pageIndex,
+                                toSlotIndex,
                             });
                         }
                         actions.setListViewDragState({

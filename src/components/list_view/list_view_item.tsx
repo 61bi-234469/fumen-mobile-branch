@@ -31,12 +31,13 @@ interface Props {
     isCommentChanged: boolean;
     itemSize: number;
     isDragging: boolean;
-    isDropTarget: boolean;
+    showLeftIndicator: boolean;
+    showRightIndicator: boolean;
     actions: {
         onDragStart: (pageIndex: number) => void;
-        onDragOver: (pageIndex: number) => void;
+        onDragOver: (pageIndex: number, e: DragEvent) => void;
         onDragLeave: () => void;
-        onDrop: (pageIndex: number) => void;
+        onDrop: () => void;
         onDragEnd: () => void;
         onCommentChange: (pageIndex: number, comment: string) => void;
         onPageClick: (pageIndex: number) => void;
@@ -50,7 +51,8 @@ export const ListViewItem: Component<Props> = ({
     isCommentChanged,
     itemSize,
     isDragging,
-    isDropTarget,
+    showLeftIndicator,
+    showRightIndicator,
     actions,
 }) => {
     const containerStyle = style({
@@ -59,11 +61,22 @@ export const ListViewItem: Component<Props> = ({
         padding: '4px',
         boxSizing: 'border-box',
         opacity: isDragging ? 0.5 : 1,
-        border: isDropTarget ? '2px dashed #2196F3' : '2px solid transparent',
+        border: '2px solid transparent',
         borderRadius: '4px',
-        backgroundColor: isDropTarget ? 'rgba(33, 150, 243, 0.1)' : 'transparent',
+        backgroundColor: 'transparent',
         cursor: 'grab',
-        transition: 'opacity 0.2s, border 0.2s, background-color 0.2s',
+        transition: 'opacity 0.2s',
+        position: 'relative',
+    });
+
+    const indicatorStyle = style({
+        position: 'absolute',
+        top: '0',
+        width: '3px',
+        height: '100%',
+        backgroundColor: '#2196F3',
+        borderRadius: '1px',
+        zIndex: 10,
     });
 
     const thumbnailStyle = style({
@@ -168,14 +181,14 @@ export const ListViewItem: Component<Props> = ({
                 if (e.dataTransfer) {
                     e.dataTransfer.dropEffect = 'move';
                 }
-                actions.onDragOver(pageIndex);
+                actions.onDragOver(pageIndex, e);
             }}
             ondragleave={() => {
                 actions.onDragLeave();
             }}
             ondrop={(e: DragEvent) => {
                 e.preventDefault();
-                actions.onDrop(pageIndex);
+                actions.onDrop();
             }}
             ondragend={() => {
                 actions.onDragEnd();
@@ -184,6 +197,18 @@ export const ListViewItem: Component<Props> = ({
                 e.preventDefault();
             }}
         >
+            {showLeftIndicator && (
+                <div
+                    key="left-indicator"
+                    style={{ ...indicatorStyle, left: '-6px' }}
+                />
+            )}
+            {showRightIndicator && (
+                <div
+                    key="right-indicator"
+                    style={{ ...indicatorStyle, right: '-6px' }}
+                />
+            )}
             <div
                 style={fieldAreaStyle}
                 ontouchstart={handleTouchStart}

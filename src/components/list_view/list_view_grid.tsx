@@ -9,15 +9,15 @@ interface Props {
     pages: Page[];
     guideLineColor: boolean;
     draggingIndex: number | null;
-    dropTargetIndex: number | null;
+    dropTargetIndex: number | null;  // Now represents slot index (0 to pages.length)
     containerWidth: number;
     containerHeight: number;
     scale: number;
     actions: {
         onDragStart: (pageIndex: number) => void;
-        onDragOver: (pageIndex: number) => void;
+        onDragOver: (pageIndex: number, e: DragEvent) => void;
         onDragLeave: () => void;
-        onDrop: (pageIndex: number) => void;
+        onDrop: () => void;
         onDragEnd: () => void;
         onCommentChange: (pageIndex: number, comment: string) => void;
         onPageClick: (pageIndex: number) => void;
@@ -89,14 +89,22 @@ export const ListViewGrid: Component<Props> = ({
         const commentText = getCommentText(index);
         const commentChanged = isCommentChanged(index);
 
+        // Slot N means "insert before page N", so page N shows left indicator
+        const showLeftIndicator = dropTargetIndex === index && draggingIndex !== null;
+        // Slot = pages.length means "insert after last page", so last page shows right indicator
+        const showRightIndicator = dropTargetIndex === pages.length
+            && index === pages.length - 1
+            && draggingIndex !== null;
+
         return ListViewItem({
             actions,
             itemSize,
             thumbnailSrc,
+            showLeftIndicator,
+            showRightIndicator,
             comment: commentText,
             isCommentChanged: commentChanged,
             isDragging: draggingIndex === index,
-            isDropTarget: dropTargetIndex === index && draggingIndex !== index,
             pageIndex: index,
         });
     });
