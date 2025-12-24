@@ -9,6 +9,9 @@ import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { style, px } from '../lib/types';
 
 const TOOLS_HEIGHT = 50;
+const COLUMNS = 5;
+const ITEM_MIN_WIDTH = 100;
+const ITEM_MAX_WIDTH = 160;
 
 // Pinch-to-zoom state (kept outside component for persistence across renders)
 let pinchState: {
@@ -20,6 +23,9 @@ let pinchState: {
     initialDistance: 0,
     initialScale: 1.0,
 };
+
+// Touch drag state for detecting drop target
+let touchDragActive = false;
 
 const getDistance = (touch1: Touch, touch2: Touch): number => {
     const dx = touch1.clientX - touch2.clientX;
@@ -39,6 +45,85 @@ export const view: View<State, Actions> = (state, actions) => {
     });
 
     const gridContainerHeight = state.display.height - TOOLS_HEIGHT;
+
+    const baseItemSize = Math.max(
+        ITEM_MIN_WIDTH,
+        Math.min(ITEM_MAX_WIDTH, Math.floor((state.display.width - 20) / COLUMNS)),
+    );
+    const itemSize = Math.round(baseItemSize * state.listView.scale);
+    const gap = 8;
+    const padding = 10;
+
+    const getDropTargetFromTouch = (touchX: number, touchY: number, gridElement: HTMLElement): number | null => {
+        const rect = gridElement.getBoundingClientRect();
+        const x = touchX - rect.left - padding;
+        const y = touchY - rect.top - padding + gridElement.scrollTop;
+
+        if (x < 0 || y < 0) return null;
+
+        const col = Math.floor(x / (itemSize + gap));
+        const row = Math.floor(y / (itemSize + 80 + gap));
+
+        if (col < 0 || col >= COLUMNS) return null;
+
+        const index = row * COLUMNS + col;
+        if (index < 0 || index >= state.fumen.pages.length) return null;
+
+        return index;
+    };
+
+    const handleTouchMoveForDrag = (e: TouchEvent) => {
+        if (state.listView.dragState.draggingIndex === null) return;
+        if (e.touches.length !== 1) return;
+        if (pinchState.active) return;
+
+        touchDragActive = true;
+        const touch = e.touches[0];
+        const container = e.currentTarget as HTMLElement;
+        const gridElement = container.querySelector('[key="list-view-grid-container"]') as HTMLElement;
+        if (!gridElement) return;
+
+        const targetIndex = getDropTargetFromTouch(touch.clientX, touch.clientY, gridElement);
+
+        if (targetIndex !== null && targetIndex !== state.listView.dragState.draggingIndex) {
+            if (state.listView.dragState.dropTargetIndex !== targetIndex) {
+                actions.setListViewDragState({
+                    draggingIndex: state.listView.dragState.draggingIndex,
+                    dropTargetIndex: targetIndex,
+                });
+            }
+        } else if (state.listView.dragState.dropTargetIndex !== null) {
+            actions.setListViewDragState({
+                draggingIndex: state.listView.dragState.draggingIndex,
+                dropTargetIndex: null,
+            });
+        }
+    };
+
+    const handleTouchEndForDrag = () => {
+        if (!touchDragActive) {
+            pinchState.active = false;
+            return;
+        }
+
+        touchDragActive = false;
+        const fromIndex = state.listView.dragState.draggingIndex;
+        const toIndex = state.listView.dragState.dropTargetIndex;
+
+        if (fromIndex !== null && toIndex !== null && fromIndex !== toIndex) {
+            actions.reorderPage({
+                fromIndex,
+                toIndex,
+            });
+        }
+
+        actions.setListViewDragState({
+            draggingIndex: null,
+            dropTargetIndex: null,
+        });
+
+        pinchState.active = false;
+    };
 
     return div({
         key: 'list-view',
@@ -75,10 +160,12 @@ export const view: View<State, Actions> = (state, actions) => {
                     const scaleFactor = currentDistance / pinchState.initialDistance;
                     const newScale = pinchState.initialScale * scaleFactor;
                     actions.setListViewScale({ scale: newScale });
+                } else {
+                    handleTouchMoveForDrag(e);
                 }
             },
             ontouchend: () => {
-                pinchState.active = false;
+                handleTouchEndForDrag();
             },
         }, [
             ListViewGrid({

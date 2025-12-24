@@ -1,6 +1,29 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 
+const LONG_PRESS_DURATION = 500;
+
+const touchDragState: {
+    timer: ReturnType<typeof setTimeout> | null;
+    isDragging: boolean;
+    startX: number;
+    startY: number;
+    dragThreshold: number;
+} = {
+    timer: null,
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    dragThreshold: 10,
+};
+
+const clearTouchTimer = () => {
+    if (touchDragState.timer !== null) {
+        clearTimeout(touchDragState.timer);
+        touchDragState.timer = null;
+    }
+};
+
 interface Props {
     pageIndex: number;
     thumbnailSrc: string;
@@ -78,6 +101,49 @@ export const ListViewItem: Component<Props> = ({
         color: showGreenStyle ? '#fff' : '#333',
     });
 
+    const fieldAreaStyle = {
+        ...style({
+            touchAction: 'none',
+            userSelect: 'none',
+            cursor: 'grab',
+        }),
+        WebkitUserSelect: 'none',
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+        if (e.touches.length !== 1) return;
+
+        const touch = e.touches[0];
+        touchDragState.startX = touch.clientX;
+        touchDragState.startY = touch.clientY;
+
+        clearTouchTimer();
+        touchDragState.timer = setTimeout(() => {
+            touchDragState.isDragging = true;
+            touchDragState.timer = null;
+            actions.onDragStart(pageIndex);
+        }, LONG_PRESS_DURATION);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+        if (e.touches.length !== 1) return;
+
+        const touch = e.touches[0];
+        const dx = Math.abs(touch.clientX - touchDragState.startX);
+        const dy = Math.abs(touch.clientY - touchDragState.startY);
+
+        if (!touchDragState.isDragging && (dx > touchDragState.dragThreshold || dy > touchDragState.dragThreshold)) {
+            clearTouchTimer();
+        }
+    };
+
+    const handleTouchEnd = () => {
+        clearTouchTimer();
+        if (touchDragState.isDragging) {
+            touchDragState.isDragging = false;
+        }
+    };
+
     return (
         <div
             key={`list-view-item-${pageIndex}`}
@@ -112,19 +178,30 @@ export const ListViewItem: Component<Props> = ({
                 e.preventDefault();
             }}
         >
-            <img
-                src={thumbnailSrc}
-                style={thumbnailStyle}
-                alt={`Page ${pageIndex + 1}`}
-            />
             <div
-                style={pageNumberStyle}
-                onclick={(e: MouseEvent) => {
-                    e.stopPropagation();
-                    actions.onPageClick(pageIndex);
+                style={fieldAreaStyle}
+                ontouchstart={handleTouchStart}
+                ontouchmove={handleTouchMove}
+                ontouchend={handleTouchEnd}
+                ontouchcancel={handleTouchEnd}
+                oncontextmenu={(e: Event) => {
+                    e.preventDefault();
                 }}
             >
-                {pageIndex + 1}
+                <img
+                    src={thumbnailSrc}
+                    style={thumbnailStyle}
+                    alt={`Page ${pageIndex + 1}`}
+                />
+                <div
+                    style={pageNumberStyle}
+                    onclick={(e: MouseEvent) => {
+                        e.stopPropagation();
+                        actions.onPageClick(pageIndex);
+                    }}
+                >
+                    {pageIndex + 1}
+                </div>
             </div>
             <textarea
                 style={textareaStyle}
@@ -135,6 +212,9 @@ export const ListViewItem: Component<Props> = ({
                     actions.onCommentChange(pageIndex, target.value);
                 }}
                 ondragstart={(e: DragEvent) => {
+                    e.stopPropagation();
+                }}
+                ontouchstart={(e: TouchEvent) => {
                     e.stopPropagation();
                 }}
                 draggable={false}
