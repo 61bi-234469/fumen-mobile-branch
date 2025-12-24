@@ -103,11 +103,11 @@ export const ListViewItem: Component<Props> = ({
 
     const fieldAreaStyle = {
         ...style({
-            touchAction: 'none',
             userSelect: 'none',
             cursor: 'grab',
         }),
         WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
     };
 
     const handleTouchStart = (e: TouchEvent) => {
@@ -134,6 +134,11 @@ export const ListViewItem: Component<Props> = ({
 
         if (!touchDragState.isDragging && (dx > touchDragState.dragThreshold || dy > touchDragState.dragThreshold)) {
             clearTouchTimer();
+        }
+
+        // ドラッグ中はスクロールを防止し、イベントを親に伝播させる
+        if (touchDragState.isDragging) {
+            e.preventDefault();
         }
     };
 
