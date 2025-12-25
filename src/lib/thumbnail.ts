@@ -124,6 +124,7 @@ const EXPORT_ITEM_HEIGHT = 230;
 const EXPORT_COMMENT_HEIGHT = 50;
 const EXPORT_GAP = 8;
 const EXPORT_PADDING = 10;
+const EXPORT_SCALE = 2; // High DPI scaling for better quality
 
 export function generateListViewExportImage(
     pages: Page[],
@@ -142,13 +143,17 @@ export function generateListViewExportImage(
     const canvasHeight = EXPORT_PADDING * 2 + rows * itemTotalHeight + (rows - 1) * EXPORT_GAP;
 
     const canvas = document.createElement('canvas');
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
+    // Apply high DPI scaling for better quality
+    canvas.width = canvasWidth * EXPORT_SCALE;
+    canvas.height = canvasHeight * EXPORT_SCALE;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) {
         return '';
     }
+
+    // Scale all drawing operations
+    ctx.scale(EXPORT_SCALE, EXPORT_SCALE);
 
     // Background
     ctx.fillStyle = '#f5f5f5';
