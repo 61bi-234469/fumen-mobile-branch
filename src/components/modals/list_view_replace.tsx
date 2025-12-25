@@ -12,9 +12,6 @@ interface ListViewReplaceModalProps {
 }
 
 export const ListViewReplaceModal: Component<ListViewReplaceModalProps> = ({ actions }) => {
-    const searchText = '';
-    const replaceText = '';
-
     const close = () => {
         const modal = resources.modals.listViewReplace;
         if (modal !== undefined) {
@@ -100,7 +97,6 @@ export const ListViewReplaceModal: Component<ListViewReplaceModalProps> = ({ act
                             id="replace-search-text"
                             style={inputStyle}
                             placeholder="検索するテキスト"
-                            value={searchText}
                         />
                     </div>
 
@@ -111,7 +107,6 @@ export const ListViewReplaceModal: Component<ListViewReplaceModalProps> = ({ act
                             id="replace-replace-text"
                             style={inputStyle}
                             placeholder="置換するテキスト"
-                            value={replaceText}
                         />
                     </div>
                 </div>
