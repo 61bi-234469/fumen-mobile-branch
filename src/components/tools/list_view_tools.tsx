@@ -12,6 +12,7 @@ interface Props {
         changeToEditorFromListView: () => void;
         convertAllToMirror: () => void;
         openListViewReplaceModal: () => void;
+        copyAllPagesToClipboard: () => void;
         exportListViewAsImage: () => void;
     };
 }
@@ -71,7 +72,7 @@ export const ListViewTools: Component<Props> = (
                     {`${maxPage} pages`}
                 </ToolText>
 
-                <div style={style({ marginLeft: 'auto', display: 'flex', alignItems: 'center' })}>
+                <div style={style({ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: px(5) })}>
                     <ToolButton
                         iconName="compare_arrows"
                         datatest="btn-all-mirror"
@@ -95,6 +96,19 @@ export const ListViewTools: Component<Props> = (
                         colors={palette}
                         actions={{
                             onclick: () => actions.openListViewReplaceModal(),
+                        }}
+                    />
+
+                    <ToolButton
+                        iconName="content_copy"
+                        datatest="btn-copy-all"
+                        width={40}
+                        height={height - 10}
+                        key="btn-copy-all"
+                        fontSize={24}
+                        colors={palette}
+                        actions={{
+                            onclick: () => actions.copyAllPagesToClipboard(),
                         }}
                     />
 

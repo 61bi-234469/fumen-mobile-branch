@@ -88,7 +88,7 @@ export const ListViewReplaceModal: Component<ListViewReplaceModalProps> = ({ act
             <div key="mdl-list-view-replace" datatest="mdl-list-view-replace"
                  className="modal" oncreate={oncreate}>
                 <div key="modal-content" className="modal-content">
-                    <h4 key="replace-label">テキスト置換</h4>
+                    <h4 key="replace-label">コメント置換</h4>
 
                     <div style={fieldStyle}>
                         <label style={labelStyle}>置換前：</label>

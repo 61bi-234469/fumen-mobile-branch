@@ -166,6 +166,7 @@ export const view: View<State, Actions> = (state, actions) => {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
                 convertAllToMirror: () => actions.convertAllToMirror(),
                 openListViewReplaceModal: () => actions.openListViewReplaceModal(),
+                copyAllPagesToClipboard: () => actions.copyAllPagesToClipboard(),
                 exportListViewAsImage: () => actions.exportListViewAsImage(),
             },
             height: TOOLS_HEIGHT,
