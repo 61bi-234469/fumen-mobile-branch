@@ -111,6 +111,12 @@ export const listViewActions: Readonly<ListViewActions> = {
             main.changeScreen({ screen: Screens.Editor });
         }
         return sequence(state, [
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    currentIndex: 0,
+                },
+            }),
             actions.reopenCurrentPage(),
         ]);
     },
