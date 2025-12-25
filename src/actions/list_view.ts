@@ -16,6 +16,7 @@ export interface ListViewActions {
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
     navigateToPageFromListView: (data: { pageIndex: number }) => action;
     exportListViewAsImage: () => action;
+    replaceAllComments: (data: { searchText: string; replaceText: string }) => action;
 }
 
 export const toReorderPageTask = (
@@ -226,5 +227,35 @@ export const listViewActions: Readonly<ListViewActions> = {
         }
 
         return undefined;
+    },
+    replaceAllComments: ({ searchText, replaceText }) => (state): NextState => {
+        if (!searchText) {
+            return undefined;
+        }
+
+        const pages = [...state.fumen.pages];
+        const pagesObj = new Pages(pages);
+
+        for (let i = 0; i < pages.length; i += 1) {
+            const commentResult = pagesObj.getComment(i);
+            let currentText = '';
+            if ('text' in commentResult) {
+                currentText = commentResult.text;
+            } else if ('quiz' in commentResult) {
+                currentText = commentResult.quiz;
+            }
+
+            if (currentText.includes(searchText)) {
+                const newText = currentText.split(searchText).join(replaceText);
+                pagesObj.setComment(i, newText);
+            }
+        }
+
+        return {
+            fumen: {
+                ...state.fumen,
+                pages: pagesObj.pages,
+            },
+        };
     },
 };

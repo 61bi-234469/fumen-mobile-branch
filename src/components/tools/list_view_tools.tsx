@@ -11,6 +11,7 @@ interface Props {
     actions: {
         changeToEditorFromListView: () => void;
         convertAllToMirror: () => void;
+        openListViewReplaceModal: () => void;
         exportListViewAsImage: () => void;
     };
 }
@@ -81,6 +82,19 @@ export const ListViewTools: Component<Props> = (
                         colors={palette}
                         actions={{
                             onclick: () => actions.convertAllToMirror(),
+                        }}
+                    />
+
+                    <ToolButton
+                        iconName="find_replace"
+                        datatest="btn-replace"
+                        width={40}
+                        height={height - 10}
+                        key="btn-replace"
+                        fontSize={24}
+                        colors={palette}
+                        actions={{
+                            onclick: () => actions.openListViewReplaceModal(),
                         }}
                     />
 

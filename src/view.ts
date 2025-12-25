@@ -11,6 +11,7 @@ import { MenuModal } from './components/modals/menu';
 import { AppendFumenModal } from './components/modals/append';
 import { ClipboardModal } from './components/modals/clipboard';
 import { UserSettingsModal } from './components/modals/user_settings';
+import { ListViewReplaceModal } from './components/modals/list_view_replace';
 
 export const view: View<State, Actions> = (state, actions) => {
     const selectView = () => {
@@ -63,6 +64,10 @@ export const view: View<State, Actions> = (state, actions) => {
             ghostVisible: state.temporary.userSettings.ghostVisible,
             loop: state.temporary.userSettings.loop,
             gradient: state.temporary.userSettings.gradient,
+        }) : undefined as any,
+
+        state.modal.listViewReplace ? ListViewReplaceModal({
+            actions,
         }) : undefined as any,
 
         // key付きの空のdivを置くことで、配列末尾の要素でも存在の有無を判定できるようにする

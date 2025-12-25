@@ -165,6 +165,7 @@ export const view: View<State, Actions> = (state, actions) => {
             actions: {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
                 convertAllToMirror: () => actions.convertAllToMirror(),
+                openListViewReplaceModal: () => actions.openListViewReplaceModal(),
                 exportListViewAsImage: () => actions.exportListViewAsImage(),
             },
             height: TOOLS_HEIGHT,

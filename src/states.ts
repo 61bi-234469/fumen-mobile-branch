@@ -58,6 +58,7 @@ export interface State {
         append: boolean;
         clipboard: boolean;
         userSettings: boolean;
+        listViewReplace: boolean;
     };
     temporary: {
         userSettings: {
@@ -158,6 +159,7 @@ export const initState: Readonly<State> = {
         append: false,
         clipboard: false,
         userSettings: false,
+        listViewReplace: false,
     },
     temporary: {
         userSettings: {
@@ -208,6 +210,7 @@ export const resources = {
         append: undefined as any,
         clipboard: undefined as any,
         userSettings: undefined as any,
+        listViewReplace: undefined as any,
     },
     konva: createKonvaObjects(),
     comment: undefined as ({ text: string, pageIndex: number } | undefined),
