@@ -49,8 +49,9 @@ function reorderPagesInternal(pages: Page[], fromIndex: number, toIndex: number)
 
     const [movedPage] = pages.splice(fromIndex, 1);
 
-    const insertIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
-    pages.splice(insertIndex, 0, movedPage);
+    // toIndex is already adjusted by the caller (reorderPage action)
+    // so no additional adjustment is needed here
+    pages.splice(toIndex, 0, movedPage);
 
     return rebuildPageRefs(pages, originalFirstPageColorize);
 }
