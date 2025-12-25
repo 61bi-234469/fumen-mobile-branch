@@ -11,6 +11,7 @@ interface Props {
     actions: {
         changeToEditorFromListView: () => void;
         convertAllToMirror: () => void;
+        exportListViewAsImage: () => void;
     };
 }
 
@@ -69,19 +70,34 @@ export const ListViewTools: Component<Props> = (
                     {`${maxPage} pages`}
                 </ToolText>
 
-                <ToolButton
-                    iconName="compare_arrows"
-                    datatest="btn-all-mirror"
-                    width={40}
-                    height={height - 10}
-                    key="btn-all-mirror"
-                    fontSize={24}
-                    sticky={true}
-                    colors={palette}
-                    actions={{
-                        onclick: () => actions.convertAllToMirror(),
-                    }}
-                />
+                <div style={style({ marginLeft: 'auto', display: 'flex', alignItems: 'center' })}>
+                    <ToolButton
+                        iconName="compare_arrows"
+                        datatest="btn-all-mirror"
+                        width={40}
+                        height={height - 10}
+                        key="btn-all-mirror"
+                        fontSize={24}
+                        colors={palette}
+                        actions={{
+                            onclick: () => actions.convertAllToMirror(),
+                        }}
+                    />
+
+                    <ToolButton
+                        iconName="file_download"
+                        datatest="btn-export-image"
+                        width={40}
+                        height={height - 10}
+                        key="btn-export-image"
+                        fontSize={24}
+                        marginRight={10}
+                        colors={palette}
+                        actions={{
+                            onclick: () => actions.exportListViewAsImage(),
+                        }}
+                    />
+                </div>
             </div>
         </nav>
     );

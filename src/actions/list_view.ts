@@ -6,6 +6,7 @@ import { Pages } from '../lib/pages';
 import { OperationTask, PrimitivePage, toPage, toPrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
+import { downloadImage, generateListViewExportImage } from '../lib/thumbnail';
 
 export interface ListViewActions {
     changeToEditorFromListView: () => action;
@@ -14,6 +15,7 @@ export interface ListViewActions {
     reorderPage: (data: { fromIndex: number; toSlotIndex: number }) => action;
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
     navigateToPageFromListView: (data: { pageIndex: number }) => action;
+    exportListViewAsImage: () => action;
 }
 
 export const toReorderPageTask = (
@@ -198,5 +200,25 @@ export const listViewActions: Readonly<ListViewActions> = {
             }),
             actions.reopenCurrentPage(),
         ]);
+    },
+    exportListViewAsImage: () => (state): NextState => {
+        const dataURL = generateListViewExportImage(
+            state.fumen.pages,
+            state.fumen.guideLineColor,
+        );
+
+        if (dataURL) {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            const filename = `fumen_list_${yyyy}_${mm}_${dd}_${hh}${min}${ss}.png`;
+            downloadImage(dataURL, filename);
+        }
+
+        return undefined;
     },
 };
