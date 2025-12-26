@@ -19,7 +19,14 @@ import { State } from '../states';
 import { FumenError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
 import { decode, encode } from '../lib/fumen/fumen';
-import { embedTreeInPages } from '../lib/fumen/tree_utils';
+import {
+    embedTreeInPages,
+    createTreeFromPages,
+    findNodeByPageIndex,
+    insertPageIntoTree,
+    removePageFromTree,
+    removePagesFromTree,
+} from '../lib/fumen/tree_utils';
 import { SerializedTree } from '../lib/fumen/tree_types';
 
 declare const M: any;
@@ -748,6 +755,29 @@ const insertRefPage = ({ index }: { index: number }) => (state: Readonly<State>)
     pages.insertRefPage(index);
     const newPages = pages.pages;
 
+    // Update tree if tree mode is enabled (preserve existing structure)
+    const updateTree = state.tree.enabled && state.tree.rootId
+        ? (() => {
+            const currentTree: SerializedTree = {
+                nodes: state.tree.nodes,
+                rootId: state.tree.rootId,
+                version: 1,
+            };
+            // Insert new page after the previous page (index - 1), or at root if index is 0
+            const parentPageIndex = index > 0 ? index - 1 : 0;
+            const newTree = insertPageIntoTree(currentTree, index, parentPageIndex);
+            const currentNode = findNodeByPageIndex(newTree, index);
+            return {
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: currentNode?.id ?? null,
+                },
+            };
+        })()
+        : {};
+
     const task = toInsertPageTask(index, [toPrimitivePage(newPages[index])], state.fumen.currentIndex);
     return sequence(state, [
         actions.registerHistoryTask({ task }),
@@ -757,6 +787,7 @@ const insertRefPage = ({ index }: { index: number }) => (state: Readonly<State>)
                 pages: newPages,
                 maxPage: newPages.length,
             },
+            ...updateTree,
         }),
     ]);
 };
@@ -766,6 +797,29 @@ const insertKeyPage = ({ index }: { index: number }) => (state: Readonly<State>)
     pages.insertKeyPage(index);
     const newPages = pages.pages;
 
+    // Update tree if tree mode is enabled (preserve existing structure)
+    const updateTree = state.tree.enabled && state.tree.rootId
+        ? (() => {
+            const currentTree: SerializedTree = {
+                nodes: state.tree.nodes,
+                rootId: state.tree.rootId,
+                version: 1,
+            };
+            // Insert new page after the previous page (index - 1), or at root if index is 0
+            const parentPageIndex = index > 0 ? index - 1 : 0;
+            const newTree = insertPageIntoTree(currentTree, index, parentPageIndex);
+            const currentNode = findNodeByPageIndex(newTree, index);
+            return {
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: currentNode?.id ?? null,
+                },
+            };
+        })()
+        : {};
+
     const task = toInsertPageTask(index, [toPrimitivePage(newPages[index])], state.fumen.currentIndex);
     return sequence(state, [
         actions.registerHistoryTask({ task }),
@@ -775,6 +829,7 @@ const insertKeyPage = ({ index }: { index: number }) => (state: Readonly<State>)
                 pages: newPages,
                 maxPage: newPages.length,
             },
+            ...updateTree,
         }),
     ]);
 };
@@ -844,6 +899,29 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
         tasks.push(task);
     }
 
+    // Update tree if tree mode is enabled (preserve existing structure)
+    const updateTree = state.tree.enabled && state.tree.rootId
+        ? (() => {
+            const currentTree: SerializedTree = {
+                nodes: state.tree.nodes,
+                rootId: state.tree.rootId,
+                version: 1,
+            };
+            // Insert new page after the previous page (index - 1), or at root if index is 0
+            const parentPageIndex = index > 0 ? index - 1 : 0;
+            const newTree = insertPageIntoTree(currentTree, index, parentPageIndex);
+            const currentNode = findNodeByPageIndex(newTree, index);
+            return {
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: currentNode?.id ?? null,
+                },
+            };
+        })()
+        : {};
+
     return sequence(state, [
         actions.registerHistoryTask({ task: toPageTaskStack(tasks, state.fumen.currentIndex) }),
         () => ({
@@ -853,6 +931,7 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
                 maxPage: pages.length,
                 currentIndex: index,
             },
+            ...updateTree,
         }),
     ]);
 };
@@ -861,6 +940,29 @@ const duplicatePage = ({ index }: { index: number }) => (state: Readonly<State>)
     const pages = new Pages(state.fumen.pages);
     pages.duplicatePage(index);
     const newPages = pages.pages;
+
+    // Update tree if tree mode is enabled (preserve existing structure)
+    const updateTree = state.tree.enabled && state.tree.rootId
+        ? (() => {
+            const currentTree: SerializedTree = {
+                nodes: state.tree.nodes,
+                rootId: state.tree.rootId,
+                version: 1,
+            };
+            // Insert duplicated page after the current page (index - 1 because it was inserted at index)
+            const parentPageIndex = index > 0 ? index - 1 : 0;
+            const newTree = insertPageIntoTree(currentTree, index, parentPageIndex);
+            const currentNode = findNodeByPageIndex(newTree, index);
+            return {
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: currentNode?.id ?? null,
+                },
+            };
+        })()
+        : {};
 
     const task = toInsertPageTask(index, [toPrimitivePage(newPages[index])], state.fumen.currentIndex);
     return sequence(state, [
@@ -871,6 +973,7 @@ const duplicatePage = ({ index }: { index: number }) => (state: Readonly<State>)
                 pages: newPages,
                 maxPage: newPages.length,
             },
+            ...updateTree,
         }),
     ]);
 };
@@ -922,6 +1025,27 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
     const newPages = pagesObj.pages;
     const nextIndex = index < newPages.length ? index : newPages.length - 1;
 
+    // Update tree if tree mode is enabled (preserve existing structure)
+    const updateTree = state.tree.enabled && state.tree.rootId
+        ? (() => {
+            const currentTree: SerializedTree = {
+                nodes: state.tree.nodes,
+                rootId: state.tree.rootId,
+                version: 1,
+            };
+            const newTree = removePageFromTree(currentTree, index);
+            const currentNode = findNodeByPageIndex(newTree, nextIndex);
+            return {
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: currentNode?.id ?? null,
+                },
+            };
+        })()
+        : {};
+
     return sequence(state, [
         actions.registerHistoryTask({ task: toPageTaskStack(tasks, index) }),
         () => ({
@@ -931,6 +1055,7 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
                 maxPage: newPages.length,
                 currentIndex: nextIndex,
             },
+            ...updateTree,
         }),
     ]);
 };
@@ -958,6 +1083,27 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
     const newPages = pagesObj.pages;
     const nextIndex = pageIndex < newPages.length ? pageIndex : newPages.length - 1;
 
+    // Update tree if tree mode is enabled (preserve existing structure)
+    const updateTree = state.tree.enabled && state.tree.rootId
+        ? (() => {
+            const currentTree: SerializedTree = {
+                nodes: state.tree.nodes,
+                rootId: state.tree.rootId,
+                version: 1,
+            };
+            const newTree = removePagesFromTree(currentTree, nextPageIndex, pages.length);
+            const currentNode = findNodeByPageIndex(newTree, nextIndex);
+            return {
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: currentNode?.id ?? null,
+                },
+            };
+        })()
+        : {};
+
     return sequence(state, [
         actions.registerHistoryTask({ task }),
         () => ({
@@ -967,6 +1113,7 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
                 maxPage: newPages.length,
                 currentIndex: nextIndex,
             },
+            ...updateTree,
         }),
     ]);
 };
@@ -1019,6 +1166,28 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
     }
 
     const newPages = pagesObj.pages;
+
+    // Update tree if tree mode is enabled (preserve existing structure)
+    const updateTree = state.tree.enabled && state.tree.rootId
+        ? (() => {
+            const currentTree: SerializedTree = {
+                nodes: state.tree.nodes,
+                rootId: state.tree.rootId,
+                version: 1,
+            };
+            const newTree = removePagesFromTree(currentTree, 0, pageIndex);
+            const currentNode = findNodeByPageIndex(newTree, 0);
+            return {
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: currentNode?.id ?? null,
+                },
+            };
+        })()
+        : {};
+
     return sequence(state, [
         actions.registerHistoryTask({ task: toPageTaskStack(tasks, pageIndex) }),
         () => ({
@@ -1028,6 +1197,7 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
                 maxPage: newPages.length,
                 currentIndex: 0,
             },
+            ...updateTree,
         }),
         actions.reopenCurrentPage(),
     ]);

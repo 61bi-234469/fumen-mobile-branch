@@ -19,6 +19,9 @@ import { Page } from '../lib/fumen/types';
 import {
     embedTreeInPages,
     extractTreeFromPages,
+    createTreeFromPages,
+    findNodeByPageIndex,
+    insertPagesIntoTree,
 } from '../lib/fumen/tree_utils';
 import { initialTreeState, SerializedTree } from '../lib/fumen/tree_types';
 
@@ -222,6 +225,30 @@ const appendPages = (
     }
 
     const newPages = pagesObj.pages;
+
+    // Update tree if tree mode is enabled (preserve existing structure)
+    const updateTree = state.tree.enabled && state.tree.rootId
+        ? (() => {
+            const currentTree: SerializedTree = {
+                nodes: state.tree.nodes,
+                rootId: state.tree.rootId,
+                version: 1,
+            };
+            // Insert pages after the previous page (pageIndex - 1), or at root if pageIndex is 0
+            const parentPageIndex = pageIndex > 0 ? pageIndex - 1 : 0;
+            const newTree = insertPagesIntoTree(currentTree, pageIndex, appendedPages.length, parentPageIndex);
+            const currentNode = findNodeByPageIndex(newTree, pageIndex);
+            return {
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: currentNode?.id ?? null,
+                },
+            };
+        })()
+        : {};
+
     return sequence(state, [
         actions.registerHistoryTask({ task: toPageTaskStack(tasks, indexAfterReverting) }),
         () => ({
@@ -231,6 +258,7 @@ const appendPages = (
                 maxPage: newPages.length,
                 currentIndex: pageIndex,
             },
+            ...updateTree,
         }),
         actions.reopenCurrentPage(),
     ]);

@@ -272,12 +272,12 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         }
 
         // Create new page with actual field data (not ref) to avoid quiz resolution issues
-        // Reset lock flag for the new page since line clear already applied
+        // Preserve lock flag from parent page
         const newPage: Page = {
             index: newPageIndex,
             field: { obj: resolvedField.copy() },
             comment: { ref: commentRefIndex },
-            flags: { ...currentPage.flags, quiz: false, lock: false },
+            flags: { ...currentPage.flags, quiz: false },
         };
 
         // Add branch to tree
@@ -367,12 +367,12 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         }
 
         // Create new page with actual field data (not ref) to avoid quiz resolution issues
-        // Reset lock flag for the new page since line clear already applied
+        // Preserve lock flag from parent page
         const newPage: Page = {
             index: newPageIndex,
             field: { obj: resolvedField.copy() },
             comment: { ref: commentRefIndex },
-            flags: { ...currentPage.flags, quiz: false, lock: false },
+            flags: { ...currentPage.flags, quiz: false },
         };
 
         // Insert node in tree

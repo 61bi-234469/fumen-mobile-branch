@@ -498,6 +498,140 @@ export const updateTreePageIndices = (
     };
 };
 
+/**
+ * Insert a new page into the tree at a given index.
+ * This creates a new node and adjusts all page indices >= insertIndex.
+ * The new node is inserted between parentNode and its first child (if any).
+ */
+export const insertPageIntoTree = (
+    tree: SerializedTree,
+    insertIndex: number,
+    parentPageIndex: number,
+): SerializedTree => {
+    // Find the node corresponding to the parent page
+    const parentNode = findNodeByPageIndex(tree, parentPageIndex);
+
+    // Shift all page indices >= insertIndex
+    const shiftedNodes = tree.nodes.map((node) => {
+        if (node.pageIndex >= insertIndex) {
+            return { ...node, pageIndex: node.pageIndex + 1 };
+        }
+        return node;
+    });
+
+    // Create new node for inserted page
+    const newNodeId = generateNodeId();
+    const newNode: TreeNode = {
+        id: newNodeId,
+        parentId: parentNode?.id ?? null,
+        pageIndex: insertIndex,
+        childrenIds: [],
+    };
+
+    // If parent exists, insert new node between parent and its first child
+    const updatedNodes = shiftedNodes.map((node) => {
+        if (parentNode && node.id === parentNode.id) {
+            const firstChildId = node.childrenIds[0];
+            if (firstChildId) {
+                // Insert between parent and first child
+                return {
+                    ...node,
+                    childrenIds: [newNodeId, ...node.childrenIds.slice(1)],
+                };
+            }
+            // No children, just add new node as child
+            return {
+                ...node,
+                childrenIds: [newNodeId],
+            };
+        }
+        // Update first child's parent to point to new node
+        if (parentNode && node.parentId === parentNode.id && parentNode.childrenIds[0] === node.id) {
+            newNode.childrenIds = [node.id];
+            return {
+                ...node,
+                parentId: newNodeId,
+            };
+        }
+        return node;
+    });
+
+    return {
+        ...tree,
+        nodes: [...updatedNodes, newNode],
+    };
+};
+
+/**
+ * Remove a page from the tree at a given index.
+ * This removes the corresponding node and adjusts all page indices > removeIndex.
+ */
+export const removePageFromTree = (
+    tree: SerializedTree,
+    removeIndex: number,
+): SerializedTree => {
+    const nodeToRemove = findNodeByPageIndex(tree, removeIndex);
+    if (!nodeToRemove) {
+        // Node not found, just shift indices
+        return {
+            ...tree,
+            nodes: tree.nodes.map((node) => {
+                if (node.pageIndex > removeIndex) {
+                    return { ...node, pageIndex: node.pageIndex - 1 };
+                }
+                return node;
+            }),
+        };
+    }
+
+    // Remove the node and re-parent its children to its parent
+    const removedTree = removeNode(tree, nodeToRemove.id, false);
+
+    // Shift all page indices > removeIndex
+    return {
+        ...removedTree,
+        nodes: removedTree.nodes.map((node) => {
+            if (node.pageIndex > removeIndex) {
+                return { ...node, pageIndex: node.pageIndex - 1 };
+            }
+            return node;
+        }),
+    };
+};
+
+/**
+ * Remove multiple pages from the tree in a range [startIndex, endIndex).
+ */
+export const removePagesFromTree = (
+    tree: SerializedTree,
+    startIndex: number,
+    endIndex: number,
+): SerializedTree => {
+    let currentTree = tree;
+    // Remove from end to start to avoid index shifting issues
+    for (let i = endIndex - 1; i >= startIndex; i -= 1) {
+        currentTree = removePageFromTree(currentTree, i);
+    }
+    return currentTree;
+};
+
+/**
+ * Insert multiple pages into the tree starting at a given index.
+ * All new pages are inserted as a linear chain after the parent page.
+ */
+export const insertPagesIntoTree = (
+    tree: SerializedTree,
+    startIndex: number,
+    count: number,
+    parentPageIndex: number,
+): SerializedTree => {
+    let currentTree = tree;
+    for (let i = 0; i < count; i += 1) {
+        currentTree = insertPageIntoTree(currentTree, startIndex + i, parentPageIndex + i);
+    }
+    return currentTree;
+};
+
 // ============================================================================
 // Serialization (for fumen comment embedding)
 // ============================================================================
