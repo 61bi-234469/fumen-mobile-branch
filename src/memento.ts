@@ -163,6 +163,8 @@ const safer = {
 
 export const localStorageWrapper = {
     saveFumen: (data: string) => {
+        console.log('localStorageWrapper.saveFumen: data length =', data.length,
+            'contains #TREE=', data.includes('#TREE='));
         localStorage.setItem('data@1', data);
     },
     loadFumen: (): string | undefined => {

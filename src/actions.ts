@@ -20,6 +20,7 @@ import { CommentActions, commentActions } from './actions/comment';
 import { convertActions, ConvertActions } from './actions/convert';
 import { userSettingsActions, UserSettingsActions } from './actions/user_settings';
 import { listViewActions, ListViewActions } from './actions/list_view';
+import { treeOperationActions, TreeOperationActions } from './actions/tree_operations';
 import { i18n } from './locales/keys';
 import { getURLQuery, Query } from './params';
 import { localStorageWrapper } from './memento';
@@ -37,7 +38,8 @@ export type Actions = AnimationActions
     & CommentActions
     & ConvertActions
     & UserSettingsActions
-    & ListViewActions;
+    & ListViewActions
+    & TreeOperationActions;
 
 export const actions: Readonly<Actions> = {
     ...animationActions,
@@ -52,6 +54,7 @@ export const actions: Readonly<Actions> = {
     ...convertActions,
     ...userSettingsActions,
     ...listViewActions,
+    ...treeOperationActions,
 };
 
 // Mounting

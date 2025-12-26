@@ -12,6 +12,9 @@ import { AppendFumenModal } from './components/modals/append';
 import { ClipboardModal } from './components/modals/clipboard';
 import { UserSettingsModal } from './components/modals/user_settings';
 import { ListViewReplaceModal } from './components/modals/list_view_replace';
+import { ListViewImportModal } from './components/modals/list_view_import';
+import { embedTreeInPages } from './lib/fumen/tree_utils';
+import { SerializedTree } from './lib/fumen/tree_types';
 
 export const view: View<State, Actions> = (state, actions) => {
     const selectView = () => {
@@ -56,7 +59,15 @@ export const view: View<State, Actions> = (state, actions) => {
 
         state.modal.clipboard ? ClipboardModal({
             actions,
-            pages: state.fumen.pages,
+            pages: (() => {
+                // Embed tree data if tree mode is enabled
+                const tree: SerializedTree | null = state.tree.enabled ? {
+                    nodes: state.tree.nodes,
+                    rootId: state.tree.rootId,
+                    version: 1,
+                } : null;
+                return embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+            })(),
         }) : undefined as any,
 
         state.modal.userSettings ? UserSettingsModal({
@@ -67,6 +78,10 @@ export const view: View<State, Actions> = (state, actions) => {
         }) : undefined as any,
 
         state.modal.listViewReplace ? ListViewReplaceModal({
+            actions,
+        }) : undefined as any,
+
+        state.modal.listViewImport ? ListViewImportModal({
             actions,
         }) : undefined as any,
 

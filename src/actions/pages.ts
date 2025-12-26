@@ -19,6 +19,8 @@ import { State } from '../states';
 import { FumenError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
 import { decode, encode } from '../lib/fumen/fumen';
+import { embedTreeInPages } from '../lib/fumen/tree_utils';
+import { SerializedTree } from '../lib/fumen/tree_types';
 
 declare const M: any;
 
@@ -598,7 +600,13 @@ export const pageActions: Readonly<PageActions> = {
         return undefined;
     },
     copyAllPagesToClipboard: () => (state): NextState => {
-        const pages = state.fumen.pages;
+        // Embed tree data if tree mode is enabled
+        const tree: SerializedTree | null = state.tree.enabled ? {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1,
+        } : null;
+        const pages = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
 
         // 非同期でエンコードしてクリップボードにコピー
         (async () => {

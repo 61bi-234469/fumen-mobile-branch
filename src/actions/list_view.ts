@@ -6,7 +6,11 @@ import { Pages } from '../lib/pages';
 import { OperationTask, PrimitivePage, toPage, toPrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
-import { downloadImage, generateListViewExportImage } from '../lib/thumbnail';
+import { downloadImage, generateListViewExportImage, generateTreeViewExportImage } from '../lib/thumbnail';
+import { decode } from '../lib/fumen/fumen';
+import { TreeViewMode } from '../lib/fumen/tree_types';
+
+declare const M: any;
 
 export interface ListViewActions {
     changeToEditorFromListView: () => action;
@@ -17,6 +21,7 @@ export interface ListViewActions {
     navigateToPageFromListView: (data: { pageIndex: number }) => action;
     exportListViewAsImage: () => action;
     replaceAllComments: (data: { searchText: string; replaceText: string }) => action;
+    importPagesFromClipboard: () => action;
 }
 
 export const toReorderPageTask = (
@@ -111,13 +116,8 @@ export const listViewActions: Readonly<ListViewActions> = {
         } else {
             main.changeScreen({ screen: Screens.Editor });
         }
+        // Keep current index (do not reset to 0) - tree mode may have set a specific page
         return sequence(state, [
-            () => ({
-                fumen: {
-                    ...state.fumen,
-                    currentIndex: 0,
-                },
-            }),
             actions.reopenCurrentPage(),
         ]);
     },
@@ -209,10 +209,33 @@ export const listViewActions: Readonly<ListViewActions> = {
         ]);
     },
     exportListViewAsImage: () => (state): NextState => {
-        const dataURL = generateListViewExportImage(
-            state.fumen.pages,
-            state.fumen.guideLineColor,
-        );
+        // Check if tree mode is enabled and showing tree view
+        const isTreeView = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
+
+        let dataURL: string;
+        let filenamePrefix: string;
+
+        if (isTreeView) {
+            // Export tree view
+            const tree = {
+                nodes: state.tree.nodes,
+                rootId: state.tree.rootId,
+                version: 1 as const,
+            };
+            dataURL = generateTreeViewExportImage(
+                state.fumen.pages,
+                state.fumen.guideLineColor,
+                tree,
+            );
+            filenamePrefix = 'fumen_tree';
+        } else {
+            // Export list view
+            dataURL = generateListViewExportImage(
+                state.fumen.pages,
+                state.fumen.guideLineColor,
+            );
+            filenamePrefix = 'fumen_list';
+        }
 
         if (dataURL) {
             const now = new Date();
@@ -222,7 +245,7 @@ export const listViewActions: Readonly<ListViewActions> = {
             const hh = String(now.getHours()).padStart(2, '0');
             const min = String(now.getMinutes()).padStart(2, '0');
             const ss = String(now.getSeconds()).padStart(2, '0');
-            const filename = `fumen_list_${yyyy}_${mm}_${dd}_${hh}${min}${ss}.png`;
+            const filename = `${filenamePrefix}_${yyyy}_${mm}_${dd}_${hh}${min}${ss}.png`;
             downloadImage(dataURL, filename);
         }
 
@@ -257,5 +280,43 @@ export const listViewActions: Readonly<ListViewActions> = {
                 pages: pagesObj.pages,
             },
         };
+    },
+    importPagesFromClipboard: () => (state): NextState => {
+        (async () => {
+            try {
+                // Read text from clipboard
+                const text = await navigator.clipboard.readText();
+
+                // Extract fumen data part from URL
+                // Supported formats:
+                // - v115@~, d115@~, D115@~, m115@~, M115@~, V115@~
+                // - https://fumen.zui.jp/?D115@~
+                // - https://knewjade.github.io/fumen-for-mobile/#?d=v115@~
+                // - https://61bi-234469.github.io/fumen-for-mobile-ts/#?d=v115@~
+                const fumenMatch = text.match(/[vdVDmM]115@[a-zA-Z0-9+/?]+/);
+                if (!fumenMatch) {
+                    M.toast({ html: 'No fumen data in clipboard', classes: 'top-toast', displayLength: 1500 });
+                    return;
+                }
+
+                const fumenData = fumenMatch[0];
+
+                // Decode (decode function supports all v/d/D/V/m/M formats)
+                const decodedPages = await decode(fumenData);
+
+                // Replace all pages (same as EDIT INSERT long press)
+                main.loadFumen({ fumen: fumenData });
+                const msg = `Replaced with ${decodedPages.length} pages`;
+                M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
+            } catch (error) {
+                console.error(error);
+                M.toast({ html: `Failed to import: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        // Close the modal
+        return sequence(state, [
+            actions.closeListViewImportModal(),
+        ]);
     },
 };

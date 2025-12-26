@@ -8,6 +8,7 @@ import {
     Screens,
     TouchTypes,
 } from './lib/enums';
+import { TreeState, initialTreeState } from './lib/fumen/tree_types';
 import { HyperStage } from './lib/hyper';
 import { Box } from './components/box';
 import { PageEnv } from './env';
@@ -59,6 +60,7 @@ export interface State {
         clipboard: boolean;
         userSettings: boolean;
         listViewReplace: boolean;
+        listViewImport: boolean;
     };
     temporary: {
         userSettings: {
@@ -100,6 +102,7 @@ export interface State {
         };
         scale: number;
     };
+    tree: TreeState;
     version: string;
     platform: Platforms;
 }
@@ -160,6 +163,7 @@ export const initState: Readonly<State> = {
         clipboard: false,
         userSettings: false,
         listViewReplace: false,
+        listViewImport: false,
     },
     temporary: {
         userSettings: {
@@ -199,6 +203,7 @@ export const initState: Readonly<State> = {
         },
         scale: 1.0,
     },
+    tree: initialTreeState,
     version: VERSION,
     platform: getPlatform(),
 };
@@ -211,6 +216,7 @@ export const resources = {
         clipboard: undefined as any,
         userSettings: undefined as any,
         listViewReplace: undefined as any,
+        listViewImport: undefined as any,
     },
     konva: createKonvaObjects(),
     comment: undefined as ({ text: string, pageIndex: number } | undefined),

@@ -3,22 +3,32 @@ import { h } from 'hyperapp';
 import { ToolButton } from './tool_button';
 import { ToolText } from './tool_text';
 import { ColorPalette } from '../../lib/colors';
+import { TreeViewToggle } from '../tree/tree_view_toggle';
+import { AddModeToggle } from '../tree/add_mode_toggle';
+import { AddMode, TreeViewMode } from '../../lib/fumen/tree_types';
 
 interface Props {
     height: number;
     maxPage: number;
     palette: ColorPalette;
+    treeEnabled: boolean;
+    treeViewMode: TreeViewMode;
+    addMode: AddMode;
     actions: {
         changeToEditorFromListView: () => void;
         convertAllToMirror: () => void;
         openListViewReplaceModal: () => void;
         copyAllPagesToClipboard: () => void;
+        openListViewImportModal: () => void;
         exportListViewAsImage: () => void;
+        toggleTreeMode: () => void;
+        setTreeViewMode: (mode: TreeViewMode) => void;
+        setAddMode: (mode: AddMode) => void;
     };
 }
 
 export const ListViewTools: Component<Props> = (
-    { height, maxPage, palette, actions },
+    { height, maxPage, palette, treeEnabled, treeViewMode, addMode, actions },
 ) => {
     const navProperties = style({
         width: '100%',
@@ -65,12 +75,33 @@ export const ListViewTools: Component<Props> = (
                 <ToolText
                     datatest="text-page-count"
                     height={height - 10}
-                    minWidth={100}
-                    fontSize={16}
-                    marginRight={10}
+                    minWidth={60}
+                    fontSize={14}
+                    marginRight={5}
                 >
                     {`${maxPage} pages`}
                 </ToolText>
+
+                {/* Tree mode controls */}
+                <TreeViewToggle
+                    treeEnabled={treeEnabled}
+                    currentViewMode={treeViewMode}
+                    height={height - 10}
+                    actions={{
+                        onTreeToggle: actions.toggleTreeMode,
+                        onViewModeChange: actions.setTreeViewMode,
+                    }}
+                />
+
+                {/* Add mode toggle (only visible when tree is enabled) */}
+                <AddModeToggle
+                    currentMode={addMode}
+                    enabled={treeEnabled}
+                    height={height - 10}
+                    actions={{
+                        onModeChange: actions.setAddMode,
+                    }}
+                />
 
                 <div style={style({ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: px(5) })}>
                     <ToolButton
@@ -109,6 +140,19 @@ export const ListViewTools: Component<Props> = (
                         colors={palette}
                         actions={{
                             onclick: () => actions.copyAllPagesToClipboard(),
+                        }}
+                    />
+
+                    <ToolButton
+                        iconName="content_paste"
+                        datatest="btn-import"
+                        width={40}
+                        height={height - 10}
+                        key="btn-import"
+                        fontSize={24}
+                        colors={palette}
+                        actions={{
+                            onclick: () => actions.openListViewImportModal(),
                         }}
                     />
 

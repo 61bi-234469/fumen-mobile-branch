@@ -6,6 +6,8 @@ import { Screens } from '../lib/enums';
 import { Palette } from '../lib/colors';
 import { ListViewTools } from '../components/tools/list_view_tools';
 import { ListViewGrid } from '../components/list_view/list_view_grid';
+import { FumenGraph } from '../components/tree/fumen_graph';
+import { TreeViewMode } from '../lib/fumen/tree_types';
 import { style, px } from '../lib/types';
 
 const TOOLS_HEIGHT = 50;
@@ -162,12 +164,19 @@ export const view: View<State, Actions> = (state, actions) => {
     }, [
         ListViewTools({
             palette,
+            treeEnabled: state.tree.enabled,
+            treeViewMode: state.tree.viewMode,
+            addMode: state.tree.addMode,
             actions: {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
                 convertAllToMirror: () => actions.convertAllToMirror(),
                 openListViewReplaceModal: () => actions.openListViewReplaceModal(),
                 copyAllPagesToClipboard: () => actions.copyAllPagesToClipboard(),
+                openListViewImportModal: () => actions.openListViewImportModal(),
                 exportListViewAsImage: () => actions.exportListViewAsImage(),
+                toggleTreeMode: () => actions.toggleTreeMode(),
+                setTreeViewMode: (mode: TreeViewMode) => actions.setTreeViewMode({ mode }),
+                setAddMode: mode => actions.setAddMode({ mode }),
             },
             height: TOOLS_HEIGHT,
             maxPage: state.fumen.maxPage,
@@ -203,87 +212,117 @@ export const view: View<State, Actions> = (state, actions) => {
                 handleTouchEndForDrag();
             },
         }, [
-            ListViewGrid({
-                pages: state.fumen.pages,
-                guideLineColor: state.fumen.guideLineColor,
-                draggingIndex: state.listView.dragState.draggingIndex,
-                dropTargetIndex: state.listView.dragState.dropTargetIndex,
-                containerWidth: state.display.width,
-                containerHeight: gridContainerHeight,
-                scale: state.listView.scale,
-                actions: {
-                    onDragStart: (pageIndex: number) => {
-                        actions.setListViewDragState({
-                            draggingIndex: pageIndex,
-                            dropTargetIndex: null,
-                        });
+            // Conditionally render FumenGraph or ListViewGrid based on tree mode
+            state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree
+                ? FumenGraph({
+                    tree: {
+                        nodes: state.tree.nodes,
+                        rootId: state.tree.rootId,
+                        version: 1,
                     },
-                    onDragOver: (pageIndex: number, e: DragEvent) => {
-                        const draggingIndex = state.listView.dragState.draggingIndex;
-                        if (draggingIndex === null) return;
+                    pages: state.fumen.pages,
+                    guideLineColor: state.fumen.guideLineColor,
+                    activeNodeId: state.tree.activeNodeId,
+                    containerWidth: state.display.width,
+                    containerHeight: gridContainerHeight,
+                    actions: {
+                        onNodeClick: (nodeId) => {
+                            actions.selectTreeNode({ nodeId });
+                            // Navigate to editor after selecting node
+                            actions.changeToEditorFromListView();
+                        },
+                        onAddBranch: (parentNodeId) => {
+                            console.log('onAddBranch called in list_view', {
+                                parentNodeId,
+                                treeNodes: state.tree.nodes,
+                                addMode: state.tree.addMode,
+                            });
+                            // Pass parentNodeId directly to avoid state timing issues
+                            actions.addPageInTreeMode({ parentNodeId });
+                        },
+                    },
+                })
+                : ListViewGrid({
+                    pages: state.fumen.pages,
+                    guideLineColor: state.fumen.guideLineColor,
+                    draggingIndex: state.listView.dragState.draggingIndex,
+                    dropTargetIndex: state.listView.dragState.dropTargetIndex,
+                    containerWidth: state.display.width,
+                    containerHeight: gridContainerHeight,
+                    scale: state.listView.scale,
+                    actions: {
+                        onDragStart: (pageIndex: number) => {
+                            actions.setListViewDragState({
+                                draggingIndex: pageIndex,
+                                dropTargetIndex: null,
+                            });
+                        },
+                        onDragOver: (pageIndex: number, e: DragEvent) => {
+                            const draggingIndex = state.listView.dragState.draggingIndex;
+                            if (draggingIndex === null) return;
 
-                        // Calculate slot based on mouse position within item
-                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                        const xInItem = e.clientX - rect.left;
-                        const isLeftHalf = xInItem < rect.width / 2;
-                        const slotIndex = isLeftHalf ? pageIndex : pageIndex + 1;
+                            // Calculate slot based on mouse position within item
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            const xInItem = e.clientX - rect.left;
+                            const isLeftHalf = xInItem < rect.width / 2;
+                            const slotIndex = isLeftHalf ? pageIndex : pageIndex + 1;
 
-                        // Skip no-op slots
-                        const isNoOpSlot = slotIndex === draggingIndex || slotIndex === draggingIndex + 1;
-                        if (isNoOpSlot) {
-                            if (state.listView.dragState.dropTargetIndex !== null) {
+                            // Skip no-op slots
+                            const isNoOpSlot = slotIndex === draggingIndex || slotIndex === draggingIndex + 1;
+                            if (isNoOpSlot) {
+                                if (state.listView.dragState.dropTargetIndex !== null) {
+                                    actions.setListViewDragState({
+                                        draggingIndex,
+                                        dropTargetIndex: null,
+                                    });
+                                }
+                                return;
+                            }
+
+                            if (state.listView.dragState.dropTargetIndex !== slotIndex) {
                                 actions.setListViewDragState({
                                     draggingIndex,
-                                    dropTargetIndex: null,
+                                    dropTargetIndex: slotIndex,
                                 });
                             }
-                            return;
-                        }
-
-                        if (state.listView.dragState.dropTargetIndex !== slotIndex) {
+                        },
+                        onDragLeave: () => {
                             actions.setListViewDragState({
-                                draggingIndex,
-                                dropTargetIndex: slotIndex,
+                                draggingIndex: state.listView.dragState.draggingIndex,
+                                dropTargetIndex: null,
                             });
-                        }
-                    },
-                    onDragLeave: () => {
-                        actions.setListViewDragState({
-                            draggingIndex: state.listView.dragState.draggingIndex,
-                            dropTargetIndex: null,
-                        });
-                    },
-                    onDrop: () => {
-                        const fromIndex = state.listView.dragState.draggingIndex;
-                        const toSlotIndex = state.listView.dragState.dropTargetIndex;
-                        if (fromIndex !== null && toSlotIndex !== null) {
-                            actions.reorderPage({
-                                fromIndex,
-                                toSlotIndex,
+                        },
+                        onDrop: () => {
+                            const fromIndex = state.listView.dragState.draggingIndex;
+                            const toSlotIndex = state.listView.dragState.dropTargetIndex;
+                            if (fromIndex !== null && toSlotIndex !== null) {
+                                actions.reorderPage({
+                                    fromIndex,
+                                    toSlotIndex,
+                                });
+                            }
+                            actions.setListViewDragState({
+                                draggingIndex: null,
+                                dropTargetIndex: null,
                             });
-                        }
-                        actions.setListViewDragState({
-                            draggingIndex: null,
-                            dropTargetIndex: null,
-                        });
+                        },
+                        onDragEnd: () => {
+                            actions.setListViewDragState({
+                                draggingIndex: null,
+                                dropTargetIndex: null,
+                            });
+                        },
+                        onCommentChange: (pageIndex: number, comment: string) => {
+                            actions.updatePageComment({
+                                pageIndex,
+                                comment,
+                            });
+                        },
+                        onPageClick: (pageIndex: number) => {
+                            actions.navigateToPageFromListView({ pageIndex });
+                        },
                     },
-                    onDragEnd: () => {
-                        actions.setListViewDragState({
-                            draggingIndex: null,
-                            dropTargetIndex: null,
-                        });
-                    },
-                    onCommentChange: (pageIndex: number, comment: string) => {
-                        actions.updatePageComment({
-                            pageIndex,
-                            comment,
-                        });
-                    },
-                    onPageClick: (pageIndex: number) => {
-                        actions.navigateToPageFromListView({ pageIndex });
-                    },
-                },
-            }),
+                }),
         ]),
     ]);
 };

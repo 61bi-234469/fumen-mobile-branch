@@ -1,8 +1,10 @@
 import { Page } from './fumen/types';
-import { Pages, PageFieldOperation } from './pages';
+import { Pages, PageFieldOperation, isTextCommentResult } from './pages';
 import { decidePieceColor } from './colors';
 import { HighlightType } from '../state_types';
 import { FieldConstants } from './enums';
+import { SerializedTree } from './fumen/tree_types';
+import { calculateTreeLayout, findNode, getNodeDfsNumbers } from './fumen/tree_utils';
 
 const THUMBNAIL_WIDTH = 100;
 const THUMBNAIL_HEIGHT = 230;
@@ -27,11 +29,53 @@ export function generateThumbnail(
 
     const pagesObj = new Pages(pages);
     const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
+    const page = pages[pageIndex];
 
+    // Build field array with piece positions for line detection
+    // tslint:disable-next-line:prefer-array-literal
+    const fieldArray: (number | undefined)[] = Array(FieldConstants.Width * FieldConstants.Height);
     for (let y = 0; y < FieldConstants.Height; y += 1) {
         for (let x = 0; x < FieldConstants.Width; x += 1) {
+            fieldArray[x + y * FieldConstants.Width] = field.get(x, y);
+        }
+    }
+
+    // Add current piece to field array for line detection
+    if (page && page.piece) {
+        const { type, rotation, coordinate } = page.piece;
+        const positions = getPiecePositions(type, rotation);
+        for (const pos of positions) {
+            const px = coordinate.x + pos[0];
+            const py = coordinate.y + pos[1];
+            if (px >= 0 && px < FieldConstants.Width && py >= 0 && py < FieldConstants.Height) {
+                fieldArray[px + py * FieldConstants.Width] = type;
+            }
+        }
+    }
+
+    // Detect filled lines
+    const filledLines = new Set<number>();
+    for (let y = 0; y < FieldConstants.Height; y += 1) {
+        let filled = true;
+        for (let x = 0; x < FieldConstants.Width; x += 1) {
+            const piece = fieldArray[x + y * FieldConstants.Width];
+            if (piece === undefined || piece === 0) { // 0 = Piece.Empty
+                filled = false;
+                break;
+            }
+        }
+        if (filled) {
+            filledLines.add(y);
+        }
+    }
+
+    // Draw field blocks
+    for (let y = 0; y < FieldConstants.Height; y += 1) {
+        const isFilledLine = filledLines.has(y);
+        for (let x = 0; x < FieldConstants.Width; x += 1) {
             const piece = field.get(x, y);
-            const color = decidePieceColor(piece, HighlightType.Normal, guideLineColor);
+            const highlight = isFilledLine ? HighlightType.Highlight1 : HighlightType.Normal;
+            const color = decidePieceColor(piece, highlight, guideLineColor);
 
             ctx.fillStyle = color;
             ctx.fillRect(
@@ -43,18 +87,21 @@ export function generateThumbnail(
         }
     }
 
-    const page = pages[pageIndex];
+    // Draw current piece
     if (page && page.piece) {
         const { type, rotation, coordinate } = page.piece;
         const positions = getPiecePositions(type, rotation);
-        const pieceColor = decidePieceColor(type, HighlightType.Highlight2, guideLineColor);
+        const isOnFilledLine = positions.some(pos => filledLines.has(coordinate.y + pos[1]));
+        const pieceHighlight = isOnFilledLine ? HighlightType.Highlight1 : HighlightType.Highlight2;
+        const pieceColor = decidePieceColor(type, pieceHighlight, guideLineColor);
 
         for (const pos of positions) {
             const px = coordinate.x + pos[0];
             const py = coordinate.y + pos[1];
 
             if (px >= 0 && px < FieldConstants.Width && py >= 0 && py < FieldConstants.Height) {
-                ctx.fillStyle = pieceColor;
+                const blockHighlight = filledLines.has(py) ? HighlightType.Highlight1 : HighlightType.Highlight2;
+                ctx.fillStyle = decidePieceColor(type, blockHighlight, guideLineColor);
                 ctx.fillRect(
                     px * BLOCK_SIZE,
                     (FieldConstants.Height - 1 - py) * BLOCK_SIZE,
@@ -192,12 +239,53 @@ function drawThumbnail(
 
     const pagesObj = new Pages(pages);
     const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
+    const page = pages[pageIndex];
+
+    // Build field array with piece positions for line detection
+    // tslint:disable-next-line:prefer-array-literal
+    const fieldArray: (number | undefined)[] = Array(FieldConstants.Width * FieldConstants.Height);
+    for (let fieldY = 0; fieldY < FieldConstants.Height; fieldY += 1) {
+        for (let fieldX = 0; fieldX < FieldConstants.Width; fieldX += 1) {
+            fieldArray[fieldX + fieldY * FieldConstants.Width] = field.get(fieldX, fieldY);
+        }
+    }
+
+    // Add current piece to field array for line detection
+    if (page && page.piece) {
+        const { type, rotation, coordinate } = page.piece;
+        const positions = getPiecePositions(type, rotation);
+        for (const pos of positions) {
+            const px = coordinate.x + pos[0];
+            const py = coordinate.y + pos[1];
+            if (px >= 0 && px < FieldConstants.Width && py >= 0 && py < FieldConstants.Height) {
+                fieldArray[px + py * FieldConstants.Width] = type;
+            }
+        }
+    }
+
+    // Detect filled lines
+    const filledLines = new Set<number>();
+    for (let fieldY = 0; fieldY < FieldConstants.Height; fieldY += 1) {
+        let filled = true;
+        for (let fieldX = 0; fieldX < FieldConstants.Width; fieldX += 1) {
+            const piece = fieldArray[fieldX + fieldY * FieldConstants.Width];
+            if (piece === undefined || piece === 0) { // 0 = Piece.Empty
+                filled = false;
+                break;
+            }
+        }
+        if (filled) {
+            filledLines.add(fieldY);
+        }
+    }
 
     // Draw field blocks
     for (let fieldY = 0; fieldY < FieldConstants.Height; fieldY += 1) {
+        const isFilledLine = filledLines.has(fieldY);
         for (let fieldX = 0; fieldX < FieldConstants.Width; fieldX += 1) {
             const piece = field.get(fieldX, fieldY);
-            const color = decidePieceColor(piece, HighlightType.Normal, guideLineColor);
+            const highlight = isFilledLine ? HighlightType.Highlight1 : HighlightType.Normal;
+            const color = decidePieceColor(piece, highlight, guideLineColor);
 
             ctx.fillStyle = color;
             ctx.fillRect(
@@ -210,18 +298,17 @@ function drawThumbnail(
     }
 
     // Draw current piece
-    const page = pages[pageIndex];
     if (page && page.piece) {
         const { type, rotation, coordinate } = page.piece;
         const positions = getPiecePositions(type, rotation);
-        const pieceColor = decidePieceColor(type, HighlightType.Highlight2, guideLineColor);
 
         for (const pos of positions) {
             const px = coordinate.x + pos[0];
             const py = coordinate.y + pos[1];
 
             if (px >= 0 && px < FieldConstants.Width && py >= 0 && py < FieldConstants.Height) {
-                ctx.fillStyle = pieceColor;
+                const blockHighlight = filledLines.has(py) ? HighlightType.Highlight1 : HighlightType.Highlight2;
+                ctx.fillStyle = decidePieceColor(type, blockHighlight, guideLineColor);
                 ctx.fillRect(
                     x + px * BLOCK_SIZE,
                     y + (FieldConstants.Height - 1 - py) * BLOCK_SIZE,
@@ -313,4 +400,187 @@ export function downloadImage(dataURL: string, filename: string): void {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+// Tree view export constants
+const TREE_NODE_WIDTH = 120;
+const TREE_NODE_HEIGHT = 310;
+const TREE_THUMBNAIL_WIDTH = 100;
+const TREE_THUMBNAIL_HEIGHT = 230;
+const TREE_HORIZONTAL_GAP = 50;
+const TREE_VERTICAL_GAP = 30;
+const TREE_PADDING = 20;
+const TREE_NODE_RADIUS = 8;
+
+export function generateTreeViewExportImage(
+    pages: Page[],
+    guideLineColor: boolean,
+    tree: SerializedTree,
+): string {
+    if (!tree.rootId || tree.nodes.length === 0 || pages.length === 0) {
+        return '';
+    }
+
+    // Calculate layout
+    const layout = calculateTreeLayout(tree);
+    const dfsNumbers = getNodeDfsNumbers(tree);
+
+    // Calculate canvas dimensions
+    const canvasWidth = TREE_PADDING * 2 + (layout.maxDepth + 1) * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
+    const canvasHeight = TREE_PADDING * 2 + (layout.maxLane + 1) * (TREE_NODE_HEIGHT + TREE_VERTICAL_GAP);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasWidth * EXPORT_SCALE;
+    canvas.height = canvasHeight * EXPORT_SCALE;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        return '';
+    }
+
+    ctx.scale(EXPORT_SCALE, EXPORT_SCALE);
+
+    // Background
+    ctx.fillStyle = '#fafafa';
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    const pagesObj = new Pages(pages);
+
+    // Draw connections first (behind nodes)
+    layout.connections.forEach((conn) => {
+        const fromPos = layout.positions.get(conn.fromId);
+        const toPos = layout.positions.get(conn.toId);
+        if (!fromPos || !toPos) return;
+
+        const x1 = TREE_PADDING + fromPos.x * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP) + TREE_NODE_WIDTH;
+        const y1 = TREE_PADDING + fromPos.y * (TREE_NODE_HEIGHT + TREE_VERTICAL_GAP) + TREE_NODE_HEIGHT / 2;
+        const x2 = TREE_PADDING + toPos.x * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
+        const y2 = TREE_PADDING + toPos.y * (TREE_NODE_HEIGHT + TREE_VERTICAL_GAP) + TREE_NODE_HEIGHT / 2;
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#999';
+        ctx.lineWidth = 1.5;
+
+        if (conn.isBranch) {
+            // Curved path for branches
+            const midX = (x1 + x2) / 2;
+            ctx.moveTo(x1, y1);
+            ctx.bezierCurveTo(midX, y1, midX, y2, x2, y2);
+        } else {
+            // Straight line for main route
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+        }
+        ctx.stroke();
+    });
+
+    // Draw nodes
+    tree.nodes.forEach((node) => {
+        const pos = layout.positions.get(node.id);
+        if (!pos) return;
+
+        const x = TREE_PADDING + pos.x * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
+        const y = TREE_PADDING + pos.y * (TREE_NODE_HEIGHT + TREE_VERTICAL_GAP);
+        const dfsNumber = dfsNumbers.get(node.id) ?? 0;
+
+        const hasBranch = node.childrenIds.length > 1;
+        drawTreeNode(ctx, pages, pagesObj, node.pageIndex, x, y, guideLineColor, dfsNumber, hasBranch);
+    });
+
+    return canvas.toDataURL('image/png');
+}
+
+function drawTreeNode(
+    ctx: CanvasRenderingContext2D,
+    pages: Page[],
+    pagesObj: Pages,
+    pageIndex: number,
+    x: number,
+    y: number,
+    guideLineColor: boolean,
+    dfsNumber: number,
+    hasBranches: boolean,
+): void {
+    // Node background
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#ccc';
+    ctx.lineWidth = 1;
+
+    // Rounded rectangle
+    ctx.beginPath();
+    ctx.moveTo(x + TREE_NODE_RADIUS, y);
+    ctx.lineTo(x + TREE_NODE_WIDTH - TREE_NODE_RADIUS, y);
+    ctx.arcTo(x + TREE_NODE_WIDTH, y, x + TREE_NODE_WIDTH, y + TREE_NODE_RADIUS, TREE_NODE_RADIUS);
+    ctx.lineTo(x + TREE_NODE_WIDTH, y + TREE_NODE_HEIGHT - TREE_NODE_RADIUS);
+    ctx.arcTo(x + TREE_NODE_WIDTH, y + TREE_NODE_HEIGHT, x + TREE_NODE_WIDTH - TREE_NODE_RADIUS,
+        y + TREE_NODE_HEIGHT, TREE_NODE_RADIUS);
+    ctx.lineTo(x + TREE_NODE_RADIUS, y + TREE_NODE_HEIGHT);
+    ctx.arcTo(x, y + TREE_NODE_HEIGHT, x, y + TREE_NODE_HEIGHT - TREE_NODE_RADIUS, TREE_NODE_RADIUS);
+    ctx.lineTo(x, y + TREE_NODE_RADIUS);
+    ctx.arcTo(x, y, x + TREE_NODE_RADIUS, y, TREE_NODE_RADIUS);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Draw thumbnail
+    const thumbX = x + (TREE_NODE_WIDTH - TREE_THUMBNAIL_WIDTH) / 2;
+    const thumbY = y + 8;
+    drawThumbnail(ctx, pages, pageIndex, thumbX, thumbY, guideLineColor);
+
+    // DFS order number
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(dfsNumber), x + TREE_NODE_WIDTH / 2, thumbY + TREE_THUMBNAIL_HEIGHT + 20);
+
+    // Comment text
+    let commentText = '';
+    try {
+        const result = pagesObj.getComment(pageIndex);
+        if (isTextCommentResult(result)) {
+            commentText = result.text;
+        } else {
+            commentText = result.quiz;
+        }
+    } catch {
+        commentText = '';
+    }
+
+    if (commentText) {
+        ctx.fillStyle = '#666';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+
+        // Truncate and wrap comment
+        const maxCharsPerLine = 12;
+        const maxLines = 3;
+        const lines: string[] = [];
+        let remaining = commentText;
+        while (remaining.length > 0 && lines.length < maxLines) {
+            if (remaining.length <= maxCharsPerLine) {
+                lines.push(remaining);
+                break;
+            }
+            lines.push(remaining.slice(0, maxCharsPerLine));
+            remaining = remaining.slice(maxCharsPerLine);
+        }
+        if (commentText.length > maxCharsPerLine * maxLines && lines.length > 0) {
+            lines[lines.length - 1] = `${lines[lines.length - 1].slice(0, -1)}…`;
+        }
+
+        lines.forEach((line, idx) => {
+            ctx.fillText(line, x + TREE_NODE_WIDTH / 2, thumbY + TREE_THUMBNAIL_HEIGHT + 38 + idx * 14);
+        });
+    }
+
+    // Branch indicator
+    if (hasBranches) {
+        ctx.beginPath();
+        ctx.arc(x + TREE_NODE_WIDTH - 10, y + 10, 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#FF9800';
+        ctx.fill();
+    }
+
+    // Reset text align
+    ctx.textAlign = 'left';
 }

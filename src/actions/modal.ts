@@ -9,12 +9,14 @@ export interface ModalActions {
     openClipboardModal: () => action;
     openUserSettingsModal: () => action;
     openListViewReplaceModal: () => action;
+    openListViewImportModal: () => action;
     closeFumenModal: () => action;
     closeMenuModal: () => action;
     closeAppendModal: () => action;
     closeClipboardModal: () => action;
     closeUserSettingsModal: () => action;
     closeListViewReplaceModal: () => action;
+    closeListViewImportModal: () => action;
     closeAllModals: () => action;
 }
 
@@ -125,6 +127,22 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
+    openListViewImportModal: () => (state): NextState => {
+        return {
+            modal: {
+                ...state.modal,
+                listViewImport: true,
+            },
+        };
+    },
+    closeListViewImportModal: () => (state): NextState => {
+        return {
+            modal: {
+                ...state.modal,
+                listViewImport: false,
+            },
+        };
+    },
     closeAllModals: () => (): NextState => {
         return {
             modal: {
@@ -134,6 +152,7 @@ export const modalActions: Readonly<ModalActions> = {
                 clipboard: false,
                 userSettings: false,
                 listViewReplace: false,
+                listViewImport: false,
             },
         };
     },

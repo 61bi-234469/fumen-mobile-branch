@@ -4,6 +4,8 @@ import { memento } from '../memento';
 import { HistoryTask } from '../history_task';
 import { Page } from '../lib/fumen/types';
 import { State } from '../states';
+import { embedTreeInPages } from '../lib/fumen/tree_utils';
+import { SerializedTree } from '../lib/fumen/tree_types';
 
 export interface MementoActions {
     registerHistoryTask: (data: { task: HistoryTask, mergeKey?: string }) => action;
@@ -80,6 +82,19 @@ export const mementoActions: Readonly<MementoActions> = {
 };
 
 const saveToMemento = (state: Readonly<State>): NextState => {
-    memento.save(state.fumen.pages);
+    const tree: SerializedTree | null = state.tree.enabled ? {
+        nodes: state.tree.nodes,
+        rootId: state.tree.rootId,
+        version: 1,
+    } : null;
+
+    console.log('saveToMemento: tree enabled =', state.tree.enabled, 'tree nodes =', tree?.nodes.length);
+
+    const pagesToSave = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+
+    console.log('saveToMemento: first page comment text =', pagesToSave[0]?.comment?.text,
+        'contains #TREE=', pagesToSave[0]?.comment?.text?.includes('#TREE='));
+
+    memento.save(pagesToSave);
     return undefined;
 };

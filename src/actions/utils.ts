@@ -16,6 +16,11 @@ import {
 import { State } from '../states';
 import { Pages } from '../lib/pages';
 import { Page } from '../lib/fumen/types';
+import {
+    embedTreeInPages,
+    extractTreeFromPages,
+} from '../lib/fumen/tree_utils';
+import { initialTreeState, SerializedTree } from '../lib/fumen/tree_types';
 
 declare const M: any;
 
@@ -55,9 +60,26 @@ export const utilsActions: Readonly<UtilsActions> = {
     loadPages: ({ pages, loadedFumen }) => (state): NextState => {
         const prevPages = state.fumen.pages.map(toPrimitivePage);
         const currentIndex = state.fumen.currentIndex;
+
+        console.log('loadPages: pages[0].comment =', pages[0]?.comment);
+
+        // Extract tree data from pages if present
+        const { cleanedPages, tree } = extractTreeFromPages(pages);
+        console.log('loadPages: extracted tree =', tree ? `nodes=${tree.nodes.length}` : 'null');
+
+        // Set up tree state
+        const treeState = tree ? {
+            ...initialTreeState,
+            enabled: true,
+            nodes: tree.nodes,
+            rootId: tree.rootId,
+            activeNodeId: tree.rootId,
+        } : { ...initialTreeState };
+
         return sequence(state, [
-            actions.setPages({ pages }),
+            actions.setPages({ pages: cleanedPages }),
             actions.registerHistoryTask({ task: toFumenTask(prevPages, loadedFumen, currentIndex) }),
+            () => ({ tree: treeState }),
         ]);
     },
     commitAppendFumenData: ({ position }) => (state): NextState => {
@@ -89,7 +111,13 @@ export const utilsActions: Readonly<UtilsActions> = {
             (state) => {
                 // テト譜の変換
                 const encodePromise = (async () => {
-                    const encoded = await encode(state.fumen.pages);
+                    const tree: SerializedTree | null = state.tree.enabled ? {
+                        nodes: state.tree.nodes,
+                        rootId: state.tree.rootId,
+                        version: 1,
+                    } : null;
+                    const pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+                    const encoded = await encode(pagesToEncode);
                     return `v115@${encoded}`;
                 });
 
@@ -112,7 +140,13 @@ export const utilsActions: Readonly<UtilsActions> = {
             (state) => {
                 // テト譜の変換（v115@をD115@に置き換え）
                 const encodePromise = (async () => {
-                    const encoded = await encode(state.fumen.pages);
+                    const tree: SerializedTree | null = state.tree.enabled ? {
+                        nodes: state.tree.nodes,
+                        rootId: state.tree.rootId,
+                        version: 1,
+                    } : null;
+                    const pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+                    const encoded = await encode(pagesToEncode);
                     return `D115@${encoded}`;
                 });
 
