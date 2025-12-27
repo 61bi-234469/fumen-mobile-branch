@@ -27,6 +27,7 @@ import {
     moveNodeWithRightSiblingsToParent,
     reorderNode,
     canMoveNode,
+    embedTreeInPages,
 } from '../lib/fumen/tree_utils';
 import { OperationTask, toPrimitivePage, toPage, PrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
@@ -150,16 +151,21 @@ const getCurrentNode = (state: State, overrideNodeId?: TreeNodeId): TreeNode | u
 
 /**
  * Create snapshot for history
+ * Embeds tree data into pages so it can be restored on undo/redo
  */
 const createSnapshot = (
     tree: SerializedTree,
     pages: Page[],
     currentIndex: number,
-): TreeOperationSnapshot => ({
-    currentIndex,
-    tree,
-    pages: pages.map(toPrimitivePage),
-});
+): TreeOperationSnapshot => {
+    // Embed tree data into pages for restoration on undo/redo
+    const pagesWithTree = embedTreeInPages(pages, tree, true);
+    return {
+        currentIndex,
+        tree,
+        pages: pagesWithTree.map(toPrimitivePage),
+    };
+};
 
 // ============================================================================
 // Action Implementations

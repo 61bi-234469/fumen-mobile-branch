@@ -182,18 +182,18 @@ export const view: View<State, Actions> = (state, actions) => {
         treeTouchDragActive = true;
         const touch = e.touches[0];
         const container = e.currentTarget as HTMLElement;
-        const svgElement = container.querySelector('svg') as SVGSVGElement;
-        if (!svgElement) return;
 
-        const rect = svgElement.getBoundingClientRect();
-        const scrollContainer = svgElement.parentElement;
-        const scrollLeft = scrollContainer?.scrollLeft ?? 0;
-        const scrollTop = scrollContainer?.scrollTop ?? 0;
+        // Find the scroll container (fumen-graph-container div)
+        const scrollContainer = container.querySelector('[key="fumen-graph-container"]') as HTMLElement;
+        if (!scrollContainer) return;
 
-        // Convert touch position to SVG coordinates (accounting for scale)
+        const scrollContainerRect = scrollContainer.getBoundingClientRect();
+
+        // Calculate position relative to scroll container, then add scroll offset
+        // This gives us the position within the full SVG content
         const scale = state.tree.scale;
-        const svgX = (touch.clientX - rect.left + scrollLeft) / scale;
-        const svgY = (touch.clientY - rect.top + scrollTop) / scale;
+        const svgX = (touch.clientX - scrollContainerRect.left + scrollContainer.scrollLeft) / scale;
+        const svgY = (touch.clientY - scrollContainerRect.top + scrollContainer.scrollTop) / scale;
 
         // Build tree structure for layout calculation
         const tree = {

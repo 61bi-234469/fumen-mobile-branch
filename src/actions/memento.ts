@@ -4,8 +4,8 @@ import { memento } from '../memento';
 import { HistoryTask } from '../history_task';
 import { Page } from '../lib/fumen/types';
 import { State } from '../states';
-import { embedTreeInPages } from '../lib/fumen/tree_utils';
-import { SerializedTree } from '../lib/fumen/tree_types';
+import { embedTreeInPages, extractTreeFromPages, findNodeByPageIndex } from '../lib/fumen/tree_utils';
+import { initialTreeState, SerializedTree } from '../lib/fumen/tree_types';
 
 export interface MementoActions {
     registerHistoryTask: (data: { task: HistoryTask, mergeKey?: string }) => action;
@@ -67,10 +67,25 @@ export const mementoActions: Readonly<MementoActions> = {
         ]);
     },
     loadPagesViaHistory: ({ pages, index, undoCount, redoCount }) => (state): NextState => {
+        // Extract tree data from restored pages if present
+        const { cleanedPages, tree } = extractTreeFromPages(pages);
+
+        // Restore tree state from extracted tree data, or reset if no tree data
+        const treeState = tree ? {
+            ...state.tree,
+            enabled: true,
+            nodes: tree.nodes,
+            rootId: tree.rootId,
+            activeNodeId: findNodeByPageIndex(tree, index)?.id ?? tree.rootId,
+        } : {
+            ...initialTreeState,
+        };
+
         return sequence(state, [
-            actions.setPages({ pages, open: false }),
+            actions.setPages({ pages: cleanedPages, open: false }),
             actions.openPage({ index }),
             actions.setHistoryCount({ undoCount, redoCount }),
+            () => ({ tree: treeState }),
             saveToMemento,
         ]);
     },
