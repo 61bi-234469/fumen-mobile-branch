@@ -328,6 +328,14 @@ const renderNode = (
                             e.stopPropagation();
                             actions.onInsertNode(node.id);
                         }}
+                        ontouchstart={(e: TouchEvent) => {
+                            e.stopPropagation();
+                        }}
+                        ontouchend={(e: TouchEvent) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            actions.onInsertNode(node.id);
+                        }}
                         style={style({ cursor: 'pointer' })}
                     >
                         <circle
@@ -355,6 +363,14 @@ const renderNode = (
                         transform={`translate(${NODE_WIDTH + 4}, ${NODE_HEIGHT / 2 + ADD_BUTTON_SIZE + 4})`}
                         onclick={(e: MouseEvent) => {
                             e.stopPropagation();
+                            actions.onAddBranch(node.id);
+                        }}
+                        ontouchstart={(e: TouchEvent) => {
+                            e.stopPropagation();
+                        }}
+                        ontouchend={(e: TouchEvent) => {
+                            e.stopPropagation();
+                            e.preventDefault();
                             actions.onAddBranch(node.id);
                         }}
                         style={style({ cursor: 'pointer' })}
@@ -386,6 +402,14 @@ const renderNode = (
                     transform={`translate(${NODE_WIDTH + 4}, ${NODE_HEIGHT / 2})`}
                     onclick={(e: MouseEvent) => {
                         e.stopPropagation();
+                        actions.onInsertNode(node.id);
+                    }}
+                    ontouchstart={(e: TouchEvent) => {
+                        e.stopPropagation();
+                    }}
+                    ontouchend={(e: TouchEvent) => {
+                        e.stopPropagation();
+                        e.preventDefault();
                         actions.onInsertNode(node.id);
                     }}
                     style={style({ cursor: 'pointer' })}

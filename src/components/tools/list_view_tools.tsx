@@ -4,8 +4,7 @@ import { ToolButton } from './tool_button';
 import { ToolText } from './tool_text';
 import { ColorPalette } from '../../lib/colors';
 import { TreeViewToggle } from '../tree/tree_view_toggle';
-import { AddModeToggle } from '../tree/add_mode_toggle';
-import { AddMode, TreeViewMode } from '../../lib/fumen/tree_types';
+import { TreeViewMode } from '../../lib/fumen/tree_types';
 
 interface Props {
     height: number;
@@ -13,7 +12,6 @@ interface Props {
     palette: ColorPalette;
     treeEnabled: boolean;
     treeViewMode: TreeViewMode;
-    addMode: AddMode;
     actions: {
         changeToEditorFromListView: () => void;
         convertAllToMirror: () => void;
@@ -23,12 +21,11 @@ interface Props {
         exportListViewAsImage: () => void;
         toggleTreeMode: () => void;
         setTreeViewMode: (mode: TreeViewMode) => void;
-        setAddMode: (mode: AddMode) => void;
     };
 }
 
 export const ListViewTools: Component<Props> = (
-    { height, maxPage, palette, treeEnabled, treeViewMode, addMode, actions },
+    { height, maxPage, palette, treeEnabled, treeViewMode, actions },
 ) => {
     const navProperties = style({
         width: '100%',
@@ -90,16 +87,6 @@ export const ListViewTools: Component<Props> = (
                     actions={{
                         onTreeToggle: actions.toggleTreeMode,
                         onViewModeChange: actions.setTreeViewMode,
-                    }}
-                />
-
-                {/* Add mode toggle (only visible when tree is enabled) */}
-                <AddModeToggle
-                    currentMode={addMode}
-                    enabled={treeEnabled}
-                    height={height - 10}
-                    actions={{
-                        onModeChange: actions.setAddMode,
                     }}
                 />
 

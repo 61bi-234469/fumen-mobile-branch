@@ -170,7 +170,6 @@ export const view: View<State, Actions> = (state, actions) => {
             palette,
             treeEnabled: state.tree.enabled,
             treeViewMode: state.tree.viewMode,
-            addMode: state.tree.addMode,
             actions: {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
                 convertAllToMirror: () => actions.convertAllToMirror(),
@@ -180,7 +179,6 @@ export const view: View<State, Actions> = (state, actions) => {
                 exportListViewAsImage: () => actions.exportListViewAsImage(),
                 toggleTreeMode: () => actions.toggleTreeMode(),
                 setTreeViewMode: (mode: TreeViewMode) => actions.setTreeViewMode({ mode }),
-                setAddMode: mode => actions.setAddMode({ mode }),
             },
             height: TOOLS_HEIGHT,
             maxPage: state.fumen.maxPage,
