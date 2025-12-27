@@ -7,7 +7,6 @@ import { Palette } from '../lib/colors';
 import { ListViewTools } from '../components/tools/list_view_tools';
 import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
-import { TreeDragModeSwitch } from '../components/tree/tree_drag_mode_switch';
 import { TreeViewMode, TreeDragMode } from '../lib/fumen/tree_types';
 import { style, px } from '../lib/types';
 import { canMoveNode, calculateTreeLayout } from '../lib/fumen/tree_utils';
@@ -24,7 +23,6 @@ const TREE_INSERT_BUTTON_Y = TREE_NODE_HEIGHT / 2;
 const TREE_BRANCH_BUTTON_Y = TREE_NODE_HEIGHT / 2 + TREE_ADD_BUTTON_SIZE + 4;
 
 const TOOLS_HEIGHT = 50;
-const DRAG_MODE_SWITCH_HEIGHT = 60;
 const COLUMNS = 5;
 const ITEM_MIN_WIDTH = 100;
 const ITEM_MAX_WIDTH = 160;
@@ -66,9 +64,8 @@ export const view: View<State, Actions> = (state, actions) => {
         backgroundColor: '#f5f5f5',
     });
 
-    // When tree view is active, reserve space for the drag mode switch at the bottom
     const isTreeView = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
-    const gridContainerHeight = state.display.height - TOOLS_HEIGHT - (isTreeView ? DRAG_MODE_SWITCH_HEIGHT : 0);
+    const gridContainerHeight = state.display.height - TOOLS_HEIGHT;
 
     const baseItemSize = Math.max(
         ITEM_MIN_WIDTH,
@@ -757,14 +754,5 @@ export const view: View<State, Actions> = (state, actions) => {
                 }),
         ]),
 
-        // Tree drag mode switch (shown at bottom when tree view is active)
-        TreeDragModeSwitch({
-            currentMode: state.tree.dragState.mode,
-            enabled: isTreeView,
-            height: DRAG_MODE_SWITCH_HEIGHT,
-            actions: {
-                onModeChange: (mode: TreeDragMode) => actions.setTreeDragMode({ mode }),
-            },
-        }),
     ]);
 };
