@@ -104,6 +104,8 @@ export interface TreeState {
     viewMode: TreeViewMode;
     /** Drag state for tree operations */
     dragState: TreeDragState;
+    /** Zoom scale for tree view (1.0 = 100%) */
+    scale: number;
 }
 
 /** Initial drag state */
@@ -123,4 +125,5 @@ export const initialTreeState: TreeState = {
     addMode: AddMode.Branch,
     viewMode: TreeViewMode.List,
     dragState: initialTreeDragState,
+    scale: 1.0,
 };

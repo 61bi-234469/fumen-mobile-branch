@@ -22,10 +22,12 @@ let pinchState: {
     active: boolean;
     initialDistance: number;
     initialScale: number;
+    isTreeView: boolean;
 } = {
     active: false,
     initialDistance: 0,
     initialScale: 1.0,
+    isTreeView: false,
 };
 
 // Touch drag state for detecting drop target
@@ -194,9 +196,10 @@ export const view: View<State, Actions> = (state, actions) => {
             ontouchstart: (e: TouchEvent) => {
                 if (e.touches.length === 2) {
                     pinchState = {
+                        isTreeView,
                         active: true,
                         initialDistance: getDistance(e.touches[0], e.touches[1]),
-                        initialScale: state.listView.scale,
+                        initialScale: isTreeView ? state.tree.scale : state.listView.scale,
                     };
                 }
             },
@@ -205,7 +208,11 @@ export const view: View<State, Actions> = (state, actions) => {
                     const currentDistance = getDistance(e.touches[0], e.touches[1]);
                     const scaleFactor = currentDistance / pinchState.initialDistance;
                     const newScale = pinchState.initialScale * scaleFactor;
-                    actions.setListViewScale({ scale: newScale });
+                    if (pinchState.isTreeView) {
+                        actions.setTreeViewScale({ scale: newScale });
+                    } else {
+                        actions.setListViewScale({ scale: newScale });
+                    }
                 } else {
                     handleTouchMoveForDrag(e);
                 }
@@ -227,6 +234,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     activeNodeId: state.tree.activeNodeId,
                     containerWidth: state.display.width,
                     containerHeight: gridContainerHeight,
+                    scale: state.tree.scale,
                     dragMode: state.tree.dragState.mode,
                     dragSourceNodeId: state.tree.dragState.sourceNodeId,
                     dragTargetNodeId: state.tree.dragState.targetNodeId,
@@ -273,7 +281,8 @@ export const view: View<State, Actions> = (state, actions) => {
                                 // All modes now use slot-based visual, but Attach modes still need targetNodeId
                                 if (mode === TreeDragMode.Reorder && dropSlotIndex !== null) {
                                     actions.executeTreeDrop();
-                                } else if (mode !== TreeDragMode.Reorder && targetNodeId !== null && dropSlotIndex !== null) {
+                                } else if (mode !== TreeDragMode.Reorder
+                                    && targetNodeId !== null && dropSlotIndex !== null) {
                                     actions.executeTreeDrop();
                                 }
                             }

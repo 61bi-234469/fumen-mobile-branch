@@ -36,6 +36,7 @@ interface Props {
     activeNodeId: TreeNodeId | null;
     containerWidth: number;
     containerHeight: number;
+    scale: number;
     dragMode: TreeDragMode;
     dragSourceNodeId: TreeNodeId | null;
     dragTargetNodeId: TreeNodeId | null;
@@ -476,6 +477,7 @@ export const FumenGraph: Component<Props> = ({
     activeNodeId,
     containerWidth,
     containerHeight,
+    scale,
     dragMode,
     dragSourceNodeId,
     dragTargetNodeId,
@@ -506,14 +508,12 @@ export const FumenGraph: Component<Props> = ({
 
     // Calculate SVG dimensions (add extra space for add button on the right)
     const buttonExtraWidth = ADD_BUTTON_SIZE + 10;
-    const svgWidth = Math.max(
-        containerWidth,
-        PADDING * 2 + (layout.maxDepth + 1) * (NODE_WIDTH + HORIZONTAL_GAP) + buttonExtraWidth,
-    );
-    const svgHeight = Math.max(
-        containerHeight - 10,
-        PADDING * 2 + (layout.maxLane + 1) * (NODE_HEIGHT + VERTICAL_GAP),
-    );
+    const baseWidth = PADDING * 2 + (layout.maxDepth + 1) * (NODE_WIDTH + HORIZONTAL_GAP) + buttonExtraWidth;
+    const baseHeight = PADDING * 2 + (layout.maxLane + 1) * (NODE_HEIGHT + VERTICAL_GAP);
+
+    // Apply scale to dimensions
+    const scaledWidth = Math.max(containerWidth, baseWidth * scale);
+    const scaledHeight = Math.max(containerHeight - 10, baseHeight * scale);
 
     // Container style
     const containerStyle = style({
@@ -635,8 +635,9 @@ export const FumenGraph: Component<Props> = ({
 
         const svg = e.currentTarget as SVGSVGElement;
         const rect = svg.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left + (svg.parentElement?.scrollLeft ?? 0);
-        const mouseY = e.clientY - rect.top + (svg.parentElement?.scrollTop ?? 0);
+        // Account for scale when calculating mouse position in SVG coordinates
+        const mouseX = (e.clientX - rect.left + (svg.parentElement?.scrollLeft ?? 0)) / scale;
+        const mouseY = (e.clientY - rect.top + (svg.parentElement?.scrollTop ?? 0)) / scale;
 
         // Build a map from pageIndex to node for quick lookup
         const pageIndexToNode = new Map<number, TreeNode>();
@@ -645,7 +646,7 @@ export const FumenGraph: Component<Props> = ({
         // Check each possible slot position
         let foundSlot: number | null = null;
 
-        for (let slotIdx = 0; slotIdx <= pages.length; slotIdx++) {
+        for (let slotIdx = 0; slotIdx <= pages.length; slotIdx += 1) {
             // Skip no-op slots
             const isNoOpSlot = slotIdx === sourcePageIndex || slotIdx === sourcePageIndex + 1;
             if (isNoOpSlot) continue;
@@ -696,24 +697,27 @@ export const FumenGraph: Component<Props> = ({
         >
             <svg
                 key="fumen-graph-svg"
-                width={svgWidth}
-                height={svgHeight}
+                width={scaledWidth}
+                height={scaledHeight}
                 style={style({ display: 'block' })}
                 onmousemove={handleSvgMouseMove}
             >
-                {/* Connections layer (behind nodes) */}
-                <g key="connections-layer">
-                    {connections}
-                </g>
+                {/* Scale transform group */}
+                <g key="scale-group" transform={`scale(${scale})`}>
+                    {/* Connections layer (behind nodes) */}
+                    <g key="connections-layer">
+                        {connections}
+                    </g>
 
-                {/* Drop slots layer (behind nodes but visible) */}
-                <g key="drop-slots-layer">
-                    {dropSlots}
-                </g>
+                    {/* Drop slots layer (behind nodes but visible) */}
+                    <g key="drop-slots-layer">
+                        {dropSlots}
+                    </g>
 
-                {/* Nodes layer */}
-                <g key="nodes-layer">
-                    {nodes}
+                    {/* Nodes layer */}
+                    <g key="nodes-layer">
+                        {nodes}
+                    </g>
                 </g>
             </svg>
         </div>

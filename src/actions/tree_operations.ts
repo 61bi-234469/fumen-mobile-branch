@@ -43,6 +43,7 @@ export interface TreeOperationActions {
     toggleTreeMode: () => action;
     setAddMode: (data: { mode: AddMode }) => action;
     setTreeViewMode: (data: { mode: TreeViewMode }) => action;
+    setTreeViewScale: (data: { scale: number }) => action;
 
     // Tree navigation
     selectTreeNode: (data: { nodeId: TreeNodeId }) => action;
@@ -216,6 +217,19 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             tree: {
                 ...state.tree,
                 viewMode: mode,
+            },
+        };
+    },
+
+    /**
+     * Set zoom scale for tree view
+     */
+    setTreeViewScale: ({ scale }) => (state): NextState => {
+        const clampedScale = Math.max(0.3, Math.min(3.0, scale));
+        return {
+            tree: {
+                ...state.tree,
+                scale: clampedScale,
             },
         };
     },
