@@ -84,9 +84,26 @@ function rebuildPageRefs(pages: Page[], originalFirstPageColorize: boolean): Pag
             if (mappedRef !== undefined && mappedRef < newIndex) {
                 newPage.field = { ...page.field, ref: mappedRef };
             } else {
-                const pagesObj = new Pages(pages);
-                const field = pagesObj.getField(page.index);
-                newPage.field = { obj: field.copy() };
+                // Resolve the field reference before reorder using oldIndexToNewIndex
+                // We need to find the actual field by following the ref chain
+                let resolvedField: import('../lib/fumen/field').Field | undefined;
+                let refIndex: number | undefined = page.field.ref;
+                while (refIndex !== undefined) {
+                    const refPage = pages.find(p => oldIndexToNewIndex.get(p.index) !== undefined &&
+                        p.index === refIndex);
+                    if (refPage && refPage.field.obj) {
+                        resolvedField = refPage.field.obj.copy();
+                        break;
+                    }
+                    refIndex = refPage?.field.ref;
+                }
+                if (resolvedField) {
+                    newPage.field = { obj: resolvedField };
+                } else {
+                    // Fallback: create empty field if resolution fails
+                    const { Field } = require('../lib/fumen/field');
+                    newPage.field = { obj: new Field({}) };
+                }
             }
         }
 
@@ -95,10 +112,19 @@ function rebuildPageRefs(pages: Page[], originalFirstPageColorize: boolean): Pag
             if (mappedRef !== undefined && mappedRef < newIndex) {
                 newPage.comment = { ...page.comment, ref: mappedRef };
             } else {
-                const pagesObj = new Pages(pages);
-                const commentResult = pagesObj.getComment(page.index);
-                const text = 'text' in commentResult ? commentResult.text : commentResult.quiz;
-                newPage.comment = { text };
+                // Resolve the comment reference before reorder using oldIndexToNewIndex
+                // We need to find the actual comment by following the ref chain
+                let resolvedText: string | undefined;
+                let refIndex: number | undefined = page.comment.ref;
+                while (refIndex !== undefined) {
+                    const refPage = pages.find(p => p.index === refIndex);
+                    if (refPage && refPage.comment.text !== undefined) {
+                        resolvedText = refPage.comment.text;
+                        break;
+                    }
+                    refIndex = refPage?.comment.ref;
+                }
+                newPage.comment = { text: resolvedText ?? '' };
             }
         }
 

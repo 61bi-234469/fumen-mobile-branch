@@ -11,6 +11,9 @@ import {
     TreeNodeId,
     TreeNode,
     SerializedTree,
+    TreeDragMode,
+    TreeDragState,
+    initialTreeDragState,
 } from '../lib/fumen/tree_types';
 import {
     createTreeFromPages,
@@ -20,6 +23,10 @@ import {
     addBranchNode,
     insertNode,
     removeNode,
+    moveNodeToParent,
+    moveNodeWithRightSiblingsToParent,
+    reorderNode,
+    canMoveNode,
 } from '../lib/fumen/tree_utils';
 import { OperationTask, toPrimitivePage, toPage, PrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
@@ -51,6 +58,14 @@ export interface TreeOperationActions {
     // Tree initialization and sync
     initializeTreeFromPages: () => action;
     syncTreeWithPages: () => action;
+
+    // Drag operations
+    setTreeDragMode: (data: { mode: TreeDragMode }) => action;
+    startTreeDrag: (data: { sourceNodeId: TreeNodeId }) => action;
+    updateTreeDragTarget: (data: { targetNodeId: TreeNodeId | null }) => action;
+    updateTreeDropSlot: (data: { slotIndex: number | null }) => action;
+    endTreeDrag: () => action;
+    executeTreeDrop: () => action;
 
     // Internal state setters
     setTreeState: (data: Partial<State['tree']>) => action;
@@ -537,5 +552,214 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 ...data,
             },
         };
+    },
+
+    // ============================================================================
+    // Drag Operations
+    // ============================================================================
+
+    /**
+     * Set the current drag mode
+     */
+    setTreeDragMode: ({ mode }) => (state): NextState => {
+        return {
+            tree: {
+                ...state.tree,
+                dragState: {
+                    ...state.tree.dragState,
+                    mode,
+                },
+            },
+        };
+    },
+
+    /**
+     * Start dragging a node
+     */
+    startTreeDrag: ({ sourceNodeId }) => (state): NextState => {
+        if (!state.tree.enabled) return undefined;
+
+        return {
+            tree: {
+                ...state.tree,
+                dragState: {
+                    ...state.tree.dragState,
+                    sourceNodeId,
+                    targetNodeId: null,
+                    dropSlotIndex: null,
+                },
+            },
+        };
+    },
+
+    /**
+     * Update the drag target node (for Attach modes)
+     */
+    updateTreeDragTarget: ({ targetNodeId }) => (state): NextState => {
+        if (!state.tree.enabled) return undefined;
+        if (state.tree.dragState.sourceNodeId === null) return undefined;
+
+        // Validate that target is valid (not self, not descendant of source)
+        if (targetNodeId !== null) {
+            const tree = getOrCreateTree(state);
+            const canMove = canMoveNode(tree, state.tree.dragState.sourceNodeId, targetNodeId);
+            if (!canMove) {
+                return {
+                    tree: {
+                        ...state.tree,
+                        dragState: {
+                            ...state.tree.dragState,
+                            targetNodeId: null,
+                            // Don't reset dropSlotIndex here - it's set separately
+                        },
+                    },
+                };
+            }
+        }
+
+        return {
+            tree: {
+                ...state.tree,
+                dragState: {
+                    ...state.tree.dragState,
+                    targetNodeId,
+                    // Don't reset dropSlotIndex here - it's set separately
+                },
+            },
+        };
+    },
+
+    /**
+     * Update the drop slot index (for Reorder mode)
+     */
+    updateTreeDropSlot: ({ slotIndex }) => (state): NextState => {
+        if (!state.tree.enabled) return undefined;
+        if (state.tree.dragState.sourceNodeId === null) return undefined;
+
+        // Treat -1 as null (invalid slot)
+        const validSlotIndex = slotIndex !== null && slotIndex >= 0 ? slotIndex : null;
+
+        return {
+            tree: {
+                ...state.tree,
+                dragState: {
+                    ...state.tree.dragState,
+                    // Don't reset targetNodeId here - it's set separately for Attach modes
+                    dropSlotIndex: validSlotIndex,
+                },
+            },
+        };
+    },
+
+    /**
+     * End dragging without executing drop
+     */
+    endTreeDrag: () => (state): NextState => {
+        return {
+            tree: {
+                ...state.tree,
+                dragState: {
+                    ...state.tree.dragState,
+                    sourceNodeId: null,
+                    targetNodeId: null,
+                    dropSlotIndex: null,
+                },
+            },
+        };
+    },
+
+    /**
+     * Execute the drop operation based on current drag mode
+     */
+    executeTreeDrop: () => (state): NextState => {
+        if (!state.tree.enabled) return undefined;
+
+        const { sourceNodeId, targetNodeId, dropSlotIndex, mode } = state.tree.dragState;
+
+        // For Reorder mode, use slot-based reordering (like list view)
+        if (mode === TreeDragMode.Reorder) {
+            if (sourceNodeId === null || dropSlotIndex === null) {
+                return treeOperationActions.endTreeDrag()(state);
+            }
+
+            const tree = getOrCreateTree(state);
+            const sourceNode = findNode(tree, sourceNodeId);
+            if (!sourceNode) {
+                return treeOperationActions.endTreeDrag()(state);
+            }
+
+            const fromIndex = sourceNode.pageIndex;
+            const toSlotIndex = dropSlotIndex;
+
+            // Skip no-op operations
+            if (toSlotIndex === fromIndex || toSlotIndex === fromIndex + 1) {
+                return treeOperationActions.endTreeDrag()(state);
+            }
+
+            // Use the same reorderPage action as list view
+            const { listViewActions } = require('./list_view');
+
+            return sequence(state, [
+                listViewActions.reorderPage({ fromIndex, toSlotIndex }),
+                treeOperationActions.endTreeDrag(),
+            ]);
+        }
+
+        // For Attach modes, use node-based targeting
+        if (sourceNodeId === null || targetNodeId === null) {
+            return treeOperationActions.endTreeDrag()(state);
+        }
+
+        const tree = getOrCreateTree(state);
+
+        // Validate the operation
+        if (!canMoveNode(tree, sourceNodeId, targetNodeId)) {
+            return treeOperationActions.endTreeDrag()(state);
+        }
+
+        // Create previous snapshot for history
+        const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+
+        let newTree: SerializedTree;
+
+        switch (mode) {
+        case TreeDragMode.AttachSingle:
+            // Attach single: move node to become a child of target
+            newTree = moveNodeToParent(tree, sourceNodeId, targetNodeId);
+            break;
+
+        case TreeDragMode.AttachBranch:
+            // Attach branch: move node and its right siblings to become children of target
+            newTree = moveNodeWithRightSiblingsToParent(tree, sourceNodeId, targetNodeId);
+            break;
+
+        default:
+            newTree = tree;
+        }
+
+        // Create next snapshot for history
+        const nextSnapshot = createSnapshot(newTree, state.fumen.pages, state.fumen.currentIndex);
+
+        // Create history task
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+
+        const { mementoActions } = require('./memento');
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    dragState: {
+                        ...state.tree.dragState,
+                        sourceNodeId: null,
+                        targetNodeId: null,
+                        dropSlotIndex: null,
+                    },
+                },
+            }),
+        ]);
     },
 };

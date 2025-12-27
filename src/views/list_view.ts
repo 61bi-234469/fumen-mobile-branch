@@ -7,10 +7,12 @@ import { Palette } from '../lib/colors';
 import { ListViewTools } from '../components/tools/list_view_tools';
 import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
-import { TreeViewMode } from '../lib/fumen/tree_types';
+import { TreeDragModeSwitch } from '../components/tree/tree_drag_mode_switch';
+import { TreeViewMode, TreeDragMode } from '../lib/fumen/tree_types';
 import { style, px } from '../lib/types';
 
 const TOOLS_HEIGHT = 50;
+const DRAG_MODE_SWITCH_HEIGHT = 60;
 const COLUMNS = 5;
 const ITEM_MIN_WIDTH = 100;
 const ITEM_MAX_WIDTH = 160;
@@ -46,7 +48,9 @@ export const view: View<State, Actions> = (state, actions) => {
         backgroundColor: '#f5f5f5',
     });
 
-    const gridContainerHeight = state.display.height - TOOLS_HEIGHT;
+    // When tree view is active, reserve space for the drag mode switch at the bottom
+    const isTreeView = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
+    const gridContainerHeight = state.display.height - TOOLS_HEIGHT - (isTreeView ? DRAG_MODE_SWITCH_HEIGHT : 0);
 
     const baseItemSize = Math.max(
         ITEM_MIN_WIDTH,
@@ -213,7 +217,7 @@ export const view: View<State, Actions> = (state, actions) => {
             },
         }, [
             // Conditionally render FumenGraph or ListViewGrid based on tree mode
-            state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree
+            isTreeView
                 ? FumenGraph({
                     tree: {
                         nodes: state.tree.nodes,
@@ -225,20 +229,59 @@ export const view: View<State, Actions> = (state, actions) => {
                     activeNodeId: state.tree.activeNodeId,
                     containerWidth: state.display.width,
                     containerHeight: gridContainerHeight,
+                    dragMode: state.tree.dragState.mode,
+                    dragSourceNodeId: state.tree.dragState.sourceNodeId,
+                    dragTargetNodeId: state.tree.dragState.targetNodeId,
+                    dropSlotIndex: state.tree.dragState.dropSlotIndex,
                     actions: {
                         onNodeClick: (nodeId) => {
-                            actions.selectTreeNode({ nodeId });
-                            // Navigate to editor after selecting node
-                            actions.changeToEditorFromListView();
+                            // Only navigate if not dragging
+                            if (state.tree.dragState.sourceNodeId === null) {
+                                actions.selectTreeNode({ nodeId });
+                                // Navigate to editor after selecting node
+                                actions.changeToEditorFromListView();
+                            }
                         },
                         onAddBranch: (parentNodeId) => {
-                            console.log('onAddBranch called in list_view', {
-                                parentNodeId,
-                                treeNodes: state.tree.nodes,
-                                addMode: state.tree.addMode,
-                            });
-                            // Pass parentNodeId directly to avoid state timing issues
-                            actions.addPageInTreeMode({ parentNodeId });
+                            // Branch operation: add to end of children list (create new branch)
+                            actions.addBranchFromCurrentNode({ parentNodeId });
+                        },
+                        onInsertNode: (parentNodeId) => {
+                            // INSERT operation: insert between current node and first child
+                            actions.insertNodeAfterCurrent({ parentNodeId });
+                        },
+                        onDragStart: (nodeId) => {
+                            actions.startTreeDrag({ sourceNodeId: nodeId });
+                        },
+                        onDragOverNode: (nodeId) => {
+                            if (state.tree.dragState.sourceNodeId !== null) {
+                                actions.updateTreeDragTarget({ targetNodeId: nodeId });
+                            }
+                        },
+                        onDragOverSlot: (slotIndex) => {
+                            if (state.tree.dragState.sourceNodeId !== null) {
+                                actions.updateTreeDropSlot({ slotIndex });
+                            }
+                        },
+                        onDragLeave: () => {
+                            if (state.tree.dragState.sourceNodeId !== null) {
+                                actions.updateTreeDragTarget({ targetNodeId: null });
+                                actions.updateTreeDropSlot({ slotIndex: null });
+                            }
+                        },
+                        onDrop: () => {
+                            const { sourceNodeId, targetNodeId, dropSlotIndex, mode } = state.tree.dragState;
+                            if (sourceNodeId !== null) {
+                                // All modes now use slot-based visual, but Attach modes still need targetNodeId
+                                if (mode === TreeDragMode.Reorder && dropSlotIndex !== null) {
+                                    actions.executeTreeDrop();
+                                } else if (mode !== TreeDragMode.Reorder && targetNodeId !== null && dropSlotIndex !== null) {
+                                    actions.executeTreeDrop();
+                                }
+                            }
+                        },
+                        onDragEnd: () => {
+                            actions.endTreeDrag();
                         },
                     },
                 })
@@ -324,5 +367,15 @@ export const view: View<State, Actions> = (state, actions) => {
                     },
                 }),
         ]),
+
+        // Tree drag mode switch (shown at bottom when tree view is active)
+        TreeDragModeSwitch({
+            currentMode: state.tree.dragState.mode,
+            enabled: isTreeView,
+            height: DRAG_MODE_SWITCH_HEIGHT,
+            actions: {
+                onModeChange: (mode: TreeDragMode) => actions.setTreeDragMode({ mode }),
+            },
+        }),
     ]);
 };

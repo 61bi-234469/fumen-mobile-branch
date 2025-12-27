@@ -17,6 +17,13 @@ export enum TreeViewMode {
     Tree = 'Tree',       // Git-graph style tree view
 }
 
+/** Drag mode for tree view operations */
+export enum TreeDragMode {
+    Reorder = 'Reorder',           // Reorder nodes like list view
+    AttachSingle = 'AttachSingle', // Attach current page to target branch
+    AttachBranch = 'AttachBranch', // Attach current page and all right siblings to target branch
+}
+
 /** Tree node structure */
 export interface TreeNode {
     /** Unique node identifier */
@@ -69,6 +76,18 @@ export interface TreeLayout {
     maxLane: number;
 }
 
+/** Drag state for tree view drag operations */
+export interface TreeDragState {
+    /** Current drag mode */
+    mode: TreeDragMode;
+    /** Node being dragged (null if not dragging) */
+    sourceNodeId: TreeNodeId | null;
+    /** Target node to drop onto (null if no valid target) - used for Attach modes */
+    targetNodeId: TreeNodeId | null;
+    /** Drop slot index for Reorder mode (like list view) */
+    dropSlotIndex: number | null;
+}
+
 /** Tree state for application state management */
 export interface TreeState {
     /** Whether tree mode is enabled */
@@ -83,7 +102,17 @@ export interface TreeState {
     addMode: AddMode;
     /** Current view mode (List/Tree) */
     viewMode: TreeViewMode;
+    /** Drag state for tree operations */
+    dragState: TreeDragState;
 }
+
+/** Initial drag state */
+export const initialTreeDragState: TreeDragState = {
+    mode: TreeDragMode.Reorder,
+    sourceNodeId: null,
+    targetNodeId: null,
+    dropSlotIndex: null,
+};
 
 /** Initial tree state */
 export const initialTreeState: TreeState = {
@@ -93,4 +122,5 @@ export const initialTreeState: TreeState = {
     activeNodeId: null,
     addMode: AddMode.Branch,
     viewMode: TreeViewMode.List,
+    dragState: initialTreeDragState,
 };

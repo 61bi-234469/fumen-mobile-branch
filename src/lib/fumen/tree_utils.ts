@@ -633,6 +633,319 @@ export const insertPagesIntoTree = (
 };
 
 // ============================================================================
+// Node Movement (Drag Operations)
+// ============================================================================
+
+/**
+ * Get right siblings of a node (nodes that come after it in parent's children array)
+ */
+export const getRightSiblings = (tree: SerializedTree, nodeId: TreeNodeId): TreeNodeId[] => {
+    const node = findNode(tree, nodeId);
+    if (!node || !node.parentId) return [];
+
+    const parent = findNode(tree, node.parentId);
+    if (!parent) return [];
+
+    const nodeIndex = parent.childrenIds.indexOf(nodeId);
+    if (nodeIndex === -1) return [];
+
+    return parent.childrenIds.slice(nodeIndex + 1);
+};
+
+/**
+ * Check if targetId is a descendant of sourceId (to prevent cycles)
+ */
+export const isDescendant = (tree: SerializedTree, sourceId: TreeNodeId, targetId: TreeNodeId): boolean => {
+    const descendants = getDescendants(tree, sourceId);
+    return descendants.includes(targetId);
+};
+
+/**
+ * Check if a node can be moved to a target node
+ * Returns false if:
+ * - Source and target are the same
+ * - Target is a descendant of source (would create cycle)
+ * - Source is the root (cannot move root)
+ */
+export const canMoveNode = (
+    tree: SerializedTree,
+    sourceId: TreeNodeId,
+    targetId: TreeNodeId,
+): boolean => {
+    if (sourceId === targetId) return false;
+    if (sourceId === tree.rootId) return false;
+    if (isDescendant(tree, sourceId, targetId)) return false;
+    return true;
+};
+
+/**
+ * Move a single node to become a child of target node (BRANCH behavior)
+ * The node is detached from its current parent and added as a new branch (last child) of target
+ * Source node's children stay with the old parent (not moved with source)
+ */
+export const moveNodeToParent = (
+    tree: SerializedTree,
+    sourceId: TreeNodeId,
+    targetId: TreeNodeId,
+): SerializedTree => {
+    if (!canMoveNode(tree, sourceId, targetId)) {
+        return tree;
+    }
+
+    const sourceNode = findNode(tree, sourceId);
+    const targetNode = findNode(tree, targetId);
+    if (!sourceNode || !targetNode) return tree;
+
+    const oldParentId = sourceNode.parentId;
+    const sourceChildren = [...sourceNode.childrenIds];
+
+    // If source is root node, first child becomes new root
+    let newRootId = tree.rootId;
+    if (oldParentId === null && sourceChildren.length > 0) {
+        newRootId = sourceChildren[0];
+    }
+
+    // Update all nodes
+    // Key behaviors:
+    // 1. Source's children stay with old parent
+    // 2. Source is added as a new branch (last child) of target
+    const updatedNodes = tree.nodes.map((node) => {
+        // Remove source from old parent's children, replace with source's children
+        if (oldParentId !== null && node.id === oldParentId) {
+            const sourceIndex = node.childrenIds.indexOf(sourceId);
+            const newChildrenIds = [...node.childrenIds];
+            // Replace source with its children at the same position
+            newChildrenIds.splice(sourceIndex, 1, ...sourceChildren);
+            return {
+                ...node,
+                childrenIds: newChildrenIds,
+            };
+        }
+
+        // Add source to target's children (at the end, as a new branch)
+        if (node.id === targetId) {
+            return {
+                ...node,
+                childrenIds: [...node.childrenIds, sourceId],
+            };
+        }
+
+        // Update source node: set new parent and clear children (they stay with old parent)
+        if (node.id === sourceId) {
+            return {
+                ...node,
+                parentId: targetId,
+                childrenIds: [],
+            };
+        }
+
+        // Update source's children to point to old parent (or become root children if source was root)
+        if (sourceChildren.includes(node.id)) {
+            // First child becomes new root if source was root
+            if (oldParentId === null && node.id === sourceChildren[0]) {
+                return {
+                    ...node,
+                    parentId: null,
+                };
+            }
+            // Other children become siblings of the first child (children of new root)
+            if (oldParentId === null) {
+                return {
+                    ...node,
+                    parentId: sourceChildren[0],
+                };
+            }
+            return {
+                ...node,
+                parentId: oldParentId,
+            };
+        }
+
+        return node;
+    });
+
+    // If source was root and had children, update new root's children to include other former children
+    if (oldParentId === null && sourceChildren.length > 1) {
+        const newRoot = updatedNodes.find(n => n.id === sourceChildren[0]);
+        if (newRoot) {
+            const otherChildren = sourceChildren.slice(1);
+            const index = updatedNodes.indexOf(newRoot);
+            updatedNodes[index] = {
+                ...newRoot,
+                childrenIds: [...otherChildren, ...newRoot.childrenIds],
+            };
+        }
+    }
+
+    return {
+        ...tree,
+        nodes: updatedNodes,
+        rootId: newRootId,
+    };
+};
+
+/**
+ * Move a node and all its right siblings to become children of target node
+ * The nodes are detached from their current parent and attached to the target
+ */
+export const moveNodeWithRightSiblingsToParent = (
+    tree: SerializedTree,
+    sourceId: TreeNodeId,
+    targetId: TreeNodeId,
+): SerializedTree => {
+    const sourceNode = findNode(tree, sourceId);
+    if (!sourceNode || !sourceNode.parentId) return tree;
+
+    // Get right siblings
+    const rightSiblings = getRightSiblings(tree, sourceId);
+    const nodesToMove = [sourceId, ...rightSiblings];
+
+    // Check if any node to move is an ancestor of target
+    for (const nodeId of nodesToMove) {
+        if (!canMoveNode(tree, nodeId, targetId)) {
+            return tree;
+        }
+    }
+
+    const oldParentId = sourceNode.parentId;
+
+    // Update all nodes
+    const updatedNodes = tree.nodes.map((node) => {
+        // Remove all moved nodes from old parent's children
+        if (node.id === oldParentId) {
+            return {
+                ...node,
+                childrenIds: node.childrenIds.filter(id => !nodesToMove.includes(id)),
+            };
+        }
+
+        // Add all moved nodes to new parent's children
+        if (node.id === targetId) {
+            return {
+                ...node,
+                childrenIds: [...node.childrenIds, ...nodesToMove],
+            };
+        }
+
+        // Update moved nodes' parent
+        if (nodesToMove.includes(node.id)) {
+            return {
+                ...node,
+                parentId: targetId,
+            };
+        }
+
+        return node;
+    });
+
+    return {
+        ...tree,
+        nodes: updatedNodes,
+    };
+};
+
+/**
+ * Reorder nodes by moving a node to a different position
+ * Similar to list view reorder but maintains tree structure
+ * The node is moved to become a sibling at a specific position
+ */
+export const reorderNode = (
+    tree: SerializedTree,
+    sourceId: TreeNodeId,
+    targetId: TreeNodeId,
+    insertBefore: boolean = true,
+): SerializedTree => {
+    const sourceNode = findNode(tree, sourceId);
+    const targetNode = findNode(tree, targetId);
+    if (!sourceNode || !targetNode) return tree;
+
+    // Cannot reorder root
+    if (sourceId === tree.rootId) return tree;
+
+    // Source and target must have the same parent for simple reorder
+    // Or we need to move source to target's parent
+    const targetParentId = targetNode.parentId;
+    if (!targetParentId) return tree; // Cannot insert before/after root
+
+    const oldParentId = sourceNode.parentId;
+    const isSameParent = oldParentId === targetParentId;
+
+    if (isSameParent) {
+        // Simple reorder within same parent
+        const parent = findNode(tree, oldParentId!);
+        if (!parent) return tree;
+
+        const children = [...parent.childrenIds];
+        const sourceIndex = children.indexOf(sourceId);
+        const targetIndex = children.indexOf(targetId);
+
+        if (sourceIndex === -1 || targetIndex === -1) return tree;
+        if (sourceIndex === targetIndex) return tree;
+
+        // Remove source from current position
+        children.splice(sourceIndex, 1);
+
+        // Calculate new position
+        let insertIndex = children.indexOf(targetId);
+        if (!insertBefore) {
+            insertIndex += 1;
+        }
+
+        // Insert at new position
+        children.splice(insertIndex, 0, sourceId);
+
+        return {
+            ...tree,
+            nodes: tree.nodes.map((node) => {
+                if (node.id === oldParentId) {
+                    return { ...node, childrenIds: children };
+                }
+                return node;
+            }),
+        };
+    }
+    // Move to different parent
+    const targetParent = findNode(tree, targetParentId);
+    if (!targetParent) return tree;
+
+    // Check for cycles
+    if (isDescendant(tree, sourceId, targetParentId)) return tree;
+
+    const newChildren = [...targetParent.childrenIds];
+    const targetIndex = newChildren.indexOf(targetId);
+    const insertIndex = insertBefore ? targetIndex : targetIndex + 1;
+    newChildren.splice(insertIndex, 0, sourceId);
+
+    return {
+        ...tree,
+        nodes: tree.nodes.map((node) => {
+            // Remove from old parent
+            if (node.id === oldParentId) {
+                return {
+                    ...node,
+                    childrenIds: node.childrenIds.filter(id => id !== sourceId),
+                };
+            }
+            // Add to new parent
+            if (node.id === targetParentId) {
+                return {
+                    ...node,
+                    childrenIds: newChildren,
+                };
+            }
+            // Update source node's parent
+            if (node.id === sourceId) {
+                return {
+                    ...node,
+                    parentId: targetParentId,
+                };
+            }
+            return node;
+        }),
+    };
+};
+
+// ============================================================================
 // Serialization (for fumen comment embedding)
 // ============================================================================
 
