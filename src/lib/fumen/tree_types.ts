@@ -86,6 +86,10 @@ export interface TreeDragState {
     targetNodeId: TreeNodeId | null;
     /** Drop slot index for Reorder mode (like list view) */
     dropSlotIndex: number | null;
+    /** Target button's parent node ID when dragging over an add button */
+    targetButtonParentId: TreeNodeId | null;
+    /** Type of button being hovered: 'insert' (green) or 'branch' (orange) */
+    targetButtonType: 'insert' | 'branch' | null;
 }
 
 /** Tree state for application state management */
@@ -114,6 +118,8 @@ export const initialTreeDragState: TreeDragState = {
     sourceNodeId: null,
     targetNodeId: null,
     dropSlotIndex: null,
+    targetButtonParentId: null,
+    targetButtonType: null,
 };
 
 /** Initial tree state */

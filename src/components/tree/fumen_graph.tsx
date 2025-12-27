@@ -41,6 +41,8 @@ interface Props {
     dragSourceNodeId: TreeNodeId | null;
     dragTargetNodeId: TreeNodeId | null;
     dropSlotIndex: number | null;
+    dragTargetButtonParentId: TreeNodeId | null;
+    dragTargetButtonType: 'insert' | 'branch' | null;
     actions: {
         onNodeClick: (nodeId: TreeNodeId) => void;
         onAddBranch: (parentNodeId: TreeNodeId) => void;
@@ -48,6 +50,8 @@ interface Props {
         onDragStart: (nodeId: TreeNodeId) => void;
         onDragOverNode: (nodeId: TreeNodeId) => void;
         onDragOverSlot: (slotIndex: number) => void;
+        onDragOverButton: (parentNodeId: TreeNodeId, buttonType: 'insert' | 'branch') => void;
+        onDragLeaveButton: () => void;
         onDragLeave: () => void;
         onDrop: () => void;
         onDragEnd: () => void;
@@ -137,6 +141,8 @@ const renderNode = (
     dragMode: TreeDragMode,
     isDragging: boolean,
     sourcePageIndex: number,
+    isInsertButtonHighlighted: boolean,
+    isBranchButtonHighlighted: boolean,
 ) => {
     const pos = getNodePixelPosition(layout, node.id);
     if (!pos) return null;
@@ -257,6 +263,13 @@ const renderNode = (
             }}
             ontouchstart={(e: TouchEvent) => {
                 e.preventDefault();
+                // Store touch position for button detection in list_view.ts
+                if (e.touches.length === 1 && typeof window !== 'undefined') {
+                    (window as any).__treeTouchStartPosition = {
+                        x: e.touches[0].clientX,
+                        y: e.touches[0].clientY,
+                    };
+                }
                 actions.onDragStart(node.id);
             }}
         >
@@ -325,17 +338,29 @@ const renderNode = (
                     {/* Green INSERT button - at node center (aligned with connection line) */}
                     <g
                         transform={`translate(${NODE_WIDTH + 4}, ${NODE_HEIGHT / 2})`}
+                        onmousedown={(e: MouseEvent) => {
+                            e.stopPropagation();
+                        }}
                         onclick={(e: MouseEvent) => {
                             e.stopPropagation();
-                            actions.onInsertNode(node.id);
+                            if (!isDragging) {
+                                actions.onInsertNode(node.id);
+                            }
                         }}
-                        ontouchstart={(e: TouchEvent) => {
-                            e.stopPropagation();
+                        onmouseenter={() => {
+                            if (isDragging && isValidDropTarget) {
+                                actions.onDragOverButton(node.id, 'insert');
+                            }
                         }}
-                        ontouchend={(e: TouchEvent) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            actions.onInsertNode(node.id);
+                        onmouseleave={() => {
+                            if (isDragging) {
+                                actions.onDragLeaveButton();
+                            }
+                        }}
+                        onmouseup={() => {
+                            if (isDragging && isValidDropTarget) {
+                                actions.onDrop();
+                            }
                         }}
                         style={style({ cursor: 'pointer' })}
                     >
@@ -345,9 +370,9 @@ const renderNode = (
                         />
                         <circle
                             r={ADD_BUTTON_SIZE / 2}
-                            fill="#4CAF50"
+                            fill={isInsertButtonHighlighted ? '#81C784' : '#4CAF50'}
                             stroke="#fff"
-                            stroke-width={2}
+                            stroke-width={isInsertButtonHighlighted ? 3 : 2}
                         />
                         <text
                             text-anchor="middle"
@@ -362,17 +387,29 @@ const renderNode = (
                     {/* Orange Branch button - below green button */}
                     <g
                         transform={`translate(${NODE_WIDTH + 4}, ${NODE_HEIGHT / 2 + ADD_BUTTON_SIZE + 4})`}
+                        onmousedown={(e: MouseEvent) => {
+                            e.stopPropagation();
+                        }}
                         onclick={(e: MouseEvent) => {
                             e.stopPropagation();
-                            actions.onAddBranch(node.id);
+                            if (!isDragging) {
+                                actions.onAddBranch(node.id);
+                            }
                         }}
-                        ontouchstart={(e: TouchEvent) => {
-                            e.stopPropagation();
+                        onmouseenter={() => {
+                            if (isDragging && isValidDropTarget) {
+                                actions.onDragOverButton(node.id, 'branch');
+                            }
                         }}
-                        ontouchend={(e: TouchEvent) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            actions.onAddBranch(node.id);
+                        onmouseleave={() => {
+                            if (isDragging) {
+                                actions.onDragLeaveButton();
+                            }
+                        }}
+                        onmouseup={() => {
+                            if (isDragging && isValidDropTarget) {
+                                actions.onDrop();
+                            }
                         }}
                         style={style({ cursor: 'pointer' })}
                     >
@@ -382,9 +419,9 @@ const renderNode = (
                         />
                         <circle
                             r={ADD_BUTTON_SIZE / 2}
-                            fill="#FF9800"
+                            fill={isBranchButtonHighlighted ? '#FFB74D' : '#FF9800'}
                             stroke="#fff"
-                            stroke-width={2}
+                            stroke-width={isBranchButtonHighlighted ? 3 : 2}
                         />
                         <text
                             text-anchor="middle"
@@ -401,17 +438,29 @@ const renderNode = (
                 // Single button: INSERT (green, centered)
                 <g
                     transform={`translate(${NODE_WIDTH + 4}, ${NODE_HEIGHT / 2})`}
+                    onmousedown={(e: MouseEvent) => {
+                        e.stopPropagation();
+                    }}
                     onclick={(e: MouseEvent) => {
                         e.stopPropagation();
-                        actions.onInsertNode(node.id);
+                        if (!isDragging) {
+                            actions.onInsertNode(node.id);
+                        }
                     }}
-                    ontouchstart={(e: TouchEvent) => {
-                        e.stopPropagation();
+                    onmouseenter={() => {
+                        if (isDragging && isValidDropTarget) {
+                            actions.onDragOverButton(node.id, 'insert');
+                        }
                     }}
-                    ontouchend={(e: TouchEvent) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        actions.onInsertNode(node.id);
+                    onmouseleave={() => {
+                        if (isDragging) {
+                            actions.onDragLeaveButton();
+                        }
+                    }}
+                    onmouseup={() => {
+                        if (isDragging && isValidDropTarget) {
+                            actions.onDrop();
+                        }
                     }}
                     style={style({ cursor: 'pointer' })}
                 >
@@ -421,9 +470,9 @@ const renderNode = (
                     />
                     <circle
                         r={ADD_BUTTON_SIZE / 2}
-                        fill="#4CAF50"
+                        fill={isInsertButtonHighlighted ? '#81C784' : '#4CAF50'}
                         stroke="#fff"
-                        stroke-width={2}
+                        stroke-width={isInsertButtonHighlighted ? 3 : 2}
                     />
                     <text
                         text-anchor="middle"
@@ -482,6 +531,8 @@ export const FumenGraph: Component<Props> = ({
     dragSourceNodeId,
     dragTargetNodeId,
     dropSlotIndex,
+    dragTargetButtonParentId,
+    dragTargetButtonType,
     actions,
 }) => {
     // Handle empty tree
@@ -548,6 +599,14 @@ export const FumenGraph: Component<Props> = ({
             && node.id !== dragSourceNodeId
             && canMoveNode(tree, dragSourceNodeId, node.id);
 
+        // Calculate button highlight state
+        const isInsertButtonHighlighted = isDragging
+            && dragTargetButtonParentId === node.id
+            && dragTargetButtonType === 'insert';
+        const isBranchButtonHighlighted = isDragging
+            && dragTargetButtonParentId === node.id
+            && dragTargetButtonType === 'branch';
+
         return renderNode(
             node,
             layout,
@@ -562,6 +621,8 @@ export const FumenGraph: Component<Props> = ({
             dragMode,
             isDragging,
             sourcePageIndex,
+            isInsertButtonHighlighted,
+            isBranchButtonHighlighted,
         );
     });
 

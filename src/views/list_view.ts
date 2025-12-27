@@ -18,6 +18,10 @@ const TREE_NODE_HEIGHT = 310;
 const TREE_HORIZONTAL_GAP = 50;
 const TREE_VERTICAL_GAP = 30;
 const TREE_PADDING = 20;
+const TREE_ADD_BUTTON_SIZE = 32;
+const TREE_BUTTON_X = TREE_NODE_WIDTH + 4;
+const TREE_INSERT_BUTTON_Y = TREE_NODE_HEIGHT / 2;
+const TREE_BRANCH_BUTTON_Y = TREE_NODE_HEIGHT / 2 + TREE_ADD_BUTTON_SIZE + 4;
 
 const TOOLS_HEIGHT = 50;
 const DRAG_MODE_SWITCH_HEIGHT = 60;
@@ -41,6 +45,9 @@ let pinchState: {
 // Touch drag state for detecting drop target
 let touchDragActive = false;
 let treeTouchDragActive = false;
+
+// Touch start position for detecting button taps (clientX/clientY coordinates)
+let treeTouchStartPosition: { x: number; y: number } | null = null;
 
 const getDistance = (touch1: Touch, touch2: Touch): number => {
     const dx = touch1.clientX - touch2.clientX;
@@ -173,14 +180,95 @@ export const view: View<State, Actions> = (state, actions) => {
         pinchState.active = false;
     };
 
+    // Detect if a position is over a button (returns button info or null)
+    const detectButtonAtPosition = (
+        clientX: number,
+        clientY: number,
+        container: HTMLElement,
+    ): { parentNodeId: string; type: 'insert' | 'branch' } | null => {
+        const svgElement = container.querySelector('svg') as SVGSVGElement;
+        if (!svgElement) return null;
+        const scrollContainer = svgElement.parentElement as HTMLElement;
+        if (!scrollContainer) return null;
+
+        const scrollContainerRect = scrollContainer.getBoundingClientRect();
+        const scale = state.tree.scale;
+        const svgX = (clientX - scrollContainerRect.left + scrollContainer.scrollLeft) / scale;
+        const svgY = (clientY - scrollContainerRect.top + scrollContainer.scrollTop) / scale;
+
+        const tree = {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1 as const,
+        };
+        const layout = calculateTreeLayout(tree);
+        const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
+
+        for (const node of state.tree.nodes) {
+            const pos = layout.positions.get(node.id);
+            if (!pos) continue;
+
+            const nodeX = TREE_PADDING + pos.x * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
+            const nodeY = TREE_PADDING + pos.y * (TREE_NODE_HEIGHT + TREE_VERTICAL_GAP);
+
+            // Check INSERT button (green)
+            const insertButtonCenterX = nodeX + TREE_BUTTON_X;
+            const insertButtonCenterY = nodeY + TREE_INSERT_BUTTON_Y;
+
+            const distToInsert = Math.sqrt(
+                (svgX - insertButtonCenterX) ** 2 +
+                (svgY - insertButtonCenterY) ** 2,
+            );
+
+            if (distToInsert <= buttonHitRadius) {
+                return { parentNodeId: node.id, type: 'insert' };
+            }
+
+            // Check BRANCH button (orange) - only if node has children
+            if (node.childrenIds.length > 0) {
+                const branchButtonCenterX = nodeX + TREE_BUTTON_X;
+                const branchButtonCenterY = nodeY + TREE_BRANCH_BUTTON_Y;
+
+                const distToBranch = Math.sqrt(
+                    (svgX - branchButtonCenterX) ** 2 +
+                    (svgY - branchButtonCenterY) ** 2,
+                );
+
+                if (distToBranch <= buttonHitRadius) {
+                    return { parentNodeId: node.id, type: 'branch' };
+                }
+            }
+        }
+
+        return null;
+    };
+
     // Tree view touch handlers
     const handleTreeTouchMove = (e: TouchEvent) => {
         if (state.tree.dragState.sourceNodeId === null) return;
         if (e.touches.length !== 1) return;
         if (pinchState.active) return;
 
-        treeTouchDragActive = true;
         const touch = e.touches[0];
+
+        // Get touch start position from global (set by fumen_graph.tsx node's ontouchstart)
+        const globalTouchPos = typeof window !== 'undefined'
+            ? (window as any).__treeTouchStartPosition as { x: number; y: number } | undefined
+            : undefined;
+        const startPos = globalTouchPos ?? treeTouchStartPosition;
+
+        // Require minimum movement distance before activating drag (prevents accidental drag on button tap)
+        if (!treeTouchDragActive && startPos) {
+            const dx = touch.clientX - startPos.x;
+            const dy = touch.clientY - startPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const DRAG_THRESHOLD = 10; // 10px minimum movement to start drag
+            if (distance < DRAG_THRESHOLD) {
+                return; // Not enough movement yet
+            }
+        }
+
+        treeTouchDragActive = true;
         const container = e.currentTarget as HTMLElement;
 
         // Find the scroll container - it's the div containing the SVG with overflow:auto
@@ -197,19 +285,6 @@ export const view: View<State, Actions> = (state, actions) => {
         const svgX = (touch.clientX - scrollContainerRect.left + scrollContainer.scrollLeft) / scale;
         const svgY = (touch.clientY - scrollContainerRect.top + scrollContainer.scrollTop) / scale;
 
-        // Debug logging
-        console.log('Touch drag:', {
-            touchX: touch.clientX,
-            touchY: touch.clientY,
-            rectLeft: scrollContainerRect.left,
-            rectTop: scrollContainerRect.top,
-            scrollLeft: scrollContainer.scrollLeft,
-            scrollTop: scrollContainer.scrollTop,
-            scale,
-            svgX,
-            svgY,
-        });
-
         // Build tree structure for layout calculation
         const tree = {
             nodes: state.tree.nodes,
@@ -223,10 +298,13 @@ export const view: View<State, Actions> = (state, actions) => {
         const sourceNode = state.tree.nodes.find(n => n.id === sourceNodeId);
         const sourcePageIndex = sourceNode?.pageIndex ?? -1;
 
-        // Find node under touch position
+        // Find button or node under touch position
         let foundNodeId: string | null = null;
         let foundSlotIndex: number | null = null;
+        let foundButtonParentId: string | null = null;
+        let foundButtonType: 'insert' | 'branch' | null = null;
 
+        // Check buttons first (they have priority over nodes)
         for (const node of state.tree.nodes) {
             const pos = layout.positions.get(node.id);
             if (!pos) continue;
@@ -234,12 +312,48 @@ export const view: View<State, Actions> = (state, actions) => {
             const nodeX = TREE_PADDING + pos.x * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
             const nodeY = TREE_PADDING + pos.y * (TREE_NODE_HEIGHT + TREE_VERTICAL_GAP);
 
-            console.log(`Node ${node.pageIndex}: pos=(${pos.x},${pos.y}) pixel=(${nodeX},${nodeY}) to (${nodeX + TREE_NODE_WIDTH},${nodeY + TREE_NODE_HEIGHT})`);
+            // Check INSERT button (green)
+            const insertButtonCenterX = nodeX + TREE_BUTTON_X;
+            const insertButtonCenterY = nodeY + TREE_INSERT_BUTTON_Y;
+            const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
+
+            const distToInsert = Math.sqrt(
+                (svgX - insertButtonCenterX) ** 2 +
+                (svgY - insertButtonCenterY) ** 2,
+            );
+
+            if (distToInsert <= buttonHitRadius) {
+                const isValidTarget = canMoveNode(tree, sourceNodeId!, node.id);
+                if (isValidTarget) {
+                    foundButtonParentId = node.id;
+                    foundButtonType = 'insert';
+                }
+                break;
+            }
+
+            // Check BRANCH button (orange) - only if node has children
+            if (node.childrenIds.length > 0) {
+                const branchButtonCenterX = nodeX + TREE_BUTTON_X;
+                const branchButtonCenterY = nodeY + TREE_BRANCH_BUTTON_Y;
+
+                const distToBranch = Math.sqrt(
+                    (svgX - branchButtonCenterX) ** 2 +
+                    (svgY - branchButtonCenterY) ** 2,
+                );
+
+                if (distToBranch <= buttonHitRadius) {
+                    const isValidTarget = canMoveNode(tree, sourceNodeId!, node.id);
+                    if (isValidTarget) {
+                        foundButtonParentId = node.id;
+                        foundButtonType = 'branch';
+                    }
+                    break;
+                }
+            }
 
             // Check if touch is within node bounds
             if (svgX >= nodeX && svgX <= nodeX + TREE_NODE_WIDTH &&
                 svgY >= nodeY && svgY <= nodeY + TREE_NODE_HEIGHT) {
-                console.log(`  -> HIT! svgX=${svgX}, svgY=${svgY}`);
                 const isLeftHalf = (svgX - nodeX) < TREE_NODE_WIDTH / 2;
                 const pageIndex = node.pageIndex;
 
@@ -264,40 +378,96 @@ export const view: View<State, Actions> = (state, actions) => {
             }
         }
 
-        // Update drag state
-        if (dragMode === TreeDragMode.Reorder) {
-            if (foundSlotIndex !== null && foundSlotIndex >= 0) {
-                if (state.tree.dragState.dropSlotIndex !== foundSlotIndex) {
-                    actions.updateTreeDropSlot({ slotIndex: foundSlotIndex });
-                }
-            } else if (state.tree.dragState.dropSlotIndex !== null) {
+        // Update button target state
+        if (foundButtonParentId !== null) {
+            if (state.tree.dragState.targetButtonParentId !== foundButtonParentId ||
+                state.tree.dragState.targetButtonType !== foundButtonType) {
+                actions.updateTreeDragButtonTarget({
+                    parentNodeId: foundButtonParentId,
+                    buttonType: foundButtonType,
+                });
+            }
+            // Clear node targets when over button
+            if (state.tree.dragState.targetNodeId !== null) {
+                actions.updateTreeDragTarget({ targetNodeId: null });
+            }
+            if (state.tree.dragState.dropSlotIndex !== null) {
                 actions.updateTreeDropSlot({ slotIndex: null });
             }
         } else {
-            // Attach modes
-            if (foundNodeId !== null) {
-                if (state.tree.dragState.targetNodeId !== foundNodeId) {
-                    actions.updateTreeDragTarget({ targetNodeId: foundNodeId });
-                }
-                if (foundSlotIndex !== null && state.tree.dragState.dropSlotIndex !== foundSlotIndex) {
-                    actions.updateTreeDropSlot({ slotIndex: foundSlotIndex });
+            // Clear button target if not over any button
+            if (state.tree.dragState.targetButtonParentId !== null) {
+                actions.updateTreeDragButtonTarget({ parentNodeId: null, buttonType: null });
+            }
+
+            // Update drag state for node/slot targets
+            if (dragMode === TreeDragMode.Reorder) {
+                if (foundSlotIndex !== null && foundSlotIndex >= 0) {
+                    if (state.tree.dragState.dropSlotIndex !== foundSlotIndex) {
+                        actions.updateTreeDropSlot({ slotIndex: foundSlotIndex });
+                    }
+                } else if (state.tree.dragState.dropSlotIndex !== null) {
+                    actions.updateTreeDropSlot({ slotIndex: null });
                 }
             } else {
-                if (state.tree.dragState.targetNodeId !== null) {
-                    actions.updateTreeDragTarget({ targetNodeId: null });
-                }
-                if (state.tree.dragState.dropSlotIndex !== null) {
-                    actions.updateTreeDropSlot({ slotIndex: null });
+                // Attach modes
+                if (foundNodeId !== null) {
+                    if (state.tree.dragState.targetNodeId !== foundNodeId) {
+                        actions.updateTreeDragTarget({ targetNodeId: foundNodeId });
+                    }
+                    if (foundSlotIndex !== null && state.tree.dragState.dropSlotIndex !== foundSlotIndex) {
+                        actions.updateTreeDropSlot({ slotIndex: foundSlotIndex });
+                    }
+                } else {
+                    if (state.tree.dragState.targetNodeId !== null) {
+                        actions.updateTreeDragTarget({ targetNodeId: null });
+                    }
+                    if (state.tree.dragState.dropSlotIndex !== null) {
+                        actions.updateTreeDropSlot({ slotIndex: null });
+                    }
                 }
             }
         }
     };
 
-    const handleTreeTouchEnd = () => {
+    const handleTreeTouchEnd = (e: TouchEvent) => {
+        const container = e.currentTarget as HTMLElement;
+
+        // Get touch start position from global (set by fumen_graph.tsx node's ontouchstart)
+        // This is necessary because the node's ontouchstart fires before the container's
+        const globalTouchPos = typeof window !== 'undefined'
+            ? (window as any).__treeTouchStartPosition as { x: number; y: number } | undefined
+            : undefined;
+        const touchStartPos = globalTouchPos ?? treeTouchStartPosition;
+
         if (!treeTouchDragActive) {
-            // If no drag happened, handle as potential click (navigation)
+            // No drag happened - check if this was a button tap
+            if (touchStartPos !== null && touchStartPos !== undefined) {
+                const buttonHit = detectButtonAtPosition(
+                    touchStartPos.x,
+                    touchStartPos.y,
+                    container,
+                );
+                treeTouchStartPosition = null;
+                if (typeof window !== 'undefined') {
+                    (window as any).__treeTouchStartPosition = undefined;
+                }
+
+                if (buttonHit) {
+                    // Button was tapped - execute the action
+                    actions.endTreeDrag();
+                    if (buttonHit.type === 'insert') {
+                        actions.insertNodeAfterCurrent({ parentNodeId: buttonHit.parentNodeId });
+                    } else {
+                        actions.addBranchFromCurrentNode({ parentNodeId: buttonHit.parentNodeId });
+                    }
+                    pinchState.active = false;
+                    return;
+                }
+            }
+
+            // Not a button tap - handle as node selection
             if (state.tree.dragState.sourceNodeId !== null) {
-                // Short tap without move - treat as node selection
                 const nodeId = state.tree.dragState.sourceNodeId;
                 actions.endTreeDrag();
                 actions.selectTreeNode({ nodeId });
@@ -309,10 +479,23 @@ export const view: View<State, Actions> = (state, actions) => {
 
         treeTouchDragActive = false;
 
-        const { sourceNodeId, targetNodeId, dropSlotIndex, mode } = state.tree.dragState;
+        const {
+            sourceNodeId,
+            targetNodeId,
+            dropSlotIndex,
+            mode,
+            targetButtonParentId,
+            targetButtonType,
+        } = state.tree.dragState;
+
         if (sourceNodeId !== null) {
-            if (mode === TreeDragMode.Reorder && dropSlotIndex !== null && dropSlotIndex >= 0) {
+            // Priority 1: Button drop
+            if (targetButtonParentId !== null && targetButtonType !== null) {
                 actions.executeTreeDrop();
+            // Priority 2: Reorder mode with slot
+            } else if (mode === TreeDragMode.Reorder && dropSlotIndex !== null && dropSlotIndex >= 0) {
+                actions.executeTreeDrop();
+            // Priority 3: Attach mode with target node
             } else if (mode !== TreeDragMode.Reorder && targetNodeId !== null && dropSlotIndex !== null) {
                 actions.executeTreeDrop();
             }
@@ -359,10 +542,18 @@ export const view: View<State, Actions> = (state, actions) => {
                         initialDistance: getDistance(e.touches[0], e.touches[1]),
                         initialScale: isTreeView ? state.tree.scale : state.listView.scale,
                     };
+                    treeTouchStartPosition = null;
                 } else if (e.touches.length === 1) {
                     // Reset drag active flags for new touch
                     touchDragActive = false;
                     treeTouchDragActive = false;
+                    // Save touch start position for button tap detection
+                    if (isTreeView) {
+                        treeTouchStartPosition = {
+                            x: e.touches[0].clientX,
+                            y: e.touches[0].clientY,
+                        };
+                    }
                 }
             },
             ontouchmove: (e: TouchEvent) => {
@@ -381,9 +572,9 @@ export const view: View<State, Actions> = (state, actions) => {
                     handleTouchMoveForDrag(e);
                 }
             },
-            ontouchend: () => {
+            ontouchend: (e: TouchEvent) => {
                 if (isTreeView) {
-                    handleTreeTouchEnd();
+                    handleTreeTouchEnd(e);
                 } else {
                     handleTouchEndForDrag();
                 }
@@ -407,6 +598,8 @@ export const view: View<State, Actions> = (state, actions) => {
                     dragSourceNodeId: state.tree.dragState.sourceNodeId,
                     dragTargetNodeId: state.tree.dragState.targetNodeId,
                     dropSlotIndex: state.tree.dragState.dropSlotIndex,
+                    dragTargetButtonParentId: state.tree.dragState.targetButtonParentId,
+                    dragTargetButtonType: state.tree.dragState.targetButtonType,
                     actions: {
                         onNodeClick: (nodeId) => {
                             // Only navigate if not dragging
@@ -437,6 +630,16 @@ export const view: View<State, Actions> = (state, actions) => {
                                 actions.updateTreeDropSlot({ slotIndex });
                             }
                         },
+                        onDragOverButton: (parentNodeId, buttonType) => {
+                            if (state.tree.dragState.sourceNodeId !== null) {
+                                actions.updateTreeDragButtonTarget({ parentNodeId, buttonType });
+                            }
+                        },
+                        onDragLeaveButton: () => {
+                            if (state.tree.dragState.sourceNodeId !== null) {
+                                actions.updateTreeDragButtonTarget({ parentNodeId: null, buttonType: null });
+                            }
+                        },
                         onDragLeave: () => {
                             if (state.tree.dragState.sourceNodeId !== null) {
                                 actions.updateTreeDragTarget({ targetNodeId: null });
@@ -444,11 +647,22 @@ export const view: View<State, Actions> = (state, actions) => {
                             }
                         },
                         onDrop: () => {
-                            const { sourceNodeId, targetNodeId, dropSlotIndex, mode } = state.tree.dragState;
+                            const {
+                                sourceNodeId,
+                                targetNodeId,
+                                dropSlotIndex,
+                                mode,
+                                targetButtonParentId,
+                                targetButtonType,
+                            } = state.tree.dragState;
                             if (sourceNodeId !== null) {
-                                // All modes now use slot-based visual, but Attach modes still need targetNodeId
-                                if (mode === TreeDragMode.Reorder && dropSlotIndex !== null) {
+                                // Priority 1: Button drop
+                                if (targetButtonParentId !== null && targetButtonType !== null) {
                                     actions.executeTreeDrop();
+                                // Priority 2: Reorder mode with slot
+                                } else if (mode === TreeDragMode.Reorder && dropSlotIndex !== null) {
+                                    actions.executeTreeDrop();
+                                // Priority 3: Attach mode with target node
                                 } else if (mode !== TreeDragMode.Reorder
                                     && targetNodeId !== null && dropSlotIndex !== null) {
                                     actions.executeTreeDrop();

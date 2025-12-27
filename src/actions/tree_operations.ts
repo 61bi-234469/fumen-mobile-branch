@@ -24,6 +24,7 @@ import {
     insertNode,
     removeNode,
     moveNodeToParent,
+    moveNodeToInsertPosition,
     moveNodeWithRightSiblingsToParent,
     reorderNode,
     canMoveNode,
@@ -66,6 +67,10 @@ export interface TreeOperationActions {
     startTreeDrag: (data: { sourceNodeId: TreeNodeId }) => action;
     updateTreeDragTarget: (data: { targetNodeId: TreeNodeId | null }) => action;
     updateTreeDropSlot: (data: { slotIndex: number | null }) => action;
+    updateTreeDragButtonTarget: (data: {
+        parentNodeId: TreeNodeId | null;
+        buttonType: 'insert' | 'branch' | null;
+    }) => action;
     endTreeDrag: () => action;
     executeTreeDrop: () => action;
 
@@ -672,6 +677,43 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     },
 
     /**
+     * Update the drag button target (for drag-to-button operations)
+     */
+    updateTreeDragButtonTarget: ({ parentNodeId, buttonType }) => (state): NextState => {
+        if (!state.tree.enabled) return undefined;
+        if (state.tree.dragState.sourceNodeId === null) return undefined;
+
+        // Validate that we can move to this target
+        if (parentNodeId !== null) {
+            const tree = getOrCreateTree(state);
+            const canMove = canMoveNode(tree, state.tree.dragState.sourceNodeId, parentNodeId);
+            if (!canMove) {
+                return {
+                    tree: {
+                        ...state.tree,
+                        dragState: {
+                            ...state.tree.dragState,
+                            targetButtonParentId: null,
+                            targetButtonType: null,
+                        },
+                    },
+                };
+            }
+        }
+
+        return {
+            tree: {
+                ...state.tree,
+                dragState: {
+                    ...state.tree.dragState,
+                    targetButtonParentId: parentNodeId,
+                    targetButtonType: buttonType,
+                },
+            },
+        };
+    },
+
+    /**
      * End dragging without executing drop
      */
     endTreeDrag: () => (state): NextState => {
@@ -683,6 +725,8 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     sourceNodeId: null,
                     targetNodeId: null,
                     dropSlotIndex: null,
+                    targetButtonParentId: null,
+                    targetButtonType: null,
                 },
             },
         };
@@ -694,9 +738,65 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     executeTreeDrop: () => (state): NextState => {
         if (!state.tree.enabled) return undefined;
 
-        const { sourceNodeId, targetNodeId, dropSlotIndex, mode } = state.tree.dragState;
+        const {
+            sourceNodeId,
+            targetNodeId,
+            dropSlotIndex,
+            mode,
+            targetButtonParentId,
+            targetButtonType,
+        } = state.tree.dragState;
 
-        // For Reorder mode, use slot-based reordering (like list view)
+        // Priority 1: Handle button drops (drag-to-button operation)
+        if (sourceNodeId !== null && targetButtonParentId !== null && targetButtonType !== null) {
+            const tree = getOrCreateTree(state);
+
+            // Validate the operation
+            if (!canMoveNode(tree, sourceNodeId, targetButtonParentId)) {
+                return treeOperationActions.endTreeDrag()(state);
+            }
+
+            // Create previous snapshot for history
+            const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+
+            let newTree: SerializedTree;
+            if (targetButtonType === 'insert') {
+                // INSERT: Move node to become first child of target, taking over target's first child
+                newTree = moveNodeToInsertPosition(tree, sourceNodeId, targetButtonParentId);
+            } else {
+                // BRANCH: Move node to become last child of target
+                newTree = moveNodeToParent(tree, sourceNodeId, targetButtonParentId);
+            }
+
+            // Create next snapshot for history
+            const nextSnapshot = createSnapshot(newTree, state.fumen.pages, state.fumen.currentIndex);
+
+            // Create history task
+            const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+
+            const { mementoActions } = require('./memento');
+
+            return sequence(state, [
+                mementoActions.registerHistoryTask({ task }),
+                () => ({
+                    tree: {
+                        ...state.tree,
+                        nodes: newTree.nodes,
+                        rootId: newTree.rootId,
+                        dragState: {
+                            ...state.tree.dragState,
+                            sourceNodeId: null,
+                            targetNodeId: null,
+                            dropSlotIndex: null,
+                            targetButtonParentId: null,
+                            targetButtonType: null,
+                        },
+                    },
+                }),
+            ]);
+        }
+
+        // Priority 2: For Reorder mode, use slot-based reordering (like list view)
         if (mode === TreeDragMode.Reorder) {
             if (sourceNodeId === null || dropSlotIndex === null) {
                 return treeOperationActions.endTreeDrag()(state);
@@ -725,7 +825,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             ]);
         }
 
-        // For Attach modes, use node-based targeting
+        // Priority 3: For Attach modes, use node-based targeting
         if (sourceNodeId === null || targetNodeId === null) {
             return treeOperationActions.endTreeDrag()(state);
         }
@@ -777,6 +877,8 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                         sourceNodeId: null,
                         targetNodeId: null,
                         dropSlotIndex: null,
+                        targetButtonParentId: null,
+                        targetButtonType: null,
                     },
                 },
             }),
