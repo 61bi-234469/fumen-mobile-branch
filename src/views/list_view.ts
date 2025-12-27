@@ -183,8 +183,10 @@ export const view: View<State, Actions> = (state, actions) => {
         const touch = e.touches[0];
         const container = e.currentTarget as HTMLElement;
 
-        // Find the scroll container (fumen-graph-container div)
-        const scrollContainer = container.querySelector('[key="fumen-graph-container"]') as HTMLElement;
+        // Find the scroll container - it's the div containing the SVG with overflow:auto
+        const svgElement = container.querySelector('svg') as SVGSVGElement;
+        if (!svgElement) return;
+        const scrollContainer = svgElement.parentElement as HTMLElement;
         if (!scrollContainer) return;
 
         const scrollContainerRect = scrollContainer.getBoundingClientRect();
@@ -194,6 +196,19 @@ export const view: View<State, Actions> = (state, actions) => {
         const scale = state.tree.scale;
         const svgX = (touch.clientX - scrollContainerRect.left + scrollContainer.scrollLeft) / scale;
         const svgY = (touch.clientY - scrollContainerRect.top + scrollContainer.scrollTop) / scale;
+
+        // Debug logging
+        console.log('Touch drag:', {
+            touchX: touch.clientX,
+            touchY: touch.clientY,
+            rectLeft: scrollContainerRect.left,
+            rectTop: scrollContainerRect.top,
+            scrollLeft: scrollContainer.scrollLeft,
+            scrollTop: scrollContainer.scrollTop,
+            scale,
+            svgX,
+            svgY,
+        });
 
         // Build tree structure for layout calculation
         const tree = {
@@ -219,9 +234,12 @@ export const view: View<State, Actions> = (state, actions) => {
             const nodeX = TREE_PADDING + pos.x * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
             const nodeY = TREE_PADDING + pos.y * (TREE_NODE_HEIGHT + TREE_VERTICAL_GAP);
 
+            console.log(`Node ${node.pageIndex}: pos=(${pos.x},${pos.y}) pixel=(${nodeX},${nodeY}) to (${nodeX + TREE_NODE_WIDTH},${nodeY + TREE_NODE_HEIGHT})`);
+
             // Check if touch is within node bounds
             if (svgX >= nodeX && svgX <= nodeX + TREE_NODE_WIDTH &&
                 svgY >= nodeY && svgY <= nodeY + TREE_NODE_HEIGHT) {
+                console.log(`  -> HIT! svgX=${svgX}, svgY=${svgY}`);
                 const isLeftHalf = (svgX - nodeX) < TREE_NODE_WIDTH / 2;
                 const pageIndex = node.pageIndex;
 
