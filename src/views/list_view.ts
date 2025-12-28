@@ -1,4 +1,4 @@
-import { View } from 'hyperapp';
+import { View, h } from 'hyperapp';
 import { div } from '@hyperapp/html';
 import { State } from '../states';
 import { Actions } from '../actions';
@@ -752,6 +752,75 @@ export const view: View<State, Actions> = (state, actions) => {
                         },
                     },
                 }),
+        ]),
+
+        // Undo/Redo buttons at bottom left
+        div({
+            key: 'undo-redo-buttons',
+            style: style({
+                position: 'fixed',
+                bottom: px(20),
+                left: px(20),
+                display: 'flex',
+                flexDirection: 'row',
+                gap: px(10),
+                zIndex: 100,
+            }),
+        }, [
+            // Undo button (left arrow)
+            h('button', {
+                key: 'btn-undo',
+                style: style({
+                    width: px(50),
+                    height: px(50),
+                    borderRadius: '50%',
+                    border: 'none',
+                    backgroundColor: state.history.undoCount > 0 ? '#1565C0' : '#9E9E9E',
+                    color: '#fff',
+                    fontSize: px(24),
+                    cursor: state.history.undoCount > 0 ? 'pointer' : 'default',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    opacity: state.history.undoCount > 0 ? '1' : '0.5',
+                }),
+                onclick: () => {
+                    if (state.history.undoCount > 0) {
+                        actions.undo();
+                    }
+                },
+                disabled: state.history.undoCount <= 0,
+            }, [
+                h('i', { className: 'material-icons', style: style({ fontSize: px(28) }) }, 'arrow_back'),
+            ]),
+            // Redo button (right arrow)
+            h('button', {
+                key: 'btn-redo',
+                style: style({
+                    width: px(50),
+                    height: px(50),
+                    borderRadius: '50%',
+                    border: 'none',
+                    backgroundColor: state.history.redoCount > 0 ? '#1565C0' : '#9E9E9E',
+                    color: '#fff',
+                    fontSize: px(24),
+                    cursor: state.history.redoCount > 0 ? 'pointer' : 'default',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    opacity: state.history.redoCount > 0 ? '1' : '0.5',
+                }),
+                onclick: () => {
+                    if (state.history.redoCount > 0) {
+                        actions.redo();
+                    }
+                },
+                disabled: state.history.redoCount <= 0,
+            }, [
+                h('i', { className: 'material-icons', style: style({ fontSize: px(28) }) }, 'arrow_forward'),
+            ]),
         ]),
 
     ]);
