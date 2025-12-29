@@ -486,12 +486,9 @@ export const view: View<State, Actions> = (state, actions) => {
                 }
             }
 
-            // Not a button tap - handle as node selection
+            // Not a button tap - do not navigate on field tap
             if (state.tree.dragState.sourceNodeId !== null) {
-                const nodeId = state.tree.dragState.sourceNodeId;
                 actions.endTreeDrag();
-                actions.selectTreeNode({ nodeId });
-                actions.changeToEditorFromListView();
             }
             pinchState.active = false;
             return;
@@ -685,6 +682,12 @@ export const view: View<State, Actions> = (state, actions) => {
                         onInsertNode: (parentNodeId) => {
                             // INSERT operation: insert between current node and first child
                             actions.insertNodeAfterCurrent({ parentNodeId });
+                        },
+                        onCommentChange: (pageIndex: number, comment: string) => {
+                            actions.updatePageComment({
+                                pageIndex,
+                                comment,
+                            });
                         },
                         onDragStart: (nodeId) => {
                             actions.startTreeDrag({ sourceNodeId: nodeId });

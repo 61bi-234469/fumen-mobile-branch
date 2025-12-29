@@ -24,6 +24,11 @@ const VERTICAL_GAP = 30;
 const PADDING = 20;
 const NODE_RADIUS = 8;
 const ADD_BUTTON_SIZE = 32; // Larger touch target for add button
+const COMMENT_BOX_MARGIN_X = 8;
+const COMMENT_BOX_TOP = THUMBNAIL_HEIGHT + 32;
+const COMMENT_BOX_BOTTOM_PADDING = 8;
+const COMMENT_BOX_WIDTH = NODE_WIDTH - COMMENT_BOX_MARGIN_X * 2;
+const COMMENT_BOX_HEIGHT = NODE_HEIGHT - COMMENT_BOX_TOP - COMMENT_BOX_BOTTOM_PADDING;
 
 // ============================================================================
 // Props Interface
@@ -48,6 +53,7 @@ interface Props {
         onNodeClick: (nodeId: TreeNodeId) => void;
         onAddBranch: (parentNodeId: TreeNodeId) => void;
         onInsertNode: (parentNodeId: TreeNodeId) => void;
+        onCommentChange: (pageIndex: number, comment: string) => void;
         onDragStart: (nodeId: TreeNodeId) => void;
         onDragOverNode: (nodeId: TreeNodeId) => void;
         onDragOverSlot: (slotIndex: number) => void;
@@ -134,7 +140,6 @@ const renderNode = (
     pages: Page[],
     guideLineColor: boolean,
     activeNodeId: TreeNodeId | null,
-    pagesObj: Pages,
     actions: Props['actions'],
     dfsNumber: number,
     isDragSource: boolean,
@@ -162,40 +167,6 @@ const renderNode = (
         }
     } catch (e) {
         console.warn(`Failed to generate thumbnail for page ${node.pageIndex}:`, e);
-    }
-
-    // Get comment text
-    let commentText = '';
-    try {
-        const result = pagesObj.getComment(node.pageIndex);
-        if (isTextCommentResult(result)) {
-            commentText = result.text;
-        } else {
-            commentText = result.quiz;
-        }
-    } catch {
-        commentText = '';
-    }
-
-    // Split comment into lines for display
-    const maxCharsPerLine = 12;
-    const maxLines = 3;
-    const commentLines: string[] = [];
-    if (commentText) {
-        let remaining = commentText;
-        while (remaining.length > 0 && commentLines.length < maxLines) {
-            if (remaining.length <= maxCharsPerLine) {
-                commentLines.push(remaining);
-                break;
-            }
-            commentLines.push(remaining.slice(0, maxCharsPerLine));
-            remaining = remaining.slice(maxCharsPerLine);
-        }
-        // Add ellipsis if truncated
-        if (commentText.length > maxCharsPerLine * maxLines && commentLines.length > 0) {
-            const lastIdx = commentLines.length - 1;
-            commentLines[lastIdx] = `${commentLines[lastIdx].slice(0, -1)}…`;
-        }
     }
 
     const nodeStyle = style({
@@ -372,20 +343,6 @@ const renderNode = (
             >
                 {dfsNumber}
             </text>
-
-            {/* Comment text lines */}
-            {commentLines.map((line, idx) => (
-                <text
-                    key={`comment-${idx}`}
-                    x={NODE_WIDTH / 2}
-                    y={THUMBNAIL_HEIGHT + 44 + idx * 14}
-                    text-anchor="middle"
-                    font-size="11"
-                    fill="#666"
-                >
-                    {line}
-                </text>
-            ))}
 
             {/* Branch indicator (shows if node has multiple children) */}
             {node.childrenIds.length > 1 && (
@@ -666,6 +623,13 @@ export const FumenGraph: Component<Props> = ({
         backgroundColor: '#fafafa',
     });
 
+    const canvasStyle = style({
+        position: 'relative',
+        width: px(scaledWidth),
+        height: px(scaledHeight),
+    });
+
+
     // Create Pages object for comment extraction
     const pagesObj = new Pages(pages);
 
@@ -714,7 +678,6 @@ export const FumenGraph: Component<Props> = ({
             pages,
             guideLineColor,
             activeNodeId,
-            pagesObj,
             actions,
             dfsNumber,
             isDragSource,
@@ -728,6 +691,76 @@ export const FumenGraph: Component<Props> = ({
             isParentOfDragSource,
             scale,
         );
+    });
+
+    const stopPropagation = (e: Event) => {
+        e.stopPropagation();
+    };
+
+    const commentInputs = tree.nodes.map((node) => {
+        const pos = getNodePixelPosition(layout, node.id);
+        if (!pos) return null;
+
+        let commentText = '';
+        try {
+            const result = pagesObj.getComment(node.pageIndex);
+            if (isTextCommentResult(result)) {
+                commentText = result.text;
+            } else {
+                commentText = result.quiz;
+            }
+        } catch {
+            commentText = '';
+        }
+
+        const page = pages[node.pageIndex];
+        const hasComment = commentText !== '';
+        const isCommentChanged = page?.comment.text !== undefined;
+        const showGreenStyle = hasComment && isCommentChanged;
+
+        const left = (pos.x + COMMENT_BOX_MARGIN_X) * scale;
+        const top = (pos.y + COMMENT_BOX_TOP) * scale;
+        const width = COMMENT_BOX_WIDTH * scale;
+        const height = COMMENT_BOX_HEIGHT * scale;
+
+        const fontSize = Math.max(8, Math.round(11 * scale));
+        const paddingY = Math.max(1, Math.round(2 * scale));
+        const paddingX = Math.max(2, Math.round(4 * scale));
+
+        const textareaStyle = style({
+            position: 'absolute',
+            left: px(left),
+            top: px(top),
+            width: px(width),
+            height: px(height),
+            fontSize: px(fontSize),
+            border: '1px solid #ccc',
+            borderRadius: '2px',
+            padding: `${paddingY}px ${paddingX}px`,
+            boxSizing: 'border-box',
+            resize: 'none',
+            fontFamily: 'inherit',
+            backgroundColor: showGreenStyle ? '#43a047' : '#fff',
+            color: showGreenStyle ? '#fff' : '#333',
+            pointerEvents: isDragging ? 'none' : 'auto',
+            zIndex: 2,
+        });
+
+        return h('textarea', {
+            key: `tree-comment-${node.id}`,
+            style: textareaStyle,
+            value: commentText,
+            oninput: (e: Event) => {
+                const target = e.target as HTMLTextAreaElement;
+                actions.onCommentChange(node.pageIndex, target.value);
+            },
+            onmousedown: stopPropagation,
+            onclick: stopPropagation,
+            ontouchstart: stopPropagation,
+            ontouchend: stopPropagation,
+            ondragstart: stopPropagation,
+            draggable: false,
+        });
     });
 
     // Render drop slots
@@ -936,31 +969,37 @@ export const FumenGraph: Component<Props> = ({
             onmouseup={handleMouseUp}
             onmouseleave={handleMouseUp}
         >
-            <svg
-                key="fumen-graph-svg"
-                width={scaledWidth}
-                height={scaledHeight}
-                style={style({ display: 'block' })}
-                onmousemove={handleSvgMouseMove}
+            <div
+                key="fumen-graph-canvas"
+                style={canvasStyle}
             >
-                {/* Scale transform group */}
-                <g key="scale-group" transform={`scale(${scale})`}>
-                    {/* Connections layer (behind nodes) */}
-                    <g key="connections-layer">
-                        {connections}
-                    </g>
+                <svg
+                    key="fumen-graph-svg"
+                    width={scaledWidth}
+                    height={scaledHeight}
+                    style={style({ display: 'block', position: 'absolute', left: '0', top: '0', zIndex: 1 })}
+                    onmousemove={handleSvgMouseMove}
+                >
+                    {/* Scale transform group */}
+                    <g key="scale-group" transform={`scale(${scale})`}>
+                        {/* Connections layer (behind nodes) */}
+                        <g key="connections-layer">
+                            {connections}
+                        </g>
 
-                    {/* Drop slots layer (behind nodes but visible) */}
-                    <g key="drop-slots-layer">
-                        {dropSlots}
-                    </g>
+                        {/* Drop slots layer (behind nodes but visible) */}
+                        <g key="drop-slots-layer">
+                            {dropSlots}
+                        </g>
 
-                    {/* Nodes layer */}
-                    <g key="nodes-layer">
-                        {nodes}
+                        {/* Nodes layer */}
+                        <g key="nodes-layer">
+                            {nodes}
+                        </g>
                     </g>
-                </g>
-            </svg>
+                </svg>
+                {commentInputs}
+            </div>
         </div>
     );
 };
