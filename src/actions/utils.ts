@@ -61,7 +61,15 @@ export const utilsActions: Readonly<UtilsActions> = {
         return utilsActions.loadFumen({ fumen: 'v115@vhAAgH' })(state);
     },
     loadPages: ({ pages, loadedFumen }) => (state): NextState => {
-        const prevPages = state.fumen.pages.map(toPrimitivePage);
+        const prevTree: SerializedTree | null = state.tree.enabled ? {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1,
+        } : null;
+
+        // Preserve current tree in history snapshot so undo can restore it
+        const prevPagesWithTree = embedTreeInPages(state.fumen.pages, prevTree, state.tree.enabled);
+        const prevPages = prevPagesWithTree.map(toPrimitivePage);
         const currentIndex = state.fumen.currentIndex;
 
         console.log('loadPages: pages[0].comment =', pages[0]?.comment);
@@ -81,8 +89,8 @@ export const utilsActions: Readonly<UtilsActions> = {
 
         return sequence(state, [
             actions.setPages({ pages: cleanedPages }),
-            actions.registerHistoryTask({ task: toFumenTask(prevPages, loadedFumen, currentIndex) }),
             () => ({ tree: treeState }),
+            actions.registerHistoryTask({ task: toFumenTask(prevPages, loadedFumen, currentIndex) }),
         ]);
     },
     commitAppendFumenData: ({ position }) => (state): NextState => {

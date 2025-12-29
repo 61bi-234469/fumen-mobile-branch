@@ -665,16 +665,16 @@ export const isDescendant = (tree: SerializedTree, sourceId: TreeNodeId, targetI
  * Returns false if:
  * - Source and target are the same
  * - Target is a descendant of source (would create cycle)
- * - Source is the root (cannot move root)
+ *   (root is exempt because move handlers re-root safely)
  */
 export const canMoveNode = (
     tree: SerializedTree,
     sourceId: TreeNodeId,
     targetId: TreeNodeId,
+    options: { allowDescendant?: boolean } = {},
 ): boolean => {
     if (sourceId === targetId) return false;
-    if (sourceId === tree.rootId) return false;
-    if (isDescendant(tree, sourceId, targetId)) return false;
+    if (!options.allowDescendant && sourceId !== tree.rootId && isDescendant(tree, sourceId, targetId)) return false;
     return true;
 };
 
@@ -688,8 +688,9 @@ export const moveNodeToInsertPosition = (
     tree: SerializedTree,
     sourceId: TreeNodeId,
     targetId: TreeNodeId,
+    options: { allowDescendant?: boolean } = {},
 ): SerializedTree => {
-    if (!canMoveNode(tree, sourceId, targetId)) {
+    if (!canMoveNode(tree, sourceId, targetId, options)) {
         return tree;
     }
 
@@ -797,8 +798,9 @@ export const moveNodeToParent = (
     tree: SerializedTree,
     sourceId: TreeNodeId,
     targetId: TreeNodeId,
+    options: { allowDescendant?: boolean } = {},
 ): SerializedTree => {
-    if (!canMoveNode(tree, sourceId, targetId)) {
+    if (!canMoveNode(tree, sourceId, targetId, options)) {
         return tree;
     }
 
@@ -808,6 +810,7 @@ export const moveNodeToParent = (
 
     const oldParentId = sourceNode.parentId;
     const sourceChildren = [...sourceNode.childrenIds];
+    const isSameParentTarget = oldParentId !== null && oldParentId === targetId;
 
     // If source is root node, first child becomes new root
     let newRootId = tree.rootId;
@@ -823,9 +826,15 @@ export const moveNodeToParent = (
         // Remove source from old parent's children, replace with source's children
         if (oldParentId !== null && node.id === oldParentId) {
             const sourceIndex = node.childrenIds.indexOf(sourceId);
-            const newChildrenIds = [...node.childrenIds];
-            // Replace source with its children at the same position
-            newChildrenIds.splice(sourceIndex, 1, ...sourceChildren);
+            let newChildrenIds = node.childrenIds.filter(id => id !== sourceId);
+            if (sourceIndex >= 0) {
+                newChildrenIds.splice(sourceIndex, 0, ...sourceChildren);
+            } else if (sourceChildren.length > 0) {
+                newChildrenIds = [...newChildrenIds, ...sourceChildren];
+            }
+            if (isSameParentTarget) {
+                newChildrenIds = [...newChildrenIds, sourceId];
+            }
             return {
                 ...node,
                 childrenIds: newChildrenIds,
@@ -833,7 +842,7 @@ export const moveNodeToParent = (
         }
 
         // Add source to target's children (at the end, as a new branch)
-        if (node.id === targetId) {
+        if (!isSameParentTarget && node.id === targetId) {
             return {
                 ...node,
                 childrenIds: [...node.childrenIds, sourceId],

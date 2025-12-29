@@ -28,6 +28,8 @@ import {
     moveNodeWithRightSiblingsToParent,
     reorderNode,
     canMoveNode,
+    isDescendant,
+    validateTree,
     embedTreeInPages,
 } from '../lib/fumen/tree_utils';
 import { OperationTask, toPrimitivePage, toPage, PrimitivePage } from '../history_task';
@@ -35,6 +37,213 @@ import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
 import { Pages, PageFieldOperation } from '../lib/pages';
+
+// ============================================================================
+// Helpers for root reparenting
+// ============================================================================
+
+/**
+ * Re-root the tree by promoting the old root's first child.
+ * The promoted child becomes the new root, and the old root's other children
+ * are re-parented under the new root. The old root is left detached (no parent/children).
+ * Returns null when re-rooting is not possible (no root or no children).
+ */
+const rerootByFirstChild = (tree: SerializedTree): { tree: SerializedTree; newRootId: TreeNodeId } | null => {
+    if (!tree.rootId) return null;
+    const oldRoot = findNode(tree, tree.rootId);
+    if (!oldRoot || oldRoot.childrenIds.length === 0) return null;
+
+    const [newRootId, ...siblingIds] = oldRoot.childrenIds;
+    const updatedNodes = tree.nodes.map((node) => {
+        // New root: no parent, siblings become its children (prepend to keep sibling order)
+        if (node.id === newRootId) {
+            return {
+                ...node,
+                parentId: null,
+                childrenIds: [...siblingIds, ...node.childrenIds],
+            };
+        }
+
+        // Siblings: re-parent under new root
+        if (siblingIds.includes(node.id)) {
+            return {
+                ...node,
+                parentId: newRootId,
+            };
+        }
+
+        // Old root: detach children, parent set later when attaching
+        if (node.id === tree.rootId) {
+            return {
+                ...node,
+                parentId: null,
+                childrenIds: [],
+            };
+        }
+
+        return node;
+    });
+
+    return {
+        newRootId,
+        tree: {
+            ...tree,
+            nodes: updatedNodes,
+            rootId: newRootId,
+        },
+    };
+};
+
+/**
+ * Detach a node while leaving its children in place (re-parented to old parent).
+ * Source node becomes detached (parent = null, children = []).
+ */
+const detachNodeLeavingChildren = (tree: SerializedTree, sourceId: TreeNodeId): SerializedTree => {
+    const sourceNode = findNode(tree, sourceId);
+    if (!sourceNode) return tree;
+
+    const oldParentId = sourceNode.parentId;
+    const sourceChildren = [...sourceNode.childrenIds];
+
+    // If source is root node, first child becomes new root
+    let newRootId = tree.rootId;
+    if (oldParentId === null && sourceChildren.length > 0) {
+        newRootId = sourceChildren[0];
+    }
+
+    const updatedNodes = tree.nodes.map((node) => {
+        // Remove source from old parent's children, replace with source's children
+        if (oldParentId !== null && node.id === oldParentId) {
+            const sourceIndex = node.childrenIds.indexOf(sourceId);
+            if (sourceIndex === -1) return node;
+            const newChildrenIds = [...node.childrenIds];
+            newChildrenIds.splice(sourceIndex, 1, ...sourceChildren);
+            return {
+                ...node,
+                childrenIds: newChildrenIds,
+            };
+        }
+
+        // Detach source: parent null, children cleared
+        if (node.id === sourceId) {
+            return {
+                ...node,
+                parentId: null,
+                childrenIds: [],
+            };
+        }
+
+        // Update source's children to point to old parent (or become root children if source was root)
+        if (sourceChildren.includes(node.id)) {
+            if (oldParentId === null && node.id === sourceChildren[0]) {
+                return {
+                    ...node,
+                    parentId: null,
+                };
+            }
+            if (oldParentId === null) {
+                return {
+                    ...node,
+                    parentId: sourceChildren[0],
+                };
+            }
+            return {
+                ...node,
+                parentId: oldParentId,
+            };
+        }
+
+        return node;
+    });
+
+    // If source was root and had children, update new root's children
+    if (oldParentId === null && sourceChildren.length > 1) {
+        const newRoot = updatedNodes.find(n => n.id === sourceChildren[0]);
+        if (newRoot) {
+            const otherChildren = sourceChildren.slice(1);
+            const index = updatedNodes.indexOf(newRoot);
+            updatedNodes[index] = {
+                ...newRoot,
+                childrenIds: [...otherChildren, ...newRoot.childrenIds],
+            };
+        }
+    }
+
+    return {
+        ...tree,
+        nodes: updatedNodes,
+        rootId: newRootId,
+    };
+};
+
+/**
+ * Attach a detached node (source) under target with insert/branch semantics.
+ * Assumes source is not currently in the target's subtree (cycle-free).
+ */
+const attachDetachedNodeToTarget = (
+    tree: SerializedTree,
+    sourceId: TreeNodeId,
+    targetId: TreeNodeId,
+    buttonType: 'insert' | 'branch',
+): SerializedTree => {
+    const sourceNode = findNode(tree, sourceId);
+    const targetNode = findNode(tree, targetId);
+    if (!sourceNode || !targetNode) return tree;
+
+    const updatedNodes = tree.nodes.map((node) => {
+        // Update target children
+        if (node.id === targetId) {
+            if (buttonType === 'insert') {
+                const firstChild = node.childrenIds[0];
+                const rest = node.childrenIds.slice(1);
+                return {
+                    ...node,
+                    childrenIds: [sourceId, ...rest],
+                };
+            }
+            // branch: append
+            return {
+                ...node,
+                childrenIds: [...node.childrenIds, sourceId],
+            };
+        }
+
+        // Update source parent/children
+        if (node.id === sourceId) {
+            if (buttonType === 'insert') {
+                const firstChild = targetNode.childrenIds[0];
+                return {
+                    ...node,
+                    parentId: targetId,
+                    childrenIds: firstChild ? [firstChild] : [],
+                };
+            }
+            return {
+                ...node,
+                parentId: targetId,
+                // branch: leave existing children as-is (should be empty after reroot)
+            };
+        }
+
+        // Update target's old first child parent when insert
+        if (buttonType === 'insert') {
+            const firstChild = targetNode.childrenIds[0];
+            if (firstChild && node.id === firstChild) {
+                return {
+                    ...node,
+                    parentId: sourceId,
+                };
+            }
+        }
+
+        return node;
+    });
+
+    return {
+        ...tree,
+        nodes: updatedNodes,
+    };
+};
 
 // ============================================================================
 // Action Interface
@@ -686,7 +895,9 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Validate that we can move to this target
         if (parentNodeId !== null) {
             const tree = getOrCreateTree(state);
-            const canMove = canMoveNode(tree, state.tree.dragState.sourceNodeId, parentNodeId);
+            const canMove = canMoveNode(tree, state.tree.dragState.sourceNodeId, parentNodeId, {
+                allowDescendant: true,
+            });
             if (!canMove) {
                 return {
                     tree: {
@@ -750,9 +961,59 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Priority 1: Handle button drops (drag-to-button operation)
         if (sourceNodeId !== null && targetButtonParentId !== null && targetButtonType !== null) {
             const tree = getOrCreateTree(state);
+            const targetNode = findNode(tree, targetButtonParentId);
+
+            // No-op guard: dragging only child back onto its own parent as a new branch
+            if (
+                targetButtonType === 'branch' &&
+                targetNode &&
+                targetNode.childrenIds.length === 1 &&
+                targetNode.childrenIds[0] === sourceNodeId
+            ) {
+                return treeOperationActions.endTreeDrag()(state);
+            }
+
+            // Root-specific re-rooting when moving root
+            if (tree.rootId && sourceNodeId === tree.rootId) {
+                const rerooted = rerootByFirstChild(tree);
+                if (!rerooted) {
+                    return treeOperationActions.endTreeDrag()(state);
+                }
+                const reparentedTree = attachDetachedNodeToTarget(
+                    rerooted.tree,
+                    sourceNodeId,
+                    targetButtonParentId,
+                    targetButtonType,
+                );
+
+                // Create history snapshots
+                const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+                const nextSnapshot = createSnapshot(reparentedTree, state.fumen.pages, state.fumen.currentIndex);
+                const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+                const { mementoActions } = require('./memento');
+
+                return sequence(state, [
+                    mementoActions.registerHistoryTask({ task }),
+                    () => ({
+                        tree: {
+                            ...state.tree,
+                            nodes: reparentedTree.nodes,
+                            rootId: reparentedTree.rootId,
+                            dragState: {
+                                ...state.tree.dragState,
+                                sourceNodeId: null,
+                                targetNodeId: null,
+                                dropSlotIndex: null,
+                                targetButtonParentId: null,
+                                targetButtonType: null,
+                            },
+                        },
+                    }),
+                ]);
+            }
 
             // Validate the operation
-            if (!canMoveNode(tree, sourceNodeId, targetButtonParentId)) {
+            if (!canMoveNode(tree, sourceNodeId, targetButtonParentId, { allowDescendant: true })) {
                 return treeOperationActions.endTreeDrag()(state);
             }
 
@@ -760,12 +1021,29 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
 
             let newTree: SerializedTree;
-            if (targetButtonType === 'insert') {
+            const targetIsDescendant = isDescendant(tree, sourceNodeId, targetButtonParentId);
+            if (targetIsDescendant) {
+                // Detach first to avoid cycles, then attach under target
+                const detachedTree = detachNodeLeavingChildren(tree, sourceNodeId);
+                newTree = attachDetachedNodeToTarget(
+                    detachedTree,
+                    sourceNodeId,
+                    targetButtonParentId,
+                    targetButtonType,
+                );
+            } else if (targetButtonType === 'insert') {
                 // INSERT: Move node to become first child of target, taking over target's first child
-                newTree = moveNodeToInsertPosition(tree, sourceNodeId, targetButtonParentId);
+                newTree = moveNodeToInsertPosition(tree, sourceNodeId, targetButtonParentId, { allowDescendant: true });
             } else {
                 // BRANCH: Move node to become last child of target
-                newTree = moveNodeToParent(tree, sourceNodeId, targetButtonParentId);
+                newTree = moveNodeToParent(tree, sourceNodeId, targetButtonParentId, { allowDescendant: true });
+            }
+
+            // Abort if resulting tree is invalid (e.g., would introduce a cycle)
+            const validation = validateTree(newTree);
+            if (!validation.valid) {
+                console.warn('executeTreeDrop: invalid tree after button drop', validation.errors);
+                return treeOperationActions.endTreeDrag()(state);
             }
 
             // Create next snapshot for history
@@ -831,6 +1109,47 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         }
 
         const tree = getOrCreateTree(state);
+
+        // Root-specific handling for attach modes
+        if (tree.rootId && sourceNodeId === tree.rootId) {
+            const rerooted = rerootByFirstChild(tree);
+            if (!rerooted || targetNodeId === null) {
+                return treeOperationActions.endTreeDrag()(state);
+            }
+
+            // Use attach semantics similar to branch (append) for AttachSingle/AttachBranch
+            const buttonType = mode === TreeDragMode.AttachSingle ? 'branch' : 'branch';
+            const reparentedTree = attachDetachedNodeToTarget(
+                rerooted.tree,
+                sourceNodeId,
+                targetNodeId,
+                buttonType,
+            );
+
+            const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+            const nextSnapshot = createSnapshot(reparentedTree, state.fumen.pages, state.fumen.currentIndex);
+            const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+            const { mementoActions } = require('./memento');
+
+            return sequence(state, [
+                mementoActions.registerHistoryTask({ task }),
+                () => ({
+                    tree: {
+                        ...state.tree,
+                        nodes: reparentedTree.nodes,
+                        rootId: reparentedTree.rootId,
+                        dragState: {
+                            ...state.tree.dragState,
+                            sourceNodeId: null,
+                            targetNodeId: null,
+                            dropSlotIndex: null,
+                            targetButtonParentId: null,
+                            targetButtonType: null,
+                        },
+                    },
+                }),
+            ]);
+        }
 
         // Validate the operation
         if (!canMoveNode(tree, sourceNodeId, targetNodeId)) {

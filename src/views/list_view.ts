@@ -301,7 +301,9 @@ export const view: View<State, Actions> = (state, actions) => {
         let foundButtonParentId: string | null = null;
         let foundButtonType: 'insert' | 'branch' | null = null;
 
-        // Check buttons first (they have priority over nodes)
+        const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
+
+        // First pass: Check ALL buttons (they have priority over nodes)
         for (const node of state.tree.nodes) {
             const pos = layout.positions.get(node.id);
             if (!pos) continue;
@@ -312,7 +314,6 @@ export const view: View<State, Actions> = (state, actions) => {
             // Check INSERT button (green)
             const insertButtonCenterX = nodeX + TREE_BUTTON_X;
             const insertButtonCenterY = nodeY + TREE_INSERT_BUTTON_Y;
-            const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
 
             const distToInsert = Math.sqrt(
                 (svgX - insertButtonCenterX) ** 2 +
@@ -320,12 +321,14 @@ export const view: View<State, Actions> = (state, actions) => {
             );
 
             if (distToInsert <= buttonHitRadius) {
-                const isValidTarget = canMoveNode(tree, sourceNodeId!, node.id);
+                const isValidTarget = canMoveNode(tree, sourceNodeId!, node.id, { allowDescendant: true });
                 if (isValidTarget) {
                     foundButtonParentId = node.id;
                     foundButtonType = 'insert';
+                    break;  // Only break when we found a valid target
                 }
-                break;
+                // If not valid target, continue checking other buttons
+                continue;
             }
 
             // Check BRANCH button (orange) - only if node has children
@@ -339,39 +342,52 @@ export const view: View<State, Actions> = (state, actions) => {
                 );
 
                 if (distToBranch <= buttonHitRadius) {
-                    const isValidTarget = canMoveNode(tree, sourceNodeId!, node.id);
+                    const isValidTarget = canMoveNode(tree, sourceNodeId!, node.id, { allowDescendant: true });
                     if (isValidTarget) {
                         foundButtonParentId = node.id;
                         foundButtonType = 'branch';
+                        break;  // Only break when we found a valid target
+                    }
+                    // If not valid target, continue checking other buttons
+                    continue;
+                }
+            }
+        }
+
+        // Second pass: Check node bounds (only if no button was found)
+        if (foundButtonParentId === null) {
+            for (const node of state.tree.nodes) {
+                const pos = layout.positions.get(node.id);
+                if (!pos) continue;
+
+                const nodeX = TREE_PADDING + pos.x * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
+                const nodeY = TREE_PADDING + pos.y * (TREE_NODE_HEIGHT + TREE_VERTICAL_GAP);
+
+                // Check if touch is within node bounds
+                if (svgX >= nodeX && svgX <= nodeX + TREE_NODE_WIDTH &&
+                    svgY >= nodeY && svgY <= nodeY + TREE_NODE_HEIGHT) {
+                    const isLeftHalf = (svgX - nodeX) < TREE_NODE_WIDTH / 2;
+                    const pageIndex = node.pageIndex;
+
+                    if (dragMode === TreeDragMode.Reorder) {
+                        // Reorder mode: slot-based
+                        const slotIndex = isLeftHalf ? pageIndex : pageIndex + 1;
+                        const isNoOpSlot = slotIndex === sourcePageIndex || slotIndex === sourcePageIndex + 1;
+                        if (!isNoOpSlot) {
+                            foundSlotIndex = slotIndex;
+                        } else {
+                            foundSlotIndex = -1;  // Invalid slot
+                        }
+                    } else {
+                        // Attach modes: need valid target
+                        const isValidTarget = canMoveNode(tree, sourceNodeId!, node.id);
+                        if (isValidTarget) {
+                            foundNodeId = node.id;
+                            foundSlotIndex = pageIndex + 1;
+                        }
                     }
                     break;
                 }
-            }
-
-            // Check if touch is within node bounds
-            if (svgX >= nodeX && svgX <= nodeX + TREE_NODE_WIDTH &&
-                svgY >= nodeY && svgY <= nodeY + TREE_NODE_HEIGHT) {
-                const isLeftHalf = (svgX - nodeX) < TREE_NODE_WIDTH / 2;
-                const pageIndex = node.pageIndex;
-
-                if (dragMode === TreeDragMode.Reorder) {
-                    // Reorder mode: slot-based
-                    const slotIndex = isLeftHalf ? pageIndex : pageIndex + 1;
-                    const isNoOpSlot = slotIndex === sourcePageIndex || slotIndex === sourcePageIndex + 1;
-                    if (!isNoOpSlot) {
-                        foundSlotIndex = slotIndex;
-                    } else {
-                        foundSlotIndex = -1;  // Invalid slot
-                    }
-                } else {
-                    // Attach modes: need valid target
-                    const isValidTarget = canMoveNode(tree, sourceNodeId!, node.id);
-                    if (isValidTarget) {
-                        foundNodeId = node.id;
-                        foundSlotIndex = pageIndex + 1;
-                    }
-                }
-                break;
             }
         }
 
@@ -485,20 +501,26 @@ export const view: View<State, Actions> = (state, actions) => {
             targetButtonType,
         } = state.tree.dragState;
 
+        let didDrop = false;
         if (sourceNodeId !== null) {
             // Priority 1: Button drop
             if (targetButtonParentId !== null && targetButtonType !== null) {
                 actions.executeTreeDrop();
+                didDrop = true;
             // Priority 2: Reorder mode with slot
             } else if (mode === TreeDragMode.Reorder && dropSlotIndex !== null && dropSlotIndex >= 0) {
                 actions.executeTreeDrop();
+                didDrop = true;
             // Priority 3: Attach mode with target node
             } else if (mode !== TreeDragMode.Reorder && targetNodeId !== null && dropSlotIndex !== null) {
                 actions.executeTreeDrop();
+                didDrop = true;
             }
         }
 
-        actions.endTreeDrag();
+        if (!didDrop) {
+            actions.endTreeDrag();
+        }
         pinchState.active = false;
     };
 

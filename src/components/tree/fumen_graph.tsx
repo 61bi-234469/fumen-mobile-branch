@@ -138,11 +138,14 @@ const renderNode = (
     dfsNumber: number,
     isDragSource: boolean,
     isValidDropTarget: boolean,
+    isValidButtonTarget: boolean,
     dragMode: TreeDragMode,
     isDragging: boolean,
     sourcePageIndex: number,
     isInsertButtonHighlighted: boolean,
     isBranchButtonHighlighted: boolean,
+    isParentOfDragSource: boolean,
+    scale: number,
 ) => {
     const pos = getNodePixelPosition(layout, node.id);
     if (!pos) return null;
@@ -231,10 +234,60 @@ const renderNode = (
             onmousemove={(e: MouseEvent) => {
                 // Detect slot based on mouse position within node
                 if (isDragging) {
-                    const target = e.currentTarget as SVGGElement;
-                    const rect = target.getBoundingClientRect();
-                    const xInNode = e.clientX - rect.left;
-                    const isLeftHalf = xInNode < rect.width / 2;
+                    // Get mouse position relative to SVG, then subtract node position
+                    // This is more reliable than using getBoundingClientRect on <g> which only covers visual content
+                    const svg = (e.currentTarget as SVGGElement).ownerSVGElement;
+                    if (!svg) return;
+                    const svgRect = svg.getBoundingClientRect();
+                    const scrollLeft = svg.parentElement?.scrollLeft ?? 0;
+                    const scrollTop = svg.parentElement?.scrollTop ?? 0;
+
+                    // Mouse position in SVG coordinates (accounting for scale and scroll)
+                    const mouseXInSvg = (e.clientX - svgRect.left + scrollLeft) / scale;
+                    const mouseYInSvg = (e.clientY - svgRect.top + scrollTop) / scale;
+
+                    // Calculate mouse position relative to this node
+                    const xInNode = mouseXInSvg - pos.x;
+                    const yInNode = mouseYInSvg - pos.y;
+
+                    // Check if mouse is over button area (right side of node)
+                    // Buttons are at x = NODE_WIDTH + 4 (relative to node), so check if we're past NODE_WIDTH
+                    const buttonAreaStartX = NODE_WIDTH;
+                    const isOverButtonArea = xInNode >= buttonAreaStartX;
+
+                    if (isOverButtonArea) {
+                        // Mouse is in button area - check which button
+                        const buttonCenterX = NODE_WIDTH + 4;
+                        const insertButtonCenterY = NODE_HEIGHT / 2;
+                        const branchButtonCenterY = NODE_HEIGHT / 2 + ADD_BUTTON_SIZE + 4;
+                        const buttonHitRadius = ADD_BUTTON_SIZE / 2 + 6;
+
+                        const distToInsert = Math.sqrt(
+                            (xInNode - buttonCenterX) ** 2 + (yInNode - insertButtonCenterY) ** 2,
+                        );
+                        const distToBranch = Math.sqrt(
+                            (xInNode - buttonCenterX) ** 2 + (yInNode - branchButtonCenterY) ** 2,
+                        );
+
+                        if (distToInsert <= buttonHitRadius && isValidButtonTarget) {
+                            e.stopPropagation(); // Prevent SVG handler from overriding
+                            actions.onDragOverButton(node.id, 'insert');
+                            return;
+                        }
+                        if (node.childrenIds.length > 0 && distToBranch <= buttonHitRadius && isValidButtonTarget) {
+                            e.stopPropagation(); // Prevent SVG handler from overriding
+                            actions.onDragOverButton(node.id, 'branch');
+                            return;
+                        }
+                        // Over button area but not hitting this node's buttons
+                        // Let SVG handler check other nodes' buttons
+                        return;
+                    }
+
+                    // Not over button area - handle slot detection
+                    // Don't clear button target here - SVG handler will manage it
+
+                    const isLeftHalf = xInNode < NODE_WIDTH / 2;
                     const pageIndex = node.pageIndex;
 
                     if (dragMode === TreeDragMode.Reorder) {
@@ -295,14 +348,26 @@ const renderNode = (
                 />
             )}
 
-            {/* DFS order number */}
+            {/* DFS order number - clickable link to jump to page */}
             <text
                 x={NODE_WIDTH / 2}
                 y={THUMBNAIL_HEIGHT + 24}
                 text-anchor="middle"
                 font-size="16"
-                font-weight={isActive ? 'bold' : 'normal'}
-                fill={isActive ? '#1565C0' : '#333'}
+                font-weight="bold"
+                fill="#1976D2"
+                text-decoration="underline"
+                style={style({ cursor: 'pointer' })}
+                onclick={(e: MouseEvent) => {
+                    e.stopPropagation();
+                    actions.onNodeClick(node.id);
+                }}
+                onmousedown={(e: MouseEvent) => {
+                    e.stopPropagation();
+                }}
+                ontouchstart={(e: TouchEvent) => {
+                    e.stopPropagation();
+                }}
             >
                 {dfsNumber}
             </text>
@@ -332,10 +397,12 @@ const renderNode = (
             )}
 
             {/* Add buttons - INSERT (green) and Branch (orange) */}
+            {/* When dragging from a child node, parent's INSERT button becomes red delete button */}
+            {/* and Branch button is hidden */}
             {node.childrenIds.length > 0 ? (
                 // Two buttons: INSERT (green, at center/line level) and Branch (orange, below)
                 <g key="add-buttons">
-                    {/* Green INSERT button - at node center (aligned with connection line) */}
+                    {/* INSERT button - green normally, red when parent of drag source */}
                     <g
                         transform={`translate(${NODE_WIDTH + 4}, ${NODE_HEIGHT / 2})`}
                         onmousedown={(e: MouseEvent) => {
@@ -347,18 +414,24 @@ const renderNode = (
                                 actions.onInsertNode(node.id);
                             }
                         }}
-                        onmouseenter={() => {
-                            if (isDragging && isValidDropTarget) {
+                        onmouseenter={(e: MouseEvent) => {
+                            if (isDragging && isValidButtonTarget) {
+                                e.stopPropagation();
+                                actions.onDragOverButton(node.id, 'insert');
+                            }
+                        }}
+                        onmousemove={(e: MouseEvent) => {
+                            // Keep button highlighted while mouse is over it
+                            if (isDragging && isValidButtonTarget) {
+                                e.stopPropagation();
                                 actions.onDragOverButton(node.id, 'insert');
                             }
                         }}
                         onmouseleave={() => {
-                            if (isDragging) {
-                                actions.onDragLeaveButton();
-                            }
+                            // Don't clear here - let SVG handler manage it
                         }}
                         onmouseup={() => {
-                            if (isDragging && isValidDropTarget) {
+                            if (isDragging && isValidButtonTarget) {
                                 actions.onDrop();
                             }
                         }}
@@ -370,7 +443,9 @@ const renderNode = (
                         />
                         <circle
                             r={ADD_BUTTON_SIZE / 2}
-                            fill={isInsertButtonHighlighted ? '#81C784' : '#4CAF50'}
+                            fill={isParentOfDragSource
+                                ? (isInsertButtonHighlighted ? '#EF5350' : '#F44336')
+                                : (isInsertButtonHighlighted ? '#81C784' : '#4CAF50')}
                             stroke="#fff"
                             stroke-width={isInsertButtonHighlighted ? 3 : 2}
                         />
@@ -381,10 +456,10 @@ const renderNode = (
                             font-weight="bold"
                             fill="#fff"
                         >
-                            +
+                            {isParentOfDragSource ? '−' : '+'}
                         </text>
                     </g>
-                    {/* Orange Branch button - below green button */}
+                    {/* Orange Branch button */}
                     <g
                         transform={`translate(${NODE_WIDTH + 4}, ${NODE_HEIGHT / 2 + ADD_BUTTON_SIZE + 4})`}
                         onmousedown={(e: MouseEvent) => {
@@ -396,18 +471,24 @@ const renderNode = (
                                 actions.onAddBranch(node.id);
                             }
                         }}
-                        onmouseenter={() => {
-                            if (isDragging && isValidDropTarget) {
+                        onmouseenter={(e: MouseEvent) => {
+                            if (isDragging && isValidButtonTarget) {
+                                e.stopPropagation();
+                                actions.onDragOverButton(node.id, 'branch');
+                            }
+                        }}
+                        onmousemove={(e: MouseEvent) => {
+                            // Keep button highlighted while mouse is over it
+                            if (isDragging && isValidButtonTarget) {
+                                e.stopPropagation();
                                 actions.onDragOverButton(node.id, 'branch');
                             }
                         }}
                         onmouseleave={() => {
-                            if (isDragging) {
-                                actions.onDragLeaveButton();
-                            }
+                            // Don't clear here - let SVG handler manage it
                         }}
                         onmouseup={() => {
-                            if (isDragging && isValidDropTarget) {
+                            if (isDragging && isValidButtonTarget) {
                                 actions.onDrop();
                             }
                         }}
@@ -435,7 +516,7 @@ const renderNode = (
                     </g>
                 </g>
             ) : (
-                // Single button: INSERT (green, centered)
+                // Single button: INSERT (green, centered) - red when parent of drag source
                 <g
                     transform={`translate(${NODE_WIDTH + 4}, ${NODE_HEIGHT / 2})`}
                     onmousedown={(e: MouseEvent) => {
@@ -447,18 +528,24 @@ const renderNode = (
                             actions.onInsertNode(node.id);
                         }
                     }}
-                    onmouseenter={() => {
-                        if (isDragging && isValidDropTarget) {
+                    onmouseenter={(e: MouseEvent) => {
+                        if (isDragging && isValidButtonTarget) {
+                            e.stopPropagation();
+                            actions.onDragOverButton(node.id, 'insert');
+                        }
+                    }}
+                    onmousemove={(e: MouseEvent) => {
+                        // Keep button highlighted while mouse is over it
+                        if (isDragging && isValidButtonTarget) {
+                            e.stopPropagation();
                             actions.onDragOverButton(node.id, 'insert');
                         }
                     }}
                     onmouseleave={() => {
-                        if (isDragging) {
-                            actions.onDragLeaveButton();
-                        }
+                        // Don't clear here - let SVG handler manage it
                     }}
                     onmouseup={() => {
-                        if (isDragging && isValidDropTarget) {
+                        if (isDragging && isValidButtonTarget) {
                             actions.onDrop();
                         }
                     }}
@@ -470,7 +557,9 @@ const renderNode = (
                     />
                     <circle
                         r={ADD_BUTTON_SIZE / 2}
-                        fill={isInsertButtonHighlighted ? '#81C784' : '#4CAF50'}
+                        fill={isParentOfDragSource
+                            ? (isInsertButtonHighlighted ? '#EF5350' : '#F44336')
+                            : (isInsertButtonHighlighted ? '#81C784' : '#4CAF50')}
                         stroke="#fff"
                         stroke-width={isInsertButtonHighlighted ? 3 : 2}
                     />
@@ -481,7 +570,7 @@ const renderNode = (
                         font-weight="bold"
                         fill="#fff"
                     >
-                        +
+                        {isParentOfDragSource ? '−' : '+'}
                     </text>
                 </g>
             )}
@@ -598,6 +687,9 @@ export const FumenGraph: Component<Props> = ({
         const isValidDropTarget = dragSourceNodeId !== null
             && node.id !== dragSourceNodeId
             && canMoveNode(tree, dragSourceNodeId, node.id);
+        const isValidButtonTarget = dragSourceNodeId !== null
+            && node.id !== dragSourceNodeId
+            && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant: true });
 
         // Calculate button highlight state
         const isInsertButtonHighlighted = isDragging
@@ -606,6 +698,9 @@ export const FumenGraph: Component<Props> = ({
         const isBranchButtonHighlighted = isDragging
             && dragTargetButtonParentId === node.id
             && dragTargetButtonType === 'branch';
+
+        // Check if this node is the parent of the drag source
+        const isParentOfDragSource = isDragging && sourceNode != null && sourceNode.parentId === node.id;
 
         return renderNode(
             node,
@@ -618,11 +713,14 @@ export const FumenGraph: Component<Props> = ({
             dfsNumber,
             isDragSource,
             isValidDropTarget,
+            isValidButtonTarget,
             dragMode,
             isDragging,
             sourcePageIndex,
             isInsertButtonHighlighted,
             isBranchButtonHighlighted,
+            isParentOfDragSource,
+            scale,
         );
     });
 
@@ -686,19 +784,91 @@ export const FumenGraph: Component<Props> = ({
     // Handle global mouse up to end drag
     const handleMouseUp = () => {
         if (dragSourceNodeId !== null) {
-            actions.onDragEnd();
+            // If we have a valid drop target (button or slot), execute the drop
+            if (dragTargetButtonParentId !== null || dropSlotIndex !== null) {
+                actions.onDrop();
+            } else {
+                actions.onDragEnd();
+            }
         }
     };
 
-    // Handle mouse move on SVG to detect drop slots in empty areas (like left of first node)
+    // Handle mouse move on SVG to detect drop slots and buttons
     const handleSvgMouseMove = (e: MouseEvent) => {
-        if (dragMode !== TreeDragMode.Reorder || !isDragging) return;
+        if (!isDragging) return;
 
         const svg = e.currentTarget as SVGSVGElement;
         const rect = svg.getBoundingClientRect();
         // Account for scale when calculating mouse position in SVG coordinates
         const mouseX = (e.clientX - rect.left + (svg.parentElement?.scrollLeft ?? 0)) / scale;
         const mouseY = (e.clientY - rect.top + (svg.parentElement?.scrollTop ?? 0)) / scale;
+
+        // DEBUG: Log mouse position and button detection
+        console.log('=== handleSvgMouseMove ===');
+        console.log('Mouse SVG coords:', { mouseX, mouseY, scale });
+        console.log('dragSourceNodeId:', dragSourceNodeId);
+
+        // First, check for button hits (priority over slots)
+        const buttonHitRadius = ADD_BUTTON_SIZE / 2 + 6;
+        let foundButton: { nodeId: TreeNodeId; type: 'insert' | 'branch' } | null = null;
+
+        for (const node of tree.nodes) {
+            const pos = getNodePixelPosition(layout, node.id);
+            if (!pos) continue;
+
+            // Check if this node is a valid drop target
+            const isValidTarget = dragSourceNodeId !== null
+                && node.id !== dragSourceNodeId
+                && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant: true });
+
+            // DEBUG: Log each node's button position and distance
+            const insertBtnX = pos.x + NODE_WIDTH + 4;
+            const insertBtnY = pos.y + NODE_HEIGHT / 2;
+            const distToInsert = Math.sqrt((mouseX - insertBtnX) ** 2 + (mouseY - insertBtnY) ** 2);
+
+            console.log(`Node ${node.id}:`, {
+                isValidTarget,
+                distToInsert,
+                buttonHitRadius,
+                nodePos: pos,
+                insertBtnPos: { x: insertBtnX, y: insertBtnY },
+                isHit: distToInsert <= buttonHitRadius,
+            });
+
+            if (!isValidTarget) continue;
+
+            if (distToInsert <= buttonHitRadius) {
+                foundButton = { nodeId: node.id, type: 'insert' };
+                console.log('>>> BUTTON HIT:', foundButton);
+                break;
+            }
+
+            // Check BRANCH button (only if node has children)
+            if (node.childrenIds.length > 0) {
+                const branchBtnY = pos.y + NODE_HEIGHT / 2 + ADD_BUTTON_SIZE + 4;
+                const distToBranch = Math.sqrt((mouseX - insertBtnX) ** 2 + (mouseY - branchBtnY) ** 2);
+
+                if (distToBranch <= buttonHitRadius) {
+                    foundButton = { nodeId: node.id, type: 'branch' };
+                    console.log('>>> BRANCH BUTTON HIT:', foundButton);
+                    break;
+                }
+            }
+        }
+
+        // If button found, update button target and clear slot
+        if (foundButton !== null) {
+            actions.onDragOverButton(foundButton.nodeId, foundButton.type);
+            return;
+        }
+
+        // No button hit - clear button target if it was set
+        if (dragTargetButtonParentId !== null) {
+            actions.onDragLeaveButton();
+        }
+
+        // Only check slots in Reorder mode
+        if (dragMode !== TreeDragMode.Reorder) return;
 
         // Build a map from pageIndex to node for quick lookup
         const pageIndexToNode = new Map<number, TreeNode>();
