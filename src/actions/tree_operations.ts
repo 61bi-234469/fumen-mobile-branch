@@ -980,6 +980,52 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             }
 
             if (moveSubtreeOnButtonDrop) {
+                const sourceNode = findNode(tree, sourceNodeId);
+                const isDeleteOnParentButton = targetButtonType === 'insert'
+                    && sourceNode?.parentId === targetButtonParentId;
+
+                if (sourceNode && isDeleteOnParentButton) {
+                    const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+                    const newTree = removeNode(tree, sourceNodeId, true);
+
+                    const activeNodeId = state.tree.activeNodeId;
+                    const activeRemoved = activeNodeId !== null
+                        && (activeNodeId === sourceNodeId || isDescendant(tree, sourceNodeId, activeNodeId));
+                    const nextActiveNodeId = activeRemoved ? sourceNode.parentId : activeNodeId;
+                    const nextActiveNode = nextActiveNodeId ? findNode(newTree, nextActiveNodeId) : undefined;
+                    const nextCurrentIndex = activeRemoved
+                        ? (nextActiveNode?.pageIndex ?? state.fumen.currentIndex)
+                        : state.fumen.currentIndex;
+
+                    const nextSnapshot = createSnapshot(newTree, state.fumen.pages, nextCurrentIndex);
+                    const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+                    const { mementoActions } = require('./memento');
+
+                    return sequence(state, [
+                        mementoActions.registerHistoryTask({ task }),
+                        () => ({
+                            fumen: {
+                                ...state.fumen,
+                                currentIndex: nextCurrentIndex,
+                            },
+                            tree: {
+                                ...state.tree,
+                                nodes: newTree.nodes,
+                                rootId: newTree.rootId,
+                                activeNodeId: nextActiveNodeId,
+                                dragState: {
+                                    ...state.tree.dragState,
+                                    sourceNodeId: null,
+                                    targetNodeId: null,
+                                    dropSlotIndex: null,
+                                    targetButtonParentId: null,
+                                    targetButtonType: null,
+                                },
+                            },
+                        }),
+                    ]);
+                }
+
                 if (tree.rootId && sourceNodeId === tree.rootId) {
                     return treeOperationActions.endTreeDrag()(state);
                 }
