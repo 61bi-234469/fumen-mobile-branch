@@ -89,6 +89,15 @@ export const i18n = {
     TreeView: {
         MoveWithChildren: () => t('TreeView.MoveWithChildren'),
     },
+    ListViewExport: {
+        Title: () => t('ListViewExport.Title'),
+        Description: () => t('ListViewExport.Description'),
+        Buttons: {
+            Url: () => t('ListViewExport.Buttons.Url'),
+            Image: () => t('ListViewExport.Buttons.Image'),
+            Cancel: () => t('ListViewExport.Buttons.Cancel'),
+        },
+    },
     Navigator: {
         OpenInPC: () => t('Navigator.OpenInPC'),
         ExternalFumenURL: (data: string) => t('Navigator.ExternalFumenURL', {

@@ -10,6 +10,7 @@ export interface ModalActions {
     openUserSettingsModal: () => action;
     openListViewReplaceModal: () => action;
     openListViewImportModal: () => action;
+    openListViewExportModal: () => action;
     closeFumenModal: () => action;
     closeMenuModal: () => action;
     closeAppendModal: () => action;
@@ -17,6 +18,7 @@ export interface ModalActions {
     closeUserSettingsModal: () => action;
     closeListViewReplaceModal: () => action;
     closeListViewImportModal: () => action;
+    closeListViewExportModal: () => action;
     closeAllModals: () => action;
 }
 
@@ -135,11 +137,27 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
+    openListViewExportModal: () => (state): NextState => {
+        return {
+            modal: {
+                ...state.modal,
+                listViewExport: true,
+            },
+        };
+    },
     closeListViewImportModal: () => (state): NextState => {
         return {
             modal: {
                 ...state.modal,
                 listViewImport: false,
+            },
+        };
+    },
+    closeListViewExportModal: () => (state): NextState => {
+        return {
+            modal: {
+                ...state.modal,
+                listViewExport: false,
             },
         };
     },
@@ -153,6 +171,7 @@ export const modalActions: Readonly<ModalActions> = {
                 userSettings: false,
                 listViewReplace: false,
                 listViewImport: false,
+                listViewExport: false,
             },
         };
     },

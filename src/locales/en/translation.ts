@@ -84,6 +84,15 @@ export const resources = {
     TreeView: {
         MoveWithChildren: 'Move with children',
     },
+    ListViewExport: {
+        Title: 'Export',
+        Description: 'Choose export type.',
+        Buttons: {
+            Url: 'URL Export',
+            Image: 'Image Export',
+            Cancel: 'Cancel',
+        },
+    },
     Navigator: {
         OpenInPC: 'Open in Hard Drop',
         ExternalFumenURL: 'https://harddrop.com/fumen/?{{data}}',

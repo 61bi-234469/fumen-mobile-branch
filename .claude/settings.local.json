@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npm run webpack:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm test:*)",
+      "Bash(cat:*)",
+      "Bash(git push:*)",
+      "Bash(yarn webpack:*)",
+      "Bash(git -C \"c:/Users/user/fumen-for-mobile-ts\" status)",
+      "Bash(git -C \"c:/Users/user/fumen-for-mobile-ts\" diff src/components/tools/tool_button.tsx)",
+      "Bash(git -C \"c:/Users/user/fumen-for-mobile-ts\" log --oneline -5)",
+      "Bash(npm run:*)",
+      "Bash(git -C \"c:/Users/user/fumen-for-mobile-ts\" diff src/actions/field_editor.ts src/views/editor/fill_mode.ts src/views/editor/fill_row_mode.ts)",
+      "Bash(git -C \"c:/Users/user/fumen-for-mobile-ts\" add src/actions/field_editor.ts src/views/editor/fill_mode.ts src/views/editor/fill_row_mode.ts)",
+      "Bash(git -C \"c:/Users/user/fumen-for-mobile-ts\" push)",
+      "Bash(git -C \"c:/Users/user/fumen-for-mobile-ts\" log --oneline 27777e5..HEAD)",
+      "Bash(git -C \"c:/Users/user/fumen-for-mobile-ts\" log --oneline -10)",
+      "Bash(git -C \"c:/Users/user/fumen-for-mobile-ts\" reflog -10)",
+      "Bash(git -C \"c:/Users/user/fumen-for-mobile-ts\" diff)",
+      "Bash(git -C \"c:/Users/user/fumen-for-mobile-ts\" add src/views/list_view.ts)"
+    ]
+  }
+}

@@ -18,7 +18,7 @@ interface Props {
         openListViewReplaceModal: () => void;
         copyAllPagesToClipboard: () => void;
         openListViewImportModal: () => void;
-        exportListViewAsImage: () => void;
+        openListViewExportModal: () => void;
         toggleTreeMode: () => void;
         setTreeViewMode: (mode: TreeViewMode) => void;
     };
@@ -153,7 +153,7 @@ export const ListViewTools: Component<Props> = (
                         marginRight={10}
                         colors={palette}
                         actions={{
-                            onclick: () => actions.exportListViewAsImage(),
+                            onclick: () => actions.openListViewExportModal(),
                         }}
                     />
                 </div>

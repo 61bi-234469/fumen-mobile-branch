@@ -56,6 +56,15 @@ export const resources = {
     TreeView: {
         MoveWithChildren: 'Move with children',
     },
+    ListViewExport: {
+        Title: 'エクスポート',
+        Description: 'エクスポート形式を選択してください。',
+        Buttons: {
+            Url: 'URL',
+            Image: '画像',
+            Cancel: 'キャンセル',
+        },
+    },
     Navigator: {
         OpenInPC: 'PC版で開く',
         ExternalFumenURL: 'https://fumen.zui.jp/?{{data}}',

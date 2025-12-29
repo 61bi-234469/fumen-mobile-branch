@@ -584,7 +584,7 @@ export const view: View<State, Actions> = (state, actions) => {
                 openListViewReplaceModal: () => actions.openListViewReplaceModal(),
                 copyAllPagesToClipboard: () => actions.copyAllPagesToClipboard(),
                 openListViewImportModal: () => actions.openListViewImportModal(),
-                exportListViewAsImage: () => actions.exportListViewAsImage(),
+                openListViewExportModal: () => actions.openListViewExportModal(),
                 toggleTreeMode: () => actions.toggleTreeMode(),
                 setTreeViewMode: (mode: TreeViewMode) => actions.setTreeViewMode({ mode }),
             },

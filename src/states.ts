@@ -22,6 +22,21 @@ import { getURLQuery } from './params';
 
 const VERSION = PageEnv.Version;
 
+const getInitialScreen = (): Screens => {
+    const urlQuery = getURLQuery();
+    const screen = urlQuery.get('screen');
+    if (screen === 'list') {
+        return Screens.ListView;
+    }
+    if (screen === 'edit' || screen === 'editor') {
+        return Screens.Editor;
+    }
+    if (screen === 'read' || screen === 'reader') {
+        return Screens.Reader;
+    }
+    return window.location.hash.includes('#/edit') ? Screens.Editor : Screens.Reader;
+};
+
 // Immutableにする
 export interface State {
     field: Block[];
@@ -61,6 +76,7 @@ export interface State {
         userSettings: boolean;
         listViewReplace: boolean;
         listViewImport: boolean;
+        listViewExport: boolean;
     };
     temporary: {
         userSettings: {
@@ -164,6 +180,7 @@ export const initState: Readonly<State> = {
         userSettings: false,
         listViewReplace: false,
         listViewImport: false,
+        listViewExport: false,
     },
     temporary: {
         userSettings: {
@@ -183,7 +200,7 @@ export const initState: Readonly<State> = {
         updated: false,
     },
     mode: {
-        screen: window.location.hash.includes('#/edit') ? Screens.Editor : Screens.Reader,
+        screen: getInitialScreen(),
         type: ModeTypes.DrawingTool,
         touch: TouchTypes.Drawing,
         piece: undefined,  // UI上で選択されているのピースの種類
@@ -217,6 +234,7 @@ export const resources = {
         userSettings: undefined as any,
         listViewReplace: undefined as any,
         listViewImport: undefined as any,
+        listViewExport: undefined as any,
     },
     konva: createKonvaObjects(),
     comment: undefined as ({ text: string, pageIndex: number } | undefined),

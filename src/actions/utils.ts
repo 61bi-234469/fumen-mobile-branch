@@ -23,7 +23,8 @@ import {
     findNodeByPageIndex,
     insertPagesIntoTree,
 } from '../lib/fumen/tree_utils';
-import { initialTreeState, SerializedTree } from '../lib/fumen/tree_types';
+import { initialTreeState, SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
+import { getURLQuery } from '../params';
 
 declare const M: any;
 
@@ -40,6 +41,34 @@ export interface UtilsActions {
     openInExternalSite: () => action;
     ontapCanvas: (e: any) => action;
 }
+
+const parseBooleanParam = (value: string | undefined): boolean | undefined => {
+    if (value === undefined) {
+        return undefined;
+    }
+    const normalized = value.toLowerCase();
+    if (normalized === '1' || normalized === 'true') {
+        return true;
+    }
+    if (normalized === '0' || normalized === 'false') {
+        return false;
+    }
+    return undefined;
+};
+
+const parseTreeViewModeParam = (value: string | undefined): TreeViewMode | undefined => {
+    if (!value) {
+        return undefined;
+    }
+    const normalized = value.toLowerCase();
+    if (normalized === 'tree') {
+        return TreeViewMode.Tree;
+    }
+    if (normalized === 'list') {
+        return TreeViewMode.List;
+    }
+    return undefined;
+};
 
 export const utilsActions: Readonly<UtilsActions> = {
     resize: ({ width, height }) => (state): NextState => {
@@ -78,14 +107,51 @@ export const utilsActions: Readonly<UtilsActions> = {
         const { cleanedPages, tree } = extractTreeFromPages(pages);
         console.log('loadPages: extracted tree =', tree ? `nodes=${tree.nodes.length}` : 'null');
 
+        const urlQuery = getURLQuery();
+        const treeEnabledParam = parseBooleanParam(urlQuery.get('tree'));
+        const treeViewModeParam = parseTreeViewModeParam(urlQuery.get('treeView'));
+
         // Set up tree state
-        const treeState = tree ? {
+        let treeState = tree ? {
             ...initialTreeState,
             enabled: true,
             nodes: tree.nodes,
             rootId: tree.rootId,
             activeNodeId: tree.rootId,
         } : { ...initialTreeState };
+
+        if (treeEnabledParam !== undefined) {
+            if (treeEnabledParam) {
+                if (!treeState.rootId || treeState.nodes.length === 0) {
+                    const createdTree = createTreeFromPages(cleanedPages);
+                    const currentNode = findNodeByPageIndex(createdTree, 0);
+                    treeState = {
+                        ...treeState,
+                        enabled: true,
+                        nodes: createdTree.nodes,
+                        rootId: createdTree.rootId,
+                        activeNodeId: currentNode?.id ?? createdTree.rootId,
+                    };
+                } else {
+                    treeState = {
+                        ...treeState,
+                        enabled: true,
+                    };
+                }
+            } else {
+                treeState = {
+                    ...treeState,
+                    enabled: false,
+                };
+            }
+        }
+
+        if (treeViewModeParam !== undefined) {
+            treeState = {
+                ...treeState,
+                viewMode: treeViewModeParam,
+            };
+        }
 
         return sequence(state, [
             actions.setPages({ pages: cleanedPages }),

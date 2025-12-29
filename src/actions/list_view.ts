@@ -7,8 +7,9 @@ import { OperationTask, PrimitivePage, toPage, toPrimitivePage } from '../histor
 import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
 import { downloadImage, generateListViewExportImage, generateTreeViewExportImage } from '../lib/thumbnail';
-import { decode } from '../lib/fumen/fumen';
+import { decode, encode } from '../lib/fumen/fumen';
 import { TreeViewMode } from '../lib/fumen/tree_types';
+import { createTreeFromPages, embedTreeInPages } from '../lib/fumen/tree_utils';
 
 declare const M: any;
 
@@ -20,6 +21,7 @@ export interface ListViewActions {
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
     navigateToPageFromListView: (data: { pageIndex: number }) => action;
     exportListViewAsImage: () => action;
+    exportListViewAsUrl: () => action;
     replaceAllComments: (data: { searchText: string; replaceText: string }) => action;
     importPagesFromClipboard: () => action;
 }
@@ -274,6 +276,37 @@ export const listViewActions: Readonly<ListViewActions> = {
             const filename = `${filenamePrefix}_${yyyy}_${mm}_${dd}_${hh}${min}${ss}.png`;
             downloadImage(dataURL, filename);
         }
+
+        return undefined;
+    },
+    exportListViewAsUrl: () => (state): NextState => {
+        (async () => {
+            try {
+                const hasTreeData = state.tree.nodes.length > 0 && state.tree.rootId !== null;
+                const tree = hasTreeData
+                    ? {
+                        nodes: state.tree.nodes,
+                        rootId: state.tree.rootId,
+                        version: 1 as const,
+                    }
+                    : (state.tree.enabled ? createTreeFromPages(state.fumen.pages) : null);
+                const pagesToEncode = embedTreeInPages(state.fumen.pages, tree, tree !== null);
+                const encoded = await encode(pagesToEncode);
+
+                const params = new URLSearchParams();
+                params.set('d', `v115@${encoded}`);
+                params.set('screen', 'list');
+                params.set('tree', state.tree.enabled ? '1' : '0');
+                params.set('treeView', state.tree.viewMode === TreeViewMode.Tree ? 'tree' : 'list');
+
+                const base = `${window.location.origin}${window.location.pathname}`;
+                const url = `${base}#?${params.toString()}`;
+                window.open(url, '_blank');
+            } catch (error) {
+                console.error(error);
+                M.toast({ html: `Failed to export URL: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
 
         return undefined;
     },

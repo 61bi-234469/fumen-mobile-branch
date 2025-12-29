@@ -13,6 +13,7 @@ import { ClipboardModal } from './components/modals/clipboard';
 import { UserSettingsModal } from './components/modals/user_settings';
 import { ListViewReplaceModal } from './components/modals/list_view_replace';
 import { ListViewImportModal } from './components/modals/list_view_import';
+import { ListViewExportModal } from './components/modals/list_view_export';
 import { embedTreeInPages } from './lib/fumen/tree_utils';
 import { SerializedTree } from './lib/fumen/tree_types';
 
@@ -82,6 +83,10 @@ export const view: View<State, Actions> = (state, actions) => {
         }) : undefined as any,
 
         state.modal.listViewImport ? ListViewImportModal({
+            actions,
+        }) : undefined as any,
+
+        state.modal.listViewExport ? ListViewExportModal({
             actions,
         }) : undefined as any,
 
