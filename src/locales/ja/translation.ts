@@ -54,7 +54,7 @@ export const resources = {
         },
     },
     TreeView: {
-        MoveWithChildren: '子ノードも移動',
+        MoveWithChildren: 'Move with children',
     },
     Navigator: {
         OpenInPC: 'PC版で開く',
