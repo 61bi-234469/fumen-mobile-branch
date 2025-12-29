@@ -11,6 +11,13 @@ const COMMENT_TABLE =
     ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~';
 const MAX_COMMENT_CHAR_VALUE = COMMENT_TABLE.length + 1;
 
+const shouldReportDecodeError = (): boolean => {
+    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test') {
+        return false;
+    }
+    return true;
+};
+
 function decodeToCommentChars(v: number): string[] {
     const array: string[] = [];
     let value = v;
@@ -212,7 +219,9 @@ export async function innerDecode(
                         const operation = nextQuiz.getOperation(action.piece.type);
                         store.quiz = nextQuiz.operate(operation);
                     } catch (e: any) {
-                        console.error(e.message);
+                        if (shouldReportDecodeError()) {
+                            console.error(e.message);
+                        }
 
                         // Not operate
                         store.quiz = store.quiz.format();

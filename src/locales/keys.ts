@@ -86,6 +86,9 @@ export const i18n = {
             NoAvailableCommentButton: () => t('Menu.Messages.NoAvailableCommentButton'),
         },
     },
+    TreeView: {
+        MoveWithChildren: () => t('TreeView.MoveWithChildren'),
+    },
     Navigator: {
         OpenInPC: () => t('Navigator.OpenInPC'),
         ExternalFumenURL: (data: string) => t('Navigator.ExternalFumenURL', {

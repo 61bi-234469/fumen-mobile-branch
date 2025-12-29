@@ -53,6 +53,9 @@ export const resources = {
             NoAvailableCommentButton: 'Writableモードのときだけ変更できます',
         },
     },
+    TreeView: {
+        MoveWithChildren: '子ノードも移動',
+    },
     Navigator: {
         OpenInPC: 'PC版で開く',
         ExternalFumenURL: 'https://fumen.zui.jp/?{{data}}',

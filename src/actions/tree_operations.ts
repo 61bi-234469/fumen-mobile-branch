@@ -25,6 +25,8 @@ import {
     removeNode,
     moveNodeToParent,
     moveNodeToInsertPosition,
+    moveSubtreeToInsertPosition,
+    moveSubtreeToParent,
     moveNodeWithRightSiblingsToParent,
     reorderNode,
     canMoveNode,
@@ -895,9 +897,12 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Validate that we can move to this target
         if (parentNodeId !== null) {
             const tree = getOrCreateTree(state);
-            const canMove = canMoveNode(tree, state.tree.dragState.sourceNodeId, parentNodeId, {
-                allowDescendant: true,
-            });
+            const allowDescendant = !state.tree.buttonDropMovesSubtree;
+            let canMove = canMoveNode(tree, state.tree.dragState.sourceNodeId, parentNodeId, { allowDescendant });
+            if (state.tree.buttonDropMovesSubtree && tree.rootId
+                && state.tree.dragState.sourceNodeId === tree.rootId) {
+                canMove = false;
+            }
             if (!canMove) {
                 return {
                     tree: {
@@ -957,6 +962,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             targetButtonParentId,
             targetButtonType,
         } = state.tree.dragState;
+        const moveSubtreeOnButtonDrop = state.tree.buttonDropMovesSubtree;
 
         // Priority 1: Handle button drops (drag-to-button operation)
         if (sourceNodeId !== null && targetButtonParentId !== null && targetButtonType !== null) {
@@ -971,6 +977,51 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 targetNode.childrenIds[0] === sourceNodeId
             ) {
                 return treeOperationActions.endTreeDrag()(state);
+            }
+
+            if (moveSubtreeOnButtonDrop) {
+                if (tree.rootId && sourceNodeId === tree.rootId) {
+                    return treeOperationActions.endTreeDrag()(state);
+                }
+
+                if (!canMoveNode(tree, sourceNodeId, targetButtonParentId)) {
+                    return treeOperationActions.endTreeDrag()(state);
+                }
+
+                const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+
+                const newTree = targetButtonType === 'insert'
+                    ? moveSubtreeToInsertPosition(tree, sourceNodeId, targetButtonParentId)
+                    : moveSubtreeToParent(tree, sourceNodeId, targetButtonParentId);
+
+                const validation = validateTree(newTree);
+                if (!validation.valid) {
+                    console.warn('executeTreeDrop: invalid tree after subtree button drop', validation.errors);
+                    return treeOperationActions.endTreeDrag()(state);
+                }
+
+                const nextSnapshot = createSnapshot(newTree, state.fumen.pages, state.fumen.currentIndex);
+                const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+                const { mementoActions } = require('./memento');
+
+                return sequence(state, [
+                    mementoActions.registerHistoryTask({ task }),
+                    () => ({
+                        tree: {
+                            ...state.tree,
+                            nodes: newTree.nodes,
+                            rootId: newTree.rootId,
+                            dragState: {
+                                ...state.tree.dragState,
+                                sourceNodeId: null,
+                                targetNodeId: null,
+                                dropSlotIndex: null,
+                                targetButtonParentId: null,
+                                targetButtonType: null,
+                            },
+                        },
+                    }),
+                ]);
             }
 
             // Root-specific re-rooting when moving root

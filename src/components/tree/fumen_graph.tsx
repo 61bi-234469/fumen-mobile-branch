@@ -43,6 +43,7 @@ interface Props {
     dropSlotIndex: number | null;
     dragTargetButtonParentId: TreeNodeId | null;
     dragTargetButtonType: 'insert' | 'branch' | null;
+    buttonDropMovesSubtree: boolean;
     actions: {
         onNodeClick: (nodeId: TreeNodeId) => void;
         onAddBranch: (parentNodeId: TreeNodeId) => void;
@@ -622,6 +623,7 @@ export const FumenGraph: Component<Props> = ({
     dropSlotIndex,
     dragTargetButtonParentId,
     dragTargetButtonType,
+    buttonDropMovesSubtree,
     actions,
 }) => {
     // Handle empty tree
@@ -684,12 +686,16 @@ export const FumenGraph: Component<Props> = ({
     const nodes = tree.nodes.map((node) => {
         const dfsNumber = dfsNumbers.get(node.id) ?? 0;
         const isDragSource = node.id === dragSourceNodeId;
+        const allowDescendant = !buttonDropMovesSubtree;
+        const isRootDragSource = buttonDropMovesSubtree && dragSourceNodeId !== null
+            && tree.rootId !== null && dragSourceNodeId === tree.rootId;
         const isValidDropTarget = dragSourceNodeId !== null
             && node.id !== dragSourceNodeId
             && canMoveNode(tree, dragSourceNodeId, node.id);
         const isValidButtonTarget = dragSourceNodeId !== null
             && node.id !== dragSourceNodeId
-            && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant: true });
+            && !isRootDragSource
+            && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant });
 
         // Calculate button highlight state
         const isInsertButtonHighlighted = isDragging
@@ -796,6 +802,9 @@ export const FumenGraph: Component<Props> = ({
     // Handle mouse move on SVG to detect drop slots and buttons
     const handleSvgMouseMove = (e: MouseEvent) => {
         if (!isDragging) return;
+        const allowDescendant = !buttonDropMovesSubtree;
+        const isRootDragSource = buttonDropMovesSubtree && dragSourceNodeId !== null
+            && tree.rootId !== null && dragSourceNodeId === tree.rootId;
 
         const svg = e.currentTarget as SVGSVGElement;
         const rect = svg.getBoundingClientRect();
@@ -819,7 +828,8 @@ export const FumenGraph: Component<Props> = ({
             // Check if this node is a valid drop target
             const isValidTarget = dragSourceNodeId !== null
                 && node.id !== dragSourceNodeId
-                && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant: true });
+                && !isRootDragSource
+                && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant });
 
             // DEBUG: Log each node's button position and distance
             const insertBtnX = pos.x + NODE_WIDTH + 4;

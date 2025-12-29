@@ -108,6 +108,8 @@ export interface TreeState {
     viewMode: TreeViewMode;
     /** Drag state for tree operations */
     dragState: TreeDragState;
+    /** Move subtree when dropping onto tree buttons */
+    buttonDropMovesSubtree: boolean;
     /** Zoom scale for tree view (1.0 = 100%) */
     scale: number;
 }
@@ -131,5 +133,6 @@ export const initialTreeState: TreeState = {
     addMode: AddMode.Branch,
     viewMode: TreeViewMode.List,
     dragState: initialTreeDragState,
+    buttonDropMovesSubtree: false,
     scale: 1.0,
 };

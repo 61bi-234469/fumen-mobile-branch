@@ -4,6 +4,7 @@ import { State } from '../states';
 import { Actions } from '../actions';
 import { Screens } from '../lib/enums';
 import { Palette } from '../lib/colors';
+import { i18n } from '../locales/keys';
 import { ListViewTools } from '../components/tools/list_view_tools';
 import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
@@ -65,6 +66,7 @@ export const view: View<State, Actions> = (state, actions) => {
     });
 
     const isTreeView = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
+    const buttonDropMovesSubtree = state.tree.buttonDropMovesSubtree;
     const gridContainerHeight = state.display.height - TOOLS_HEIGHT;
 
     const baseItemSize = Math.max(
@@ -294,6 +296,9 @@ export const view: View<State, Actions> = (state, actions) => {
         const sourceNodeId = state.tree.dragState.sourceNodeId;
         const sourceNode = state.tree.nodes.find(n => n.id === sourceNodeId);
         const sourcePageIndex = sourceNode?.pageIndex ?? -1;
+        const allowDescendant = !buttonDropMovesSubtree;
+        const isRootDragSource = buttonDropMovesSubtree && sourceNodeId !== null
+            && tree.rootId !== null && sourceNodeId === tree.rootId;
 
         // Find button or node under touch position
         let foundNodeId: string | null = null;
@@ -321,7 +326,8 @@ export const view: View<State, Actions> = (state, actions) => {
             );
 
             if (distToInsert <= buttonHitRadius) {
-                const isValidTarget = canMoveNode(tree, sourceNodeId!, node.id, { allowDescendant: true });
+                const isValidTarget = !isRootDragSource
+                    && canMoveNode(tree, sourceNodeId!, node.id, { allowDescendant });
                 if (isValidTarget) {
                     foundButtonParentId = node.id;
                     foundButtonType = 'insert';
@@ -342,7 +348,8 @@ export const view: View<State, Actions> = (state, actions) => {
                 );
 
                 if (distToBranch <= buttonHitRadius) {
-                    const isValidTarget = canMoveNode(tree, sourceNodeId!, node.id, { allowDescendant: true });
+                    const isValidTarget = !isRootDragSource
+                        && canMoveNode(tree, sourceNodeId!, node.id, { allowDescendant });
                     if (isValidTarget) {
                         foundButtonParentId = node.id;
                         foundButtonType = 'branch';
@@ -524,6 +531,48 @@ export const view: View<State, Actions> = (state, actions) => {
         pinchState.active = false;
     };
 
+    const treeButtonToggleContainerStyle = style({
+        position: 'fixed',
+        bottom: px(20),
+        right: px(20),
+        display: 'flex',
+        alignItems: 'center',
+        gap: px(8),
+        padding: '6px 10px',
+        borderRadius: '16px',
+        backgroundColor: '#fff',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        zIndex: 100,
+    });
+
+    const treeButtonToggleLabelStyle = style({
+        fontSize: px(12),
+        color: '#555',
+        whiteSpace: 'nowrap',
+    });
+
+    const treeButtonToggleSwitchStyle = style({
+        position: 'relative',
+        width: '34px',
+        height: '18px',
+        backgroundColor: buttonDropMovesSubtree ? '#4CAF50' : '#ccc',
+        borderRadius: '9px',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s',
+    });
+
+    const treeButtonToggleKnobStyle = style({
+        position: 'absolute',
+        top: '2px',
+        left: buttonDropMovesSubtree ? '18px' : '2px',
+        width: '14px',
+        height: '14px',
+        backgroundColor: '#fff',
+        borderRadius: '50%',
+        transition: 'left 0.2s',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+    });
+
     return div({
         key: 'list-view',
         style: containerStyle,
@@ -619,6 +668,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     dropSlotIndex: state.tree.dragState.dropSlotIndex,
                     dragTargetButtonParentId: state.tree.dragState.targetButtonParentId,
                     dragTargetButtonType: state.tree.dragState.targetButtonType,
+                    buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
                     actions: {
                         onNodeClick: (nodeId) => {
                             // Only navigate if not dragging
@@ -844,6 +894,22 @@ export const view: View<State, Actions> = (state, actions) => {
                 h('i', { className: 'material-icons', style: style({ fontSize: px(28) }) }, 'arrow_forward'),
             ]),
         ]),
+
+        // Tree button-drop mode toggle (bottom right, tree view only)
+        ...(isTreeView ? [div({
+            key: 'tree-button-drop-toggle',
+            style: treeButtonToggleContainerStyle,
+        }, [
+            h('span', { style: treeButtonToggleLabelStyle }, i18n.TreeView.MoveWithChildren()),
+            h('div', {
+                style: treeButtonToggleSwitchStyle,
+                onclick: () => actions.setTreeState({
+                    buttonDropMovesSubtree: !state.tree.buttonDropMovesSubtree,
+                }),
+            }, [
+                h('div', { style: treeButtonToggleKnobStyle }),
+            ]),
+        ])] : []),
 
     ]);
 };

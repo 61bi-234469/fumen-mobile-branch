@@ -904,6 +904,115 @@ export const moveNodeToParent = (
 };
 
 /**
+ * Move a node and its descendants to INSERT position (target's first child).
+ * The subtree is detached from its current parent and becomes the first child of target.
+ * Existing children of the target remain, and the subtree keeps its internal structure.
+ */
+export const moveSubtreeToInsertPosition = (
+    tree: SerializedTree,
+    sourceId: TreeNodeId,
+    targetId: TreeNodeId,
+): SerializedTree => {
+    if (!canMoveNode(tree, sourceId, targetId)) {
+        return tree;
+    }
+
+    const sourceNode = findNode(tree, sourceId);
+    const targetNode = findNode(tree, targetId);
+    if (!sourceNode || !targetNode) return tree;
+
+    const oldParentId = sourceNode.parentId;
+    if (oldParentId === null) return tree;
+
+    const updatedNodes = tree.nodes.map((node) => {
+        const isOldParent = node.id === oldParentId;
+        const isTarget = node.id === targetId;
+
+        if (isOldParent || isTarget) {
+            const withoutSource = node.childrenIds.filter(id => id !== sourceId);
+            if (isTarget) {
+                return {
+                    ...node,
+                    childrenIds: [sourceId, ...withoutSource],
+                };
+            }
+            return {
+                ...node,
+                childrenIds: withoutSource,
+            };
+        }
+
+        if (node.id === sourceId) {
+            return {
+                ...node,
+                parentId: targetId,
+            };
+        }
+
+        return node;
+    });
+
+    return {
+        ...tree,
+        nodes: updatedNodes,
+    };
+};
+
+/**
+ * Move a node and its descendants to become a child of target node (BRANCH behavior).
+ * The subtree is detached from its current parent and appended as a branch under target.
+ */
+export const moveSubtreeToParent = (
+    tree: SerializedTree,
+    sourceId: TreeNodeId,
+    targetId: TreeNodeId,
+): SerializedTree => {
+    if (!canMoveNode(tree, sourceId, targetId)) {
+        return tree;
+    }
+
+    const sourceNode = findNode(tree, sourceId);
+    const targetNode = findNode(tree, targetId);
+    if (!sourceNode || !targetNode) return tree;
+
+    const oldParentId = sourceNode.parentId;
+    if (oldParentId === null) return tree;
+
+    const updatedNodes = tree.nodes.map((node) => {
+        const isOldParent = node.id === oldParentId;
+        const isTarget = node.id === targetId;
+
+        if (isOldParent || isTarget) {
+            const withoutSource = node.childrenIds.filter(id => id !== sourceId);
+            if (isTarget) {
+                return {
+                    ...node,
+                    childrenIds: [...withoutSource, sourceId],
+                };
+            }
+            return {
+                ...node,
+                childrenIds: withoutSource,
+            };
+        }
+
+        if (node.id === sourceId) {
+            return {
+                ...node,
+                parentId: targetId,
+            };
+        }
+
+        return node;
+    });
+
+    return {
+        ...tree,
+        nodes: updatedNodes,
+    };
+};
+
+/**
  * Move a node and all its right siblings to become children of target node
  * The nodes are detached from their current parent and attached to the target
  */

@@ -81,6 +81,9 @@ export const resources = {
             NoAvailableCommentButton: 'Available only when writable mode',
         },
     },
+    TreeView: {
+        MoveWithChildren: 'Move with children',
+    },
     Navigator: {
         OpenInPC: 'Open in Hard Drop',
         ExternalFumenURL: 'https://harddrop.com/fumen/?{{data}}',
