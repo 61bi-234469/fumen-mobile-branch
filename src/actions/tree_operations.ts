@@ -582,22 +582,20 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
 
         const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
 
-        const currentPage = state.fumen.pages[currentNode.pageIndex];
-        const pagesObj = new Pages(state.fumen.pages);
         const newPageIndex = state.fumen.pages.length;
 
-        const resolvedField = pagesObj.getField(currentNode.pageIndex, PageFieldOperation.All);
-
-        let commentRefIndex = currentNode.pageIndex;
-        if (currentPage.comment.ref !== undefined) {
-            commentRefIndex = currentPage.comment.ref;
-        }
-
+        const currentPage = state.fumen.pages[currentNode.pageIndex];
         const newPage: Page = {
             index: newPageIndex,
-            field: { obj: resolvedField.copy() },
-            comment: { ref: commentRefIndex },
-            flags: { ...currentPage.flags, quiz: false },
+            field: { obj: new Field({}) },
+            comment: { text: '' },
+            flags: {
+                ...currentPage.flags,
+                lock: true,
+                mirror: false,
+                rise: false,
+                quiz: false,
+            },
         };
 
         const { tree: newTree, newNodeId } = addBranchNode(tree, tree.rootId, newPageIndex);
