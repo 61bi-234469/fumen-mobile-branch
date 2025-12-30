@@ -88,6 +88,7 @@ export const i18n = {
     },
     TreeView: {
         MoveWithChildren: () => t('TreeView.MoveWithChildren'),
+        GrayAfterLineClear: () => t('TreeView.GrayAfterLineClear'),
     },
     ListViewExport: {
         Title: () => t('ListViewExport.Title'),

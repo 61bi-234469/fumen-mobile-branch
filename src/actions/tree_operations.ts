@@ -673,6 +673,10 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Get actual field by resolving refs with line clear applied (PageFieldOperation.All)
         // This applies line clear when lock flag is ON, same as editor's + button
         const resolvedField = pagesObj.getField(currentNode.pageIndex, PageFieldOperation.All);
+        const newField = resolvedField.copy();
+        if (state.tree.grayAfterLineClear) {
+            newField.convertToGray();
+        }
 
         // Resolve comment ref to find the page with actual text
         // If current page has text, new page can ref it directly
@@ -686,7 +690,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Preserve lock flag from parent page
         const newPage: Page = {
             index: newPageIndex,
-            field: { obj: resolvedField.copy() },
+            field: { obj: newField },
             comment: { ref: commentRefIndex },
             flags: { ...currentPage.flags, quiz: false },
         };
@@ -826,6 +830,10 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Get actual field by resolving refs with line clear applied (PageFieldOperation.All)
         // This applies line clear when lock flag is ON, same as editor's + button
         const resolvedField = pagesObj.getField(currentNode.pageIndex, PageFieldOperation.All);
+        const newField = resolvedField.copy();
+        if (state.tree.grayAfterLineClear) {
+            newField.convertToGray();
+        }
 
         // Resolve comment ref to find the page with actual text
         // If current page has text, new page can ref it directly
@@ -839,7 +847,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Preserve lock flag from parent page
         const newPage: Page = {
             index: newPageIndex,
-            field: { obj: resolvedField.copy() },
+            field: { obj: newField },
             comment: { ref: commentRefIndex },
             flags: { ...currentPage.flags, quiz: false },
         };

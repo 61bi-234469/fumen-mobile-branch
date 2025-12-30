@@ -67,6 +67,7 @@ export const view: View<State, Actions> = (state, actions) => {
 
     const isTreeView = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
     const buttonDropMovesSubtree = state.tree.buttonDropMovesSubtree;
+    const grayAfterLineClear = state.tree.grayAfterLineClear;
     const gridContainerHeight = state.display.height - TOOLS_HEIGHT;
 
     const baseItemSize = Math.max(
@@ -528,10 +529,18 @@ export const view: View<State, Actions> = (state, actions) => {
         pinchState.active = false;
     };
 
-    const treeButtonToggleContainerStyle = style({
+    const treeToggleGroupStyle = style({
         position: 'fixed',
         bottom: px(20),
         right: px(20),
+        display: 'flex',
+        flexDirection: 'column',
+        gap: px(8),
+        alignItems: 'flex-end',
+        zIndex: 100,
+    });
+
+    const treeTogglePillStyle = style({
         display: 'flex',
         alignItems: 'center',
         gap: px(8),
@@ -539,12 +548,11 @@ export const view: View<State, Actions> = (state, actions) => {
         borderRadius: '16px',
         backgroundColor: '#fff',
         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-        zIndex: 100,
     });
 
     const treeRootAddButtonStyle = style({
         position: 'fixed',
-        bottom: px(70),
+        bottom: px(108),
         right: px(20),
         width: px(44),
         height: px(44),
@@ -567,20 +575,20 @@ export const view: View<State, Actions> = (state, actions) => {
         whiteSpace: 'nowrap',
     });
 
-    const treeButtonToggleSwitchStyle = style({
+    const treeButtonToggleSwitchStyle = (isOn: boolean) => style({
         position: 'relative',
         width: '34px',
         height: '18px',
-        backgroundColor: buttonDropMovesSubtree ? '#4CAF50' : '#ccc',
+        backgroundColor: isOn ? '#4CAF50' : '#ccc',
         borderRadius: '9px',
         cursor: 'pointer',
         transition: 'background-color 0.2s',
     });
 
-    const treeButtonToggleKnobStyle = style({
+    const treeButtonToggleKnobStyle = (isOn: boolean) => style({
         position: 'absolute',
         top: '2px',
-        left: buttonDropMovesSubtree ? '18px' : '2px',
+        left: isOn ? '18px' : '2px',
         width: '14px',
         height: '14px',
         backgroundColor: '#fff',
@@ -588,6 +596,24 @@ export const view: View<State, Actions> = (state, actions) => {
         transition: 'left 0.2s',
         boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
     });
+
+    const renderTreeToggle = (
+        key: string,
+        label: string,
+        isOn: boolean,
+        onClick: () => void,
+    ) => div({
+        key,
+        style: treeTogglePillStyle,
+    }, [
+        h('span', { style: treeButtonToggleLabelStyle }, label),
+        h('div', {
+            style: treeButtonToggleSwitchStyle(isOn),
+            onclick: onClick,
+        }, [
+            h('div', { style: treeButtonToggleKnobStyle(isOn) }),
+        ]),
+    ]);
 
     return div({
         key: 'list-view',
@@ -916,20 +942,27 @@ export const view: View<State, Actions> = (state, actions) => {
             ]),
         ]),
 
-        // Tree button-drop mode toggle (bottom right, tree view only)
+        // Tree toggles (bottom right, tree view only)
         ...(isTreeView ? [div({
-            key: 'tree-button-drop-toggle',
-            style: treeButtonToggleContainerStyle,
+            key: 'tree-toggle-group',
+            style: treeToggleGroupStyle,
         }, [
-            h('span', { style: treeButtonToggleLabelStyle }, i18n.TreeView.MoveWithChildren()),
-            h('div', {
-                style: treeButtonToggleSwitchStyle,
-                onclick: () => actions.setTreeState({
+            renderTreeToggle(
+                'tree-button-drop-toggle',
+                i18n.TreeView.MoveWithChildren(),
+                buttonDropMovesSubtree,
+                () => actions.setTreeState({
                     buttonDropMovesSubtree: !state.tree.buttonDropMovesSubtree,
                 }),
-            }, [
-                h('div', { style: treeButtonToggleKnobStyle }),
-            ]),
+            ),
+            renderTreeToggle(
+                'tree-gray-after-clear-toggle',
+                i18n.TreeView.GrayAfterLineClear(),
+                grayAfterLineClear,
+                () => actions.setTreeState({
+                    grayAfterLineClear: !grayAfterLineClear,
+                }),
+            ),
         ])] : []),
 
         // Add top-level page button (tree view only)

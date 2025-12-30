@@ -113,6 +113,8 @@ export interface TreeState {
     dragState: TreeDragState;
     /** Move subtree when dropping onto tree buttons */
     buttonDropMovesSubtree: boolean;
+    /** Convert cleared lines to gray when creating new nodes */
+    grayAfterLineClear: boolean;
     /** Zoom scale for tree view (1.0 = 100%) */
     scale: number;
 }
@@ -137,5 +139,6 @@ export const initialTreeState: TreeState = {
     viewMode: TreeViewMode.List,
     dragState: initialTreeDragState,
     buttonDropMovesSubtree: false,
+    grayAfterLineClear: true,
     scale: 1.0,
 };

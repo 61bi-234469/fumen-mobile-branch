@@ -83,6 +83,7 @@ export const resources = {
     },
     TreeView: {
         MoveWithChildren: 'Move with children',
+        GrayAfterLineClear: 'Gray out cleared lines',
     },
     ListViewExport: {
         Title: 'Export',
