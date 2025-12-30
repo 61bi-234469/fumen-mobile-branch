@@ -445,6 +445,60 @@ const rebuildPageRefsForOrder = (pages: Page[], originalFirstPageColorize: boole
     });
 };
 
+const normalizeTreeAndPages = (
+    tree: SerializedTree,
+    pages: Page[],
+    currentIndex: number,
+    activeNodeId?: TreeNodeId | null,
+): { tree: SerializedTree; pages: Page[]; currentIndex: number; changed: boolean } => {
+    if (pages.length <= 1) {
+        return { tree, pages, currentIndex, changed: false };
+    }
+
+    const dfsIndices = flattenTreeToPageIndices(tree)
+        .filter(index => index >= 0 && index < pages.length);
+    const seen = new Set<number>();
+    const order: number[] = [];
+    dfsIndices.forEach((index) => {
+        if (!seen.has(index)) {
+            seen.add(index);
+            order.push(index);
+        }
+    });
+    for (let i = 0; i < pages.length; i += 1) {
+        if (!seen.has(i)) {
+            order.push(i);
+        }
+    }
+
+    const isIdentityOrder = order.every((index, position) => index === position);
+    if (isIdentityOrder) {
+        return { tree, pages, currentIndex, changed: false };
+    }
+
+    const indexMap = new Map<number, number>();
+    order.forEach((oldIndex, newIndex) => {
+        indexMap.set(oldIndex, newIndex);
+    });
+
+    const reorderedPages = order.map(oldIndex => pages[oldIndex]);
+    const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
+    const newPages = rebuildPageRefsForOrder(reorderedPages, originalFirstPageColorize);
+
+    const newTree = updateTreePageIndices(tree, indexMap);
+    const activeNode = activeNodeId ? findNode(newTree, activeNodeId) : undefined;
+    const nextCurrentIndex = activeNode?.pageIndex
+        ?? indexMap.get(currentIndex)
+        ?? 0;
+
+    return {
+        tree: newTree,
+        pages: newPages,
+        currentIndex: nextCurrentIndex,
+        changed: true,
+    };
+};
+
 // ============================================================================
 // Action Implementations
 // ============================================================================
@@ -535,44 +589,11 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
 
         const tree = getOrCreateTree(state);
         const pages = state.fumen.pages;
-        if (pages.length <= 1) return undefined;
-
-        const dfsIndices = flattenTreeToPageIndices(tree)
-            .filter(index => index >= 0 && index < pages.length);
-        const seen = new Set<number>();
-        const order: number[] = [];
-        dfsIndices.forEach((index) => {
-            if (!seen.has(index)) {
-                seen.add(index);
-                order.push(index);
-            }
-        });
-        for (let i = 0; i < pages.length; i += 1) {
-            if (!seen.has(i)) {
-                order.push(i);
-            }
-        }
-
-        const isIdentityOrder = order.every((index, position) => index === position);
-        if (isIdentityOrder) return undefined;
-
-        const indexMap = new Map<number, number>();
-        order.forEach((oldIndex, newIndex) => {
-            indexMap.set(oldIndex, newIndex);
-        });
-
-        const reorderedPages = order.map(oldIndex => pages[oldIndex]);
-        const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
-        const newPages = rebuildPageRefsForOrder(reorderedPages, originalFirstPageColorize);
-
-        const newTree = updateTreePageIndices(tree, indexMap);
-        const activeNode = state.tree.activeNodeId ? findNode(newTree, state.tree.activeNodeId) : undefined;
-        const nextCurrentIndex = activeNode?.pageIndex
-            ?? indexMap.get(state.fumen.currentIndex)
-            ?? 0;
+        const normalized = normalizeTreeAndPages(tree, pages, state.fumen.currentIndex, state.tree.activeNodeId);
+        if (!normalized.changed) return undefined;
 
         const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
-        const nextSnapshot = createSnapshot(newTree, newPages, nextCurrentIndex);
+        const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
         const { mementoActions } = require('./memento');
 
@@ -581,15 +602,15 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             () => ({
                 fumen: {
                     ...state.fumen,
-                    pages: newPages,
-                    maxPage: newPages.length,
-                    currentIndex: nextCurrentIndex,
+                    pages: normalized.pages,
+                    maxPage: normalized.pages.length,
+                    currentIndex: normalized.currentIndex,
                 },
                 tree: {
                     ...state.tree,
-                    nodes: newTree.nodes,
-                    rootId: newTree.rootId,
-                    activeNodeId: activeNode?.id ?? state.tree.activeNodeId,
+                    nodes: normalized.tree.nodes,
+                    rootId: normalized.tree.rootId,
+                    activeNodeId: state.tree.activeNodeId,
                 },
             }),
         ]);
@@ -675,9 +696,10 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
 
         // Create new pages array
         const newPages = [...state.fumen.pages, newPage];
+        const normalized = normalizeTreeAndPages(newTree, newPages, newPageIndex, newNodeId);
 
         // Create next snapshot for history
-        const nextSnapshot = createSnapshot(newTree, newPages, newPageIndex);
+        const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
 
         // Create history task
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
@@ -690,14 +712,14 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             () => ({
                 fumen: {
                     ...state.fumen,
-                    pages: newPages,
-                    maxPage: newPages.length,
-                    currentIndex: newPageIndex,
+                    pages: normalized.pages,
+                    maxPage: normalized.pages.length,
+                    currentIndex: normalized.currentIndex,
                 },
                 tree: {
                     ...state.tree,
-                    nodes: newTree.nodes,
-                    rootId: newTree.rootId,
+                    nodes: normalized.tree.nodes,
+                    rootId: normalized.tree.rootId,
                     activeNodeId: newNodeId,
                 },
             }),
@@ -736,8 +758,9 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
 
         const { tree: newTree, newNodeId } = addBranchNode(tree, tree.rootId, newPageIndex);
         const newPages = [...state.fumen.pages, newPage];
+        const normalized = normalizeTreeAndPages(newTree, newPages, newPageIndex, newNodeId);
 
-        const nextSnapshot = createSnapshot(newTree, newPages, newPageIndex);
+        const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
         const { mementoActions } = require('./memento');
 
@@ -746,14 +769,14 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             () => ({
                 fumen: {
                     ...state.fumen,
-                    pages: newPages,
-                    maxPage: newPages.length,
-                    currentIndex: newPageIndex,
+                    pages: normalized.pages,
+                    maxPage: normalized.pages.length,
+                    currentIndex: normalized.currentIndex,
                 },
                 tree: {
                     ...state.tree,
-                    nodes: newTree.nodes,
-                    rootId: newTree.rootId,
+                    nodes: normalized.tree.nodes,
+                    rootId: normalized.tree.rootId,
                     activeNodeId: newNodeId,
                 },
             }),
@@ -826,9 +849,10 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
 
         // Create new pages array
         const newPages = [...state.fumen.pages, newPage];
+        const normalized = normalizeTreeAndPages(newTree, newPages, newPageIndex, newNodeId);
 
         // Create next snapshot for history
-        const nextSnapshot = createSnapshot(newTree, newPages, newPageIndex);
+        const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
 
         // Create history task
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
@@ -840,14 +864,14 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             () => ({
                 fumen: {
                     ...state.fumen,
-                    pages: newPages,
-                    maxPage: newPages.length,
-                    currentIndex: newPageIndex,
+                    pages: normalized.pages,
+                    maxPage: normalized.pages.length,
+                    currentIndex: normalized.currentIndex,
                 },
                 tree: {
                     ...state.tree,
-                    nodes: newTree.nodes,
-                    rootId: newTree.rootId,
+                    nodes: normalized.tree.nodes,
+                    rootId: normalized.tree.rootId,
                     activeNodeId: newNodeId,
                 },
             }),
@@ -889,7 +913,8 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Pages can be cleaned up during export/flatten
 
         // Create next snapshot for history
-        const nextSnapshot = createSnapshot(newTree, state.fumen.pages, newCurrentIndex);
+        const normalized = normalizeTreeAndPages(newTree, state.fumen.pages, newCurrentIndex, newActiveNodeId);
+        const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
 
         // Create history task
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
@@ -901,12 +926,14 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             () => ({
                 fumen: {
                     ...state.fumen,
-                    currentIndex: newCurrentIndex,
+                    pages: normalized.pages,
+                    maxPage: normalized.pages.length,
+                    currentIndex: normalized.currentIndex,
                 },
                 tree: {
                     ...state.tree,
-                    nodes: newTree.nodes,
-                    rootId: newTree.rootId,
+                    nodes: normalized.tree.nodes,
+                    rootId: normalized.tree.rootId,
                     activeNodeId: newActiveNodeId,
                 },
             }),
@@ -1192,7 +1219,17 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                         ? (nextActiveNode?.pageIndex ?? state.fumen.currentIndex)
                         : state.fumen.currentIndex;
 
-                    const nextSnapshot = createSnapshot(newTree, state.fumen.pages, nextCurrentIndex);
+                    const normalized = normalizeTreeAndPages(
+                        newTree,
+                        state.fumen.pages,
+                        nextCurrentIndex,
+                        nextActiveNodeId,
+                    );
+                    const nextSnapshot = createSnapshot(
+                        normalized.tree,
+                        normalized.pages,
+                        normalized.currentIndex,
+                    );
                     const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
                     const { mementoActions } = require('./memento');
 
@@ -1201,12 +1238,14 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                         () => ({
                             fumen: {
                                 ...state.fumen,
-                                currentIndex: nextCurrentIndex,
+                                pages: normalized.pages,
+                                maxPage: normalized.pages.length,
+                                currentIndex: normalized.currentIndex,
                             },
                             tree: {
                                 ...state.tree,
-                                nodes: newTree.nodes,
-                                rootId: newTree.rootId,
+                                nodes: normalized.tree.nodes,
+                                rootId: normalized.tree.rootId,
                                 activeNodeId: nextActiveNodeId,
                                 dragState: {
                                     ...state.tree.dragState,
@@ -1241,17 +1280,33 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     return treeOperationActions.endTreeDrag()(state);
                 }
 
-                const nextSnapshot = createSnapshot(newTree, state.fumen.pages, state.fumen.currentIndex);
+                const normalized = normalizeTreeAndPages(
+                    newTree,
+                    state.fumen.pages,
+                    state.fumen.currentIndex,
+                    state.tree.activeNodeId,
+                );
+                const nextSnapshot = createSnapshot(
+                    normalized.tree,
+                    normalized.pages,
+                    normalized.currentIndex,
+                );
                 const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
                 const { mementoActions } = require('./memento');
 
                 return sequence(state, [
                     mementoActions.registerHistoryTask({ task }),
                     () => ({
+                        fumen: {
+                            ...state.fumen,
+                            pages: normalized.pages,
+                            maxPage: normalized.pages.length,
+                            currentIndex: normalized.currentIndex,
+                        },
                         tree: {
                             ...state.tree,
-                            nodes: newTree.nodes,
-                            rootId: newTree.rootId,
+                            nodes: normalized.tree.nodes,
+                            rootId: normalized.tree.rootId,
                             dragState: {
                                 ...state.tree.dragState,
                                 sourceNodeId: null,
@@ -1280,17 +1335,33 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
 
                 // Create history snapshots
                 const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
-                const nextSnapshot = createSnapshot(reparentedTree, state.fumen.pages, state.fumen.currentIndex);
+                const normalized = normalizeTreeAndPages(
+                    reparentedTree,
+                    state.fumen.pages,
+                    state.fumen.currentIndex,
+                    state.tree.activeNodeId,
+                );
+                const nextSnapshot = createSnapshot(
+                    normalized.tree,
+                    normalized.pages,
+                    normalized.currentIndex,
+                );
                 const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
                 const { mementoActions } = require('./memento');
 
                 return sequence(state, [
                     mementoActions.registerHistoryTask({ task }),
                     () => ({
+                        fumen: {
+                            ...state.fumen,
+                            pages: normalized.pages,
+                            maxPage: normalized.pages.length,
+                            currentIndex: normalized.currentIndex,
+                        },
                         tree: {
                             ...state.tree,
-                            nodes: reparentedTree.nodes,
-                            rootId: reparentedTree.rootId,
+                            nodes: normalized.tree.nodes,
+                            rootId: normalized.tree.rootId,
                             dragState: {
                                 ...state.tree.dragState,
                                 sourceNodeId: null,
@@ -1339,7 +1410,17 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             }
 
             // Create next snapshot for history
-            const nextSnapshot = createSnapshot(newTree, state.fumen.pages, state.fumen.currentIndex);
+            const normalized = normalizeTreeAndPages(
+                newTree,
+                state.fumen.pages,
+                state.fumen.currentIndex,
+                state.tree.activeNodeId,
+            );
+            const nextSnapshot = createSnapshot(
+                normalized.tree,
+                normalized.pages,
+                normalized.currentIndex,
+            );
 
             // Create history task
             const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
@@ -1349,10 +1430,16 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             return sequence(state, [
                 mementoActions.registerHistoryTask({ task }),
                 () => ({
+                    fumen: {
+                        ...state.fumen,
+                        pages: normalized.pages,
+                        maxPage: normalized.pages.length,
+                        currentIndex: normalized.currentIndex,
+                    },
                     tree: {
                         ...state.tree,
-                        nodes: newTree.nodes,
-                        rootId: newTree.rootId,
+                        nodes: normalized.tree.nodes,
+                        rootId: normalized.tree.rootId,
                         dragState: {
                             ...state.tree.dragState,
                             sourceNodeId: null,
@@ -1419,17 +1506,33 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             );
 
             const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
-            const nextSnapshot = createSnapshot(reparentedTree, state.fumen.pages, state.fumen.currentIndex);
+            const normalized = normalizeTreeAndPages(
+                reparentedTree,
+                state.fumen.pages,
+                state.fumen.currentIndex,
+                state.tree.activeNodeId,
+            );
+            const nextSnapshot = createSnapshot(
+                normalized.tree,
+                normalized.pages,
+                normalized.currentIndex,
+            );
             const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
             const { mementoActions } = require('./memento');
 
             return sequence(state, [
                 mementoActions.registerHistoryTask({ task }),
                 () => ({
+                    fumen: {
+                        ...state.fumen,
+                        pages: normalized.pages,
+                        maxPage: normalized.pages.length,
+                        currentIndex: normalized.currentIndex,
+                    },
                     tree: {
                         ...state.tree,
-                        nodes: reparentedTree.nodes,
-                        rootId: reparentedTree.rootId,
+                        nodes: normalized.tree.nodes,
+                        rootId: normalized.tree.rootId,
                         dragState: {
                             ...state.tree.dragState,
                             sourceNodeId: null,
@@ -1469,7 +1572,17 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         }
 
         // Create next snapshot for history
-        const nextSnapshot = createSnapshot(newTree, state.fumen.pages, state.fumen.currentIndex);
+        const normalized = normalizeTreeAndPages(
+            newTree,
+            state.fumen.pages,
+            state.fumen.currentIndex,
+            state.tree.activeNodeId,
+        );
+        const nextSnapshot = createSnapshot(
+            normalized.tree,
+            normalized.pages,
+            normalized.currentIndex,
+        );
 
         // Create history task
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
@@ -1479,10 +1592,16 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         return sequence(state, [
             mementoActions.registerHistoryTask({ task }),
             () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: normalized.pages,
+                    maxPage: normalized.pages.length,
+                    currentIndex: normalized.currentIndex,
+                },
                 tree: {
                     ...state.tree,
-                    nodes: newTree.nodes,
-                    rootId: newTree.rootId,
+                    nodes: normalized.tree.nodes,
+                    rootId: normalized.tree.rootId,
                     dragState: {
                         ...state.tree.dragState,
                         sourceNodeId: null,
