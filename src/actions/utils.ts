@@ -92,7 +92,8 @@ export const utilsActions: Readonly<UtilsActions> = {
         return utilsActions.loadFumen({ fumen: 'v115@vhAAgH' })(state);
     },
     loadPages: ({ pages, loadedFumen }) => (state): NextState => {
-        const prevTree: SerializedTree | null = state.tree.enabled ? {
+        const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+        const prevTree: SerializedTree | null = hasTreeData ? {
             nodes: state.tree.nodes,
             rootId: state.tree.rootId,
             version: 1,
@@ -303,8 +304,9 @@ const appendPages = (
 
     const newPages = pagesObj.pages;
 
-    // Update tree if tree mode is enabled (preserve existing structure)
-    const updateTree = state.tree.enabled && state.tree.rootId
+    // Update tree if tree data exists (even when view is disabled)
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const updateTree = hasTreeData
         ? (() => {
             const currentTree: SerializedTree = {
                 nodes: state.tree.nodes,

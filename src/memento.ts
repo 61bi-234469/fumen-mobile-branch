@@ -1,6 +1,7 @@
 import { HistoryTask, isOperationTask, toDecoratorOperationTask } from './history_task';
 import { generateKey } from './lib/random';
 import { Page } from './lib/fumen/types';
+import { TreeViewMode } from './lib/fumen/tree_types';
 import { encode } from './lib/fumen/fumen';
 import lodash from 'lodash';
 
@@ -69,11 +70,14 @@ interface Result {
     index: number;
     undoCount: number;
     redoCount: number;
+    treeViewMode?: TreeViewMode;
 }
 
 export const memento = (() => {
     const undoQueue: HistoryTask[] = [];
+    const undoViewModes: Array<TreeViewMode | undefined> = [];
     let redoQueue: HistoryTask[] = [];
+    let redoViewModes: Array<TreeViewMode | undefined> = [];
 
     return {
         // 自動保存
@@ -81,34 +85,42 @@ export const memento = (() => {
             saver(pages);
         },
         // タスクの追加
-        register: (task: HistoryTask, mergeKey?: string): number => {
+        register: (task: HistoryTask, mergeKey?: string, viewMode?: TreeViewMode): number => {
             const lastTask = undoQueue[undoQueue.length - 1];
+
             if (lastTask !== undefined && lastTask.key === mergeKey
                 && isOperationTask(lastTask) && isOperationTask(task)
             ) {
                 // keyが同じときはくっつける
                 // 現時点では OperationTask 同士のみ対応
                 undoQueue[undoQueue.length - 1] = toDecoratorOperationTask(lastTask, task);
+                undoViewModes[undoViewModes.length - 1] = viewMode;
             } else {
                 // そのまま追加する
                 if (undoQueue.length < 200) {
                     undoQueue.push(task);
+                    undoViewModes.push(viewMode);
                 } else {
                     undoQueue.shift();
+                    undoViewModes.shift();
                     undoQueue.push(task);
+                    undoViewModes.push(viewMode);
                 }
             }
 
             redoQueue = [];
+            redoViewModes = [];
             return undoQueue.length - 1;
         },
         undo: async (pages: Page[]): Promise<Result | undefined> => {
             const lastTask = undoQueue.pop();
+            const lastViewMode = undoViewModes.pop();
             if (lastTask === undefined) {
                 return undefined;
             }
 
             redoQueue.push(lastTask);
+            redoViewModes.push(lastViewMode);
 
             const result = lastTask.fixed ? (await lastTask.revert()) : lastTask.revert(pages);
             return {
@@ -116,15 +128,18 @@ export const memento = (() => {
                 index: result.index,
                 undoCount: undoQueue.length - 1,
                 redoCount: redoQueue.length,
+                treeViewMode: lastViewMode,
             };
         },
         redo: async (pages: Page[]): Promise<Result | undefined> => {
             const lastTask = redoQueue.pop();
+            const lastViewMode = redoViewModes.pop();
             if (lastTask === undefined) {
                 return undefined;
             }
 
             undoQueue.push(lastTask);
+            undoViewModes.push(lastViewMode);
 
             const result = lastTask.fixed ? (await lastTask.replay()) : lastTask.replay(pages);
             return {
@@ -132,6 +147,7 @@ export const memento = (() => {
                 index: result.index,
                 undoCount: undoQueue.length - 1,
                 redoCount: redoQueue.length,
+                treeViewMode: lastViewMode,
             };
         },
         lastKey: (): (string | undefined) => {

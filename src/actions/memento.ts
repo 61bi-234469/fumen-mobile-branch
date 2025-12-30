@@ -10,19 +10,19 @@ import {
     findNodeByPageIndex,
     getDefaultActiveNodeId,
 } from '../lib/fumen/tree_utils';
-import { initialTreeState, SerializedTree } from '../lib/fumen/tree_types';
+import { initialTreeState, SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
 
 export interface MementoActions {
     registerHistoryTask: (data: { task: HistoryTask, mergeKey?: string }) => action;
     undo: () => action;
     redo: () => action;
-    loadPagesViaHistory: (data: { pages: Page[], index: number, undoCount: number, redoCount: number }) => action;
+    loadPagesViaHistory: (data: { pages: Page[], index: number, undoCount: number, redoCount: number, treeViewMode?: TreeViewMode }) => action;
     setHistoryCount: (data: { redoCount: number, undoCount: number }) => action;
 }
 
 export const mementoActions: Readonly<MementoActions> = {
     registerHistoryTask: ({ task, mergeKey }) => (state): NextState => {
-        const undoCount = memento.register(task, mergeKey);
+        const undoCount = memento.register(task, mergeKey, state.tree.viewMode);
         return sequence(state, [
             mementoActions.setHistoryCount({ undoCount, redoCount: 0 }),
             saveToMemento,
@@ -71,7 +71,7 @@ export const mementoActions: Readonly<MementoActions> = {
             },
         ]);
     },
-    loadPagesViaHistory: ({ pages, index, undoCount, redoCount }) => (state): NextState => {
+    loadPagesViaHistory: ({ pages, index, undoCount, redoCount, treeViewMode }) => (state): NextState => {
         // Extract tree data from restored pages if present
         const { cleanedPages, tree } = extractTreeFromPages(pages);
 
@@ -82,8 +82,10 @@ export const mementoActions: Readonly<MementoActions> = {
             nodes: tree.nodes,
             rootId: tree.rootId,
             activeNodeId: findNodeByPageIndex(tree, index)?.id ?? getDefaultActiveNodeId(tree),
+            viewMode: treeViewMode ?? state.tree.viewMode,
         } : {
             ...initialTreeState,
+            viewMode: treeViewMode ?? initialTreeState.viewMode,
         };
 
         return sequence(state, [
@@ -102,7 +104,8 @@ export const mementoActions: Readonly<MementoActions> = {
 };
 
 const saveToMemento = (state: Readonly<State>): NextState => {
-    const tree: SerializedTree | null = state.tree.enabled ? {
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const tree: SerializedTree | null = hasTreeData ? {
         nodes: state.tree.nodes,
         rootId: state.tree.rootId,
         version: 1,
@@ -110,7 +113,7 @@ const saveToMemento = (state: Readonly<State>): NextState => {
 
     console.log('saveToMemento: tree enabled =', state.tree.enabled, 'tree nodes =', tree?.nodes.length);
 
-    const pagesToSave = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+    const pagesToSave = embedTreeInPages(state.fumen.pages, tree, tree !== null);
 
     console.log('saveToMemento: first page comment text =', pagesToSave[0]?.comment?.text,
         'contains #TREE=', pagesToSave[0]?.comment?.text?.includes('#TREE='));

@@ -607,13 +607,14 @@ export const pageActions: Readonly<PageActions> = {
         return undefined;
     },
     copyAllPagesToClipboard: () => (state): NextState => {
-        // Embed tree data if tree mode is enabled
-        const tree: SerializedTree | null = state.tree.enabled ? {
+        // Embed tree data if it exists (even when tree view is off)
+        const treeExists = state.tree.rootId !== null && state.tree.nodes.length > 0;
+        const tree: SerializedTree | null = treeExists ? {
             nodes: state.tree.nodes,
             rootId: state.tree.rootId,
             version: 1,
         } : null;
-        const pages = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
+        const pages = embedTreeInPages(state.fumen.pages, tree, tree !== null);
 
         // 非同期でエンコードしてクリップボードにコピー
         (async () => {
@@ -755,8 +756,9 @@ const insertRefPage = ({ index }: { index: number }) => (state: Readonly<State>)
     pages.insertRefPage(index);
     const newPages = pages.pages;
 
-    // Update tree if tree mode is enabled (preserve existing structure)
-    const updateTree = state.tree.enabled && state.tree.rootId
+    // Update tree if tree data exists (even when view is disabled)
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const updateTree = hasTreeData
         ? (() => {
             const currentTree: SerializedTree = {
                 nodes: state.tree.nodes,
@@ -797,8 +799,9 @@ const insertKeyPage = ({ index }: { index: number }) => (state: Readonly<State>)
     pages.insertKeyPage(index);
     const newPages = pages.pages;
 
-    // Update tree if tree mode is enabled (preserve existing structure)
-    const updateTree = state.tree.enabled && state.tree.rootId
+    // Update tree if tree data exists (even when view is disabled)
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const updateTree = hasTreeData
         ? (() => {
             const currentTree: SerializedTree = {
                 nodes: state.tree.nodes,
@@ -899,8 +902,9 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
         tasks.push(task);
     }
 
-    // Update tree if tree mode is enabled (preserve existing structure)
-    const updateTree = state.tree.enabled && state.tree.rootId
+    // Update tree if tree data exists (even when view is disabled)
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const updateTree = hasTreeData
         ? (() => {
             const currentTree: SerializedTree = {
                 nodes: state.tree.nodes,
@@ -941,8 +945,9 @@ const duplicatePage = ({ index }: { index: number }) => (state: Readonly<State>)
     pages.duplicatePage(index);
     const newPages = pages.pages;
 
-    // Update tree if tree mode is enabled (preserve existing structure)
-    const updateTree = state.tree.enabled && state.tree.rootId
+    // Update tree if tree data exists (even when view is disabled)
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const updateTree = hasTreeData
         ? (() => {
             const currentTree: SerializedTree = {
                 nodes: state.tree.nodes,
@@ -1025,8 +1030,9 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
     const newPages = pagesObj.pages;
     const nextIndex = index < newPages.length ? index : newPages.length - 1;
 
-    // Update tree if tree mode is enabled (preserve existing structure)
-    const updateTree = state.tree.enabled && state.tree.rootId
+    // Update tree if tree data exists (even when view is disabled)
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const updateTree = hasTreeData
         ? (() => {
             const currentTree: SerializedTree = {
                 nodes: state.tree.nodes,
@@ -1083,8 +1089,9 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
     const newPages = pagesObj.pages;
     const nextIndex = pageIndex < newPages.length ? pageIndex : newPages.length - 1;
 
-    // Update tree if tree mode is enabled (preserve existing structure)
-    const updateTree = state.tree.enabled && state.tree.rootId
+    // Update tree if tree data exists (even when view is disabled)
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const updateTree = hasTreeData
         ? (() => {
             const currentTree: SerializedTree = {
                 nodes: state.tree.nodes,
@@ -1167,8 +1174,9 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
 
     const newPages = pagesObj.pages;
 
-    // Update tree if tree mode is enabled (preserve existing structure)
-    const updateTree = state.tree.enabled && state.tree.rootId
+    // Update tree if tree data exists (even when view is disabled)
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const updateTree = hasTreeData
         ? (() => {
             const currentTree: SerializedTree = {
                 nodes: state.tree.nodes,
