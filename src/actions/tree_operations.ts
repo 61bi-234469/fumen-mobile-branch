@@ -19,6 +19,7 @@ import {
     createTreeFromPages,
     findNode,
     findNodeByPageIndex,
+    flattenTreeToPageIndices,
     getPathToNode,
     addBranchNode,
     insertNode,
@@ -35,6 +36,7 @@ import {
     embedTreeInPages,
     ensureVirtualRoot,
     isVirtualNode,
+    updateTreePageIndices,
 } from '../lib/fumen/tree_utils';
 import { OperationTask, toPrimitivePage, toPage, PrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
@@ -259,6 +261,7 @@ export interface TreeOperationActions {
     setAddMode: (data: { mode: AddMode }) => action;
     setTreeViewMode: (data: { mode: TreeViewMode }) => action;
     setTreeViewScale: (data: { scale: number }) => action;
+    normalizeTreePageOrder: () => action;
 
     // Tree navigation
     selectTreeNode: (data: { nodeId: TreeNodeId }) => action;
@@ -386,6 +389,62 @@ const createSnapshot = (
     };
 };
 
+const rebuildPageRefsForOrder = (pages: Page[], originalFirstPageColorize: boolean): Page[] => {
+    const oldIndexToNewIndex = new Map<number, number>();
+    pages.forEach((page, newIndex) => {
+        oldIndexToNewIndex.set(page.index, newIndex);
+    });
+
+    return pages.map((page, newIndex) => {
+        const newPage = { ...page, index: newIndex };
+
+        if (newIndex === 0) {
+            newPage.flags = { ...page.flags, colorize: originalFirstPageColorize };
+        }
+
+        if (page.field.ref !== undefined) {
+            const mappedRef = oldIndexToNewIndex.get(page.field.ref);
+            if (mappedRef !== undefined && mappedRef < newIndex) {
+                newPage.field = { ...page.field, ref: mappedRef };
+            } else {
+                let resolvedField: Field | undefined;
+                let refIndex: number | undefined = page.field.ref;
+                while (refIndex !== undefined) {
+                    const refPage = pages.find(p => oldIndexToNewIndex.get(p.index) !== undefined &&
+                        p.index === refIndex);
+                    if (refPage && refPage.field.obj) {
+                        resolvedField = refPage.field.obj.copy();
+                        break;
+                    }
+                    refIndex = refPage?.field.ref;
+                }
+                newPage.field = resolvedField ? { obj: resolvedField } : { obj: new Field({}) };
+            }
+        }
+
+        if (page.comment.ref !== undefined) {
+            const mappedRef = oldIndexToNewIndex.get(page.comment.ref);
+            if (mappedRef !== undefined && mappedRef < newIndex) {
+                newPage.comment = { ...page.comment, ref: mappedRef };
+            } else {
+                let resolvedText: string | undefined;
+                let refIndex: number | undefined = page.comment.ref;
+                while (refIndex !== undefined) {
+                    const refPage = pages.find(p => p.index === refIndex);
+                    if (refPage && refPage.comment.text !== undefined) {
+                        resolvedText = refPage.comment.text;
+                        break;
+                    }
+                    refIndex = refPage?.comment.ref;
+                }
+                newPage.comment = { text: resolvedText ?? '' };
+            }
+        }
+
+        return newPage;
+    });
+};
+
 // ============================================================================
 // Action Implementations
 // ============================================================================
@@ -438,6 +497,18 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
      * Set view mode (List or Tree)
      */
     setTreeViewMode: ({ mode }) => (state): NextState => {
+        if (mode === TreeViewMode.Tree) {
+            return sequence(state, [
+                () => ({
+                    tree: {
+                        ...state.tree,
+                        viewMode: mode,
+                    },
+                }),
+                treeOperationActions.normalizeTreePageOrder(),
+            ]);
+        }
+
         return {
             tree: {
                 ...state.tree,
@@ -457,6 +528,71 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 scale: clampedScale,
             },
         };
+    },
+
+    normalizeTreePageOrder: () => (state): NextState => {
+        if (!state.tree.enabled) return undefined;
+
+        const tree = getOrCreateTree(state);
+        const pages = state.fumen.pages;
+        if (pages.length <= 1) return undefined;
+
+        const dfsIndices = flattenTreeToPageIndices(tree)
+            .filter(index => index >= 0 && index < pages.length);
+        const seen = new Set<number>();
+        const order: number[] = [];
+        dfsIndices.forEach((index) => {
+            if (!seen.has(index)) {
+                seen.add(index);
+                order.push(index);
+            }
+        });
+        for (let i = 0; i < pages.length; i += 1) {
+            if (!seen.has(i)) {
+                order.push(i);
+            }
+        }
+
+        const isIdentityOrder = order.every((index, position) => index === position);
+        if (isIdentityOrder) return undefined;
+
+        const indexMap = new Map<number, number>();
+        order.forEach((oldIndex, newIndex) => {
+            indexMap.set(oldIndex, newIndex);
+        });
+
+        const reorderedPages = order.map(oldIndex => pages[oldIndex]);
+        const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
+        const newPages = rebuildPageRefsForOrder(reorderedPages, originalFirstPageColorize);
+
+        const newTree = updateTreePageIndices(tree, indexMap);
+        const activeNode = state.tree.activeNodeId ? findNode(newTree, state.tree.activeNodeId) : undefined;
+        const nextCurrentIndex = activeNode?.pageIndex
+            ?? indexMap.get(state.fumen.currentIndex)
+            ?? 0;
+
+        const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+        const nextSnapshot = createSnapshot(newTree, newPages, nextCurrentIndex);
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+        const { mementoActions } = require('./memento');
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: newPages,
+                    maxPage: newPages.length,
+                    currentIndex: nextCurrentIndex,
+                },
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: activeNode?.id ?? state.tree.activeNodeId,
+                },
+            }),
+        ]);
     },
 
     /**

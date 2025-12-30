@@ -6,7 +6,7 @@ import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { Page } from '../../lib/fumen/types';
 import { TreeNode, TreeNodeId, SerializedTree, TreeLayout, TreeDragMode } from '../../lib/fumen/tree_types';
-import { calculateTreeLayout, findNode, getNodeDfsNumbers, canMoveNode, isVirtualNode } from '../../lib/fumen/tree_utils';
+import { calculateTreeLayout, findNode, canMoveNode, isVirtualNode } from '../../lib/fumen/tree_utils';
 import { generateThumbnail } from '../../lib/thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
 
@@ -141,7 +141,7 @@ const renderNode = (
     guideLineColor: boolean,
     activeNodeId: TreeNodeId | null,
     actions: Props['actions'],
-    dfsNumber: number,
+    pageNumber: number,
     isDragSource: boolean,
     isValidDropTarget: boolean,
     isValidButtonTarget: boolean,
@@ -320,7 +320,7 @@ const renderNode = (
                 />
             )}
 
-            {/* DFS order number - clickable link to jump to page */}
+            {/* Page number - clickable link to jump to page */}
             <text
                 x={NODE_WIDTH / 2}
                 y={THUMBNAIL_HEIGHT + 24}
@@ -341,7 +341,7 @@ const renderNode = (
                     e.stopPropagation();
                 }}
             >
-                {dfsNumber}
+                {pageNumber}
             </text>
 
             {/* Branch indicator (shows if node has multiple children) */}
@@ -634,9 +634,6 @@ export const FumenGraph: Component<Props> = ({
     const pagesObj = new Pages(pages);
     const renderableNodes = tree.nodes.filter(node => !isVirtualNode(node));
 
-    // Calculate DFS numbering for nodes
-    const dfsNumbers = getNodeDfsNumbers(tree);
-
     // Render connections
     const connections = layout.connections.map(conn =>
         renderConnection(layout, conn.fromId, conn.toId, conn.isBranch, activeNodeId),
@@ -647,9 +644,9 @@ export const FumenGraph: Component<Props> = ({
     const sourceNode = isDragging ? findNode(tree, dragSourceNodeId) : null;
     const sourcePageIndex = sourceNode?.pageIndex ?? -1;
 
-    // Render nodes with DFS numbers and drag state
+    // Render nodes with page numbers and drag state
     const nodes = renderableNodes.map((node) => {
-        const dfsNumber = dfsNumbers.get(node.id) ?? 0;
+        const pageNumber = node.pageIndex + 1;
         const isDragSource = node.id === dragSourceNodeId;
         const allowDescendant = !buttonDropMovesSubtree;
         const isRootDragSource = buttonDropMovesSubtree && dragSourceNodeId !== null
@@ -680,7 +677,7 @@ export const FumenGraph: Component<Props> = ({
             guideLineColor,
             activeNodeId,
             actions,
-            dfsNumber,
+            pageNumber,
             isDragSource,
             isValidDropTarget,
             isValidButtonTarget,
