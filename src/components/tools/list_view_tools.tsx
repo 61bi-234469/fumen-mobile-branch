@@ -16,7 +16,6 @@ interface Props {
         changeToEditorFromListView: () => void;
         convertAllToMirror: () => void;
         openListViewReplaceModal: () => void;
-        copyAllPagesToClipboard: () => void;
         openListViewImportModal: () => void;
         openListViewExportModal: () => void;
         toggleTreeMode: () => void;
@@ -118,20 +117,7 @@ export const ListViewTools: Component<Props> = (
                     />
 
                     <ToolButton
-                        iconName="content_copy"
-                        datatest="btn-copy-all"
-                        width={40}
-                        height={height - 10}
-                        key="btn-copy-all"
-                        fontSize={24}
-                        colors={palette}
-                        actions={{
-                            onclick: () => actions.copyAllPagesToClipboard(),
-                        }}
-                    />
-
-                    <ToolButton
-                        iconName="content_paste"
+                        iconName="archive"
                         datatest="btn-import"
                         width={40}
                         height={height - 10}
@@ -144,7 +130,7 @@ export const ListViewTools: Component<Props> = (
                     />
 
                     <ToolButton
-                        iconName="file_download"
+                        iconName="unarchive"
                         datatest="btn-export-image"
                         width={40}
                         height={height - 10}

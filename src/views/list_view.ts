@@ -601,7 +601,6 @@ export const view: View<State, Actions> = (state, actions) => {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
                 convertAllToMirror: () => actions.convertAllToMirror(),
                 openListViewReplaceModal: () => actions.openListViewReplaceModal(),
-                copyAllPagesToClipboard: () => actions.copyAllPagesToClipboard(),
                 openListViewImportModal: () => actions.openListViewImportModal(),
                 openListViewExportModal: () => actions.openListViewExportModal(),
                 toggleTreeMode: () => actions.toggleTreeMode(),

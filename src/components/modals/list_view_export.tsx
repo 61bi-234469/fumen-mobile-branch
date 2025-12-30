@@ -10,6 +10,7 @@ interface ListViewExportModalProps {
         closeListViewExportModal: () => void;
         exportListViewAsUrl: () => void;
         exportListViewAsImage: () => void;
+        copyAllPagesToClipboard: () => void;
     };
 }
 
@@ -53,15 +54,14 @@ export const ListViewExportModal: Component<ListViewExportModalProps> = ({ actio
         cancel();
     };
 
+    const exportFumen = () => {
+        actions.copyAllPagesToClipboard();
+        cancel();
+    };
+
     const contentStyle = style({
         textAlign: 'center',
         padding: px(20),
-    });
-
-    const messageStyle = style({
-        fontSize: px(16),
-        color: '#333',
-        marginBottom: px(10),
     });
 
     return (
@@ -70,20 +70,21 @@ export const ListViewExportModal: Component<ListViewExportModalProps> = ({ actio
                  className="modal" oncreate={oncreate}>
                 <div key="modal-content" className="modal-content" style={contentStyle}>
                     <h4 key="export-label">{i18n.ListViewExport.Title()}</h4>
-
-                    <p style={messageStyle}>
-                        {i18n.ListViewExport.Description()}
-                    </p>
                 </div>
 
                 <div key="modal-footer" className="modal-footer">
+                    <a href="#" key="btn-export-fumen" datatest="btn-export-fumen"
+                       className="waves-effect waves-light btn red" onclick={exportFumen}>
+                        {i18n.ListViewExport.Buttons.Fumen()}
+                    </a>
+
                     <a href="#" key="btn-export-url" datatest="btn-export-url"
                        className="waves-effect waves-light btn red" onclick={exportUrl}>
                         {i18n.ListViewExport.Buttons.Url()}
                     </a>
 
                     <a href="#" key="btn-export-image" datatest="btn-export-image"
-                       className="waves-effect waves-light btn" onclick={exportImage}>
+                       className="waves-effect waves-light btn red" onclick={exportImage}>
                         {i18n.ListViewExport.Buttons.Image()}
                     </a>
 

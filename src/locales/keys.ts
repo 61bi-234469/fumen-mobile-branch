@@ -93,9 +93,19 @@ export const i18n = {
         Title: () => t('ListViewExport.Title'),
         Description: () => t('ListViewExport.Description'),
         Buttons: {
+            Fumen: () => t('ListViewExport.Buttons.Fumen'),
             Url: () => t('ListViewExport.Buttons.Url'),
             Image: () => t('ListViewExport.Buttons.Image'),
             Cancel: () => t('ListViewExport.Buttons.Cancel'),
+        },
+    },
+    ListViewImport: {
+        Title: () => t('ListViewImport.Title'),
+        Description: () => t('ListViewImport.Description'),
+        Buttons: {
+            Import: () => t('ListViewImport.Buttons.Import'),
+            Add: () => t('ListViewImport.Buttons.Add'),
+            Cancel: () => t('ListViewImport.Buttons.Cancel'),
         },
     },
     Navigator: {

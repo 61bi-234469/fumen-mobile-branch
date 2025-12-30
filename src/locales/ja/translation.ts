@@ -60,8 +60,18 @@ export const resources = {
         Title: 'エクスポート',
         Description: 'エクスポート形式を選択してください。',
         Buttons: {
+            Fumen: 'テト譜(v115～)',
             Url: 'URL',
             Image: '画像',
+            Cancel: 'キャンセル',
+        },
+    },
+    ListViewImport: {
+        Title: 'クリップボードから読み込み',
+        Description: 'IMPORT：現在の譜面を置き換え\nADD：独立したツリーとして追加',
+        Buttons: {
+            Import: 'IMPORT',
+            Add: 'ADD',
             Cancel: 'キャンセル',
         },
     },

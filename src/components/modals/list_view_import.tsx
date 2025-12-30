@@ -1,13 +1,14 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { resources } from '../../states';
+import { i18n } from '../../locales/keys';
 
 declare const M: any;
 
 interface ListViewImportModalProps {
     actions: {
         closeListViewImportModal: () => void;
-        importPagesFromClipboard: () => void;
+        importPagesFromClipboard: (data: { mode: 'import' | 'add' }) => void;
     };
 }
 
@@ -42,7 +43,13 @@ export const ListViewImportModal: Component<ListViewImportModalProps> = ({ actio
     };
 
     const doImport = () => {
-        actions.importPagesFromClipboard();
+        actions.importPagesFromClipboard({ mode: 'import' });
+        close();
+        destroy();
+    };
+
+    const doAdd = () => {
+        actions.importPagesFromClipboard({ mode: 'add' });
         close();
         destroy();
     };
@@ -52,33 +59,28 @@ export const ListViewImportModal: Component<ListViewImportModalProps> = ({ actio
         padding: px(20),
     });
 
-    const messageStyle = style({
-        fontSize: px(16),
-        color: '#333',
-        marginBottom: px(10),
-    });
-
     return (
         <div key="list-view-import-modal-top">
             <div key="mdl-list-view-import" datatest="mdl-list-view-import"
                  className="modal" oncreate={oncreate}>
                 <div key="modal-content" className="modal-content" style={contentStyle}>
-                    <h4 key="import-label">クリップボードから読み込み</h4>
-
-                    <p style={messageStyle}>
-                        クリップボードのテト譜で全ページを置き換えますか？
-                    </p>
+                    <h4 key="import-label">{i18n.ListViewImport.Title()}</h4>
                 </div>
 
                 <div key="modal-footer" className="modal-footer">
                     <a href="#" key="btn-import" datatest="btn-import"
                        className="waves-effect waves-light btn red" onclick={doImport}>
-                        Import
+                        {i18n.ListViewImport.Buttons.Import()}
+                    </a>
+
+                    <a href="#" key="btn-add" datatest="btn-add"
+                       className="waves-effect waves-light btn red" onclick={doAdd}>
+                        {i18n.ListViewImport.Buttons.Add()}
                     </a>
 
                     <a href="#" key="btn-cancel" datatest="btn-cancel"
                        className="waves-effect waves-teal btn-flat" onclick={cancel}>
-                        Cancel
+                        {i18n.ListViewImport.Buttons.Cancel()}
                     </a>
                 </div>
             </div>

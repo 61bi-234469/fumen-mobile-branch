@@ -3,15 +3,212 @@ import { action, actions, main } from '../actions';
 import { Screens } from '../lib/enums';
 import { resources, State } from '../states';
 import { Pages } from '../lib/pages';
-import { OperationTask, PrimitivePage, toPage, toPrimitivePage } from '../history_task';
+import { OperationTask, PrimitivePage, toInsertPageTask, toPage, toPrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
 import { downloadImage, generateListViewExportImage, generateTreeViewExportImage } from '../lib/thumbnail';
 import { decode, encode } from '../lib/fumen/fumen';
-import { TreeViewMode } from '../lib/fumen/tree_types';
-import { createTreeFromPages, embedTreeInPages, findNodeByPageIndex, updateTreePageIndices } from '../lib/fumen/tree_utils';
+import { SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
+import {
+    createTreeFromPages,
+    embedTreeInPages,
+    ensureVirtualRoot,
+    extractTreeFromPages,
+    findNodeByPageIndex,
+    isVirtualNode,
+    updateTreePageIndices,
+} from '../lib/fumen/tree_utils';
 
 declare const M: any;
+
+type ClipboardImportMode = 'import' | 'add';
+
+interface ParsedClipboardInput {
+    fumen: string;
+    treeParam?: boolean;
+    treeViewMode?: TreeViewMode;
+}
+
+const parseBooleanParam = (value: string | undefined): boolean | undefined => {
+    if (value === undefined) {
+        return undefined;
+    }
+    const normalized = value.toLowerCase();
+    if (normalized === '1' || normalized === 'true') {
+        return true;
+    }
+    if (normalized === '0' || normalized === 'false') {
+        return false;
+    }
+    return undefined;
+};
+
+const parseTreeViewModeParam = (value: string | undefined): TreeViewMode | undefined => {
+    if (!value) {
+        return undefined;
+    }
+    const normalized = value.toLowerCase();
+    if (normalized === 'tree') {
+        return TreeViewMode.Tree;
+    }
+    if (normalized === 'list') {
+        return TreeViewMode.List;
+    }
+    return undefined;
+};
+
+const safeDecodeURIComponent = (value: string): string => {
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return value;
+    }
+};
+
+const parseClipboardParams = (raw: string): ParsedClipboardInput | null => {
+    if (!/[?#].*d=/.test(raw)) {
+        return null;
+    }
+    const parseParams = (paramString: string): ParsedClipboardInput | null => {
+        const params = new URLSearchParams(paramString);
+        const dParam = params.get('d');
+        if (!dParam) {
+            return null;
+        }
+        return {
+            fumen: safeDecodeURIComponent(dParam),
+            treeParam: parseBooleanParam(params.get('tree') ?? undefined),
+            treeViewMode: parseTreeViewModeParam(params.get('treeView') ?? undefined),
+        };
+    };
+
+    const hashIndex = raw.indexOf('#');
+    if (hashIndex >= 0) {
+        let hash = raw.slice(hashIndex + 1);
+        if (hash.startsWith('?')) {
+            hash = hash.slice(1);
+        }
+        const parsed = parseParams(hash);
+        if (parsed) {
+            return parsed;
+        }
+    }
+
+    const queryIndex = raw.indexOf('?');
+    if (queryIndex >= 0) {
+        const query = raw.slice(queryIndex + 1);
+        return parseParams(query);
+    }
+
+    return null;
+};
+
+const parseClipboardInput = (value: string): ParsedClipboardInput | null => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    try {
+        const url = new URL(trimmed);
+        const hash = url.hash.startsWith('#?') ? url.hash.slice(2) : url.hash.replace(/^#/, '');
+        const hashParams = new URLSearchParams(hash);
+        const searchParams = url.searchParams;
+        const getParam = (key: string) => hashParams.get(key) ?? searchParams.get(key);
+        const dParam = getParam('d');
+        if (dParam) {
+            return {
+                fumen: safeDecodeURIComponent(dParam),
+                treeParam: parseBooleanParam(getParam('tree') ?? undefined),
+                treeViewMode: parseTreeViewModeParam(getParam('treeView') ?? undefined),
+            };
+        }
+    } catch {
+        // Not a URL; fall through
+    }
+
+    const parsedParams = parseClipboardParams(trimmed);
+    if (parsedParams) {
+        return parsedParams;
+    }
+
+    const fumenMatch = trimmed.match(/[vdVDmM](?:110|115)@[a-zA-Z0-9+/?]+/);
+    if (!fumenMatch) {
+        return null;
+    }
+
+    return { fumen: fumenMatch[0] };
+};
+
+const offsetTreeIndices = (tree: SerializedTree, offset: number): SerializedTree => {
+    return {
+        ...tree,
+        nodes: tree.nodes.map(node => ({
+            ...node,
+            childrenIds: [...node.childrenIds],
+            pageIndex: node.pageIndex >= 0 ? node.pageIndex + offset : node.pageIndex,
+        })),
+    };
+};
+
+const mergeIndependentTrees = (
+    baseTree: SerializedTree,
+    incomingTree: SerializedTree,
+    offset: number,
+): SerializedTree => {
+    const normalizedBase = ensureVirtualRoot(baseTree);
+    const normalizedIncoming = ensureVirtualRoot(incomingTree);
+    if (!normalizedBase.rootId) {
+        return offsetTreeIndices(normalizedIncoming, offset);
+    }
+
+    const baseRootId = normalizedBase.rootId;
+    const baseNodes = normalizedBase.nodes.map(node => ({
+        ...node,
+        childrenIds: [...node.childrenIds],
+    }));
+    const baseRoot = baseNodes.find(node => node.id === baseRootId);
+    if (!baseRoot) {
+        return normalizedBase;
+    }
+
+    const offsetIncomingNodes = normalizedIncoming.nodes.map(node => ({
+        ...node,
+        childrenIds: [...node.childrenIds],
+        pageIndex: node.pageIndex >= 0 ? node.pageIndex + offset : node.pageIndex,
+    }));
+    const incomingRoot = offsetIncomingNodes.find(node => node.id === normalizedIncoming.rootId);
+    if (!incomingRoot) {
+        return normalizedBase;
+    }
+
+    let incomingTopLevelIds: string[] = [];
+    let incomingNodesToAdd = offsetIncomingNodes;
+
+    if (isVirtualNode(incomingRoot)) {
+        incomingTopLevelIds = [...incomingRoot.childrenIds];
+        incomingNodesToAdd = offsetIncomingNodes
+            .filter(node => node.id !== incomingRoot.id)
+            .map(node => (incomingTopLevelIds.includes(node.id)
+                ? { ...node, parentId: baseRootId }
+                : node));
+    } else {
+        incomingTopLevelIds = [incomingRoot.id];
+        incomingNodesToAdd = offsetIncomingNodes.map(node => (node.id === incomingRoot.id
+            ? { ...node, parentId: baseRootId }
+            : node));
+    }
+
+    const updatedBaseNodes = baseNodes.map(node => (node.id === baseRootId
+        ? { ...node, childrenIds: [...node.childrenIds, ...incomingTopLevelIds] }
+        : node));
+
+    return {
+        ...normalizedBase,
+        nodes: [...updatedBaseNodes, ...incomingNodesToAdd],
+        rootId: baseRootId,
+    };
+};
 
 export interface ListViewActions {
     changeToEditorFromListView: () => action;
@@ -23,7 +220,12 @@ export interface ListViewActions {
     exportListViewAsImage: () => action;
     exportListViewAsUrl: () => action;
     replaceAllComments: (data: { searchText: string; replaceText: string }) => action;
-    importPagesFromClipboard: () => action;
+    importPagesFromClipboard: (data: { mode: ClipboardImportMode }) => action;
+    addPagesFromClipboard: (data: {
+        pages: Page[];
+        treeEnabledParam?: boolean;
+        treeViewModeParam?: TreeViewMode;
+    }) => action;
 }
 
 export const toReorderPageTask = (
@@ -392,32 +594,134 @@ export const listViewActions: Readonly<ListViewActions> = {
             },
         };
     },
-    importPagesFromClipboard: () => (state): NextState => {
+    addPagesFromClipboard: ({ pages, treeEnabledParam, treeViewModeParam }) => (state): NextState => {
+        if (pages.length === 0) {
+            return undefined;
+        }
+
+        const { cleanedPages, tree } = extractTreeFromPages(pages);
+        const normalizedImportedTree = tree ? ensureVirtualRoot(tree) : null;
+
+        const insertIndex = state.fumen.pages.length;
+        const pagesObj = new Pages([...state.fumen.pages]);
+        pagesObj.insertPage(insertIndex, cleanedPages);
+        const newPages = pagesObj.pages;
+
+        const hasExistingTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+        const shouldUseTree = hasExistingTreeData
+            || normalizedImportedTree !== null
+            || state.tree.enabled
+            || treeEnabledParam === true;
+
+        let baseTree: SerializedTree | null = hasExistingTreeData
+            ? {
+                nodes: state.tree.nodes,
+                rootId: state.tree.rootId,
+                version: 1 as const,
+            }
+            : (shouldUseTree ? createTreeFromPages(state.fumen.pages) : null);
+
+        let incomingTree: SerializedTree | null = normalizedImportedTree;
+        if (!incomingTree && shouldUseTree) {
+            incomingTree = createTreeFromPages(cleanedPages);
+        }
+
+        let mergedTree: SerializedTree | null = null;
+        if (shouldUseTree && incomingTree) {
+            if (baseTree && baseTree.nodes.length > 0 && baseTree.rootId) {
+                mergedTree = mergeIndependentTrees(baseTree, incomingTree, insertIndex);
+            } else {
+                mergedTree = offsetTreeIndices(ensureVirtualRoot(incomingTree), insertIndex);
+            }
+        } else if (baseTree) {
+            mergedTree = ensureVirtualRoot(baseTree);
+        }
+
+        let treeState = state.tree;
+        if (mergedTree) {
+            const normalizedMerged = ensureVirtualRoot(mergedTree);
+            const currentNode = findNodeByPageIndex(normalizedMerged, insertIndex);
+            treeState = {
+                ...state.tree,
+                enabled: true,
+                nodes: normalizedMerged.nodes,
+                rootId: normalizedMerged.rootId,
+                activeNodeId: currentNode?.id ?? state.tree.activeNodeId,
+            };
+        }
+
+        if (treeEnabledParam !== undefined) {
+            treeState = {
+                ...treeState,
+                enabled: treeEnabledParam,
+            };
+        }
+
+        if (treeViewModeParam !== undefined) {
+            treeState = {
+                ...treeState,
+                viewMode: treeViewModeParam,
+            };
+        }
+
+        const primitiveNexts = cleanedPages.map(toPrimitivePage);
+        const task = toInsertPageTask(insertIndex, primitiveNexts, state.fumen.currentIndex);
+
+        return sequence(state, [
+            actions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: newPages,
+                    maxPage: newPages.length,
+                    currentIndex: insertIndex,
+                },
+                tree: treeState,
+            }),
+            actions.reopenCurrentPage(),
+        ]);
+    },
+    importPagesFromClipboard: ({ mode }) => (state): NextState => {
         (async () => {
             try {
                 // Read text from clipboard
                 const text = await navigator.clipboard.readText();
 
-                // Extract fumen data part from URL
-                // Supported formats:
-                // - v115@~, d115@~, D115@~, m115@~, M115@~, V115@~
-                // - https://fumen.zui.jp/?D115@~
-                // - https://knewjade.github.io/fumen-for-mobile/#?d=v115@~
-                // - https://61bi-234469.github.io/fumen-for-mobile-ts/#?d=v115@~
-                const fumenMatch = text.match(/[vdVDmM]115@[a-zA-Z0-9+/?]+/);
-                if (!fumenMatch) {
+                const parsedInput = parseClipboardInput(text);
+                if (!parsedInput) {
                     M.toast({ html: 'No fumen data in clipboard', classes: 'top-toast', displayLength: 1500 });
                     return;
                 }
 
-                const fumenData = fumenMatch[0];
+                const fumenData = parsedInput.fumen;
 
-                // Decode (decode function supports all v/d/D/V/m/M formats)
+                // Decode (decode function supports v/d/D/V/m/M formats)
                 const decodedPages = await decode(fumenData);
+                const { tree: importedTree } = extractTreeFromPages(decodedPages);
+                const hasImportedTree = importedTree !== null && importedTree.nodes.length > 0;
+                const treeEnabledParam = !state.tree.enabled && hasImportedTree ? true : parsedInput.treeParam;
+                const treeViewModeParam = parsedInput.treeViewMode;
 
-                // Replace all pages (same as EDIT INSERT long press)
-                main.loadFumen({ fumen: fumenData });
-                const msg = `Replaced with ${decodedPages.length} pages`;
+                if (mode === 'import') {
+                    // Replace all pages
+                    main.loadPages({
+                        pages: decodedPages,
+                        loadedFumen: fumenData,
+                        treeEnabledParam,
+                        treeViewModeParam,
+                    });
+                    const msg = `Replaced with ${decodedPages.length} pages`;
+                    M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
+                    return;
+                }
+
+                // Add as independent tree
+                main.addPagesFromClipboard({
+                    pages: decodedPages,
+                    treeEnabledParam,
+                    treeViewModeParam,
+                });
+                const msg = `Added ${decodedPages.length} pages`;
                 M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
             } catch (error) {
                 console.error(error);

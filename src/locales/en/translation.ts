@@ -88,8 +88,18 @@ export const resources = {
         Title: 'Export',
         Description: 'Choose export type.',
         Buttons: {
+            Fumen: 'Fumen (v115+)',
             Url: 'URL Export',
             Image: 'Image Export',
+            Cancel: 'Cancel',
+        },
+    },
+    ListViewImport: {
+        Title: 'Import',
+        Description: 'IMPORT: Replace current pages\nADD: Add as an independent tree',
+        Buttons: {
+            Import: 'IMPORT',
+            Add: 'ADD',
             Cancel: 'Cancel',
         },
     },
