@@ -86,7 +86,7 @@ export interface State {
         };
     };
     handlers: {
-        animation?: NodeJS.Timeout;
+        animation?: ReturnType<typeof setInterval>;
     };
     events: {
         piece?: Piece;

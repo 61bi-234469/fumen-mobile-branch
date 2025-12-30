@@ -1,4 +1,4 @@
-import { action, actions, main } from '../actions';
+﻿import { action, actions, main } from '../actions';
 import { NextState, sequence } from './commons';
 import { AnimationState, Piece, TouchTypes } from '../lib/enums';
 import { Move, Page, PreCommand } from '../lib/fumen/types';
@@ -30,6 +30,36 @@ import {
 import { SerializedTree } from '../lib/fumen/tree_types';
 
 declare const M: any;
+const safeDecodeClipboardFumen = (value: string): string => {
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return value;
+    }
+};
+
+const parseFumenFromClipboard = (text: string): string | null => {
+    const trimmed = text.trim();
+
+    // Try URL with hash/search params first (supports #?d=...)
+    try {
+        const url = new URL(trimmed);
+        const hash = url.hash.startsWith('#?') ? url.hash.slice(2) : url.hash.replace(/^#/, '');
+        const hashParams = new URLSearchParams(hash);
+        const searchParams = url.searchParams;
+        const getParam = (key: string) => hashParams.get(key) ?? searchParams.get(key);
+        const dParam = getParam('d');
+        if (dParam) {
+            return safeDecodeClipboardFumen(dParam);
+        }
+    } catch {
+        // Not a URL, fall through
+    }
+
+    const decodedText = safeDecodeClipboardFumen(trimmed);
+    const fumenMatch = decodedText.match(/[vdVDmM]115@[a-zA-Z0-9+/?]+/);
+    return fumenMatch ? fumenMatch[0] : null;
+};
 
 export interface PageActions {
     reopenCurrentPage: () => action;
@@ -570,37 +600,29 @@ export const pageActions: Readonly<PageActions> = {
         }
         return pageActions.removePage({ index: currentIndex })(state);
     },
-    insertPageFromClipboard: () => (state): NextState => {
+        insertPageFromClipboard: () => (state): NextState => {
         const currentIndex = state.fumen.currentIndex;
 
         (async () => {
             try {
-                // クリップボードからテキストを読み取り
+                // クリチE�Eボ�Eドからテキストを読み取り
                 const text = await navigator.clipboard.readText();
 
-                // fumen URLからデータ部分を抽出
-                // 対応形式:
-                // - v115@～, d115@～, D115@～, m115@～, M115@～, V115@～
-                // - https://fumen.zui.jp/?D115@～
-                // - https://knewjade.github.io/fumen-for-mobile/#?d=v115@～
-                // - https://61bi-234469.github.io/fumen-for-mobile-ts/#?d=v115@～
-                const fumenMatch = text.match(/[vdVDmM]115@[a-zA-Z0-9+/?]+/);
-                if (!fumenMatch) {
-                    M.toast({ html: 'No fumen data in clipboard', classes: 'top-toast', displayLength: 1500 });
+                const fumenData = parseFumenFromClipboard(text);
+                if (!fumenData) {
+                    M.toast({ html: "No fumen data in clipboard", classes: 'top-toast', displayLength: 1500 });
                     return;
                 }
 
-                const fumenData = fumenMatch[0];
-
-                // デコード (decode関数はv/d/D/V/m/M全てに対応済み)
+                // チE��ーチE(decode関数はv/d/D/V/m/M全てに対応済み)
                 const decodedPages = await decode(fumenData);
 
-                // 次のページに挿入（mainを使用して状態を更新）
+                // 次のペ�Eジに挿入�E�Eainを使用して状態を更新�E�E
                 main.appendPages({ pages: decodedPages, pageIndex: currentIndex + 1 });
-                M.toast({ html: 'Inserted from clipboard', classes: 'top-toast', displayLength: 1000 });
+                M.toast({ html: "Inserted from clipboard", classes: 'top-toast', displayLength: 1000 });
             } catch (error) {
                 console.error(error);
-                M.toast({ html: `Failed to insert: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                M.toast({ html: "Failed to insert: " + error, classes: 'top-toast', displayLength: 1500 });
             }
         })();
 
@@ -1210,3 +1232,5 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
         actions.reopenCurrentPage(),
     ]);
 };
+
+
