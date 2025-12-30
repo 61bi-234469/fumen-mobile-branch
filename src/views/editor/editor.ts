@@ -353,6 +353,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
             openFumenModal: actions.openFumenModal,
             openMenuModal: actions.openMenuModal,
             changeToListViewScreen: actions.changeToListViewScreen,
+            changeToTreeViewScreen: actions.changeToTreeViewScreen,
             startAnimation: actions.startAnimation,
             pauseAnimation: actions.pauseAnimation,
             backPage: actions.backPage,

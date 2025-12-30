@@ -97,10 +97,10 @@ export const resources = {
     },
     ListViewImport: {
         Title: 'Import',
-        Description: 'IMPORT: Replace current pages\nADD: Add as an independent tree',
+        Description: 'IMPORT: Replace current pages\nINSERT: Add as an independent tree',
         Buttons: {
             Import: 'IMPORT',
-            Add: 'ADD',
+            Add: 'INSERT',
             Cancel: 'Cancel',
         },
     },

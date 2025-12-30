@@ -19,6 +19,7 @@ interface Props {
         openFumenModal: () => void;
         openMenuModal: () => void;
         changeToListViewScreen: () => void;
+        changeToTreeViewScreen: () => void;
         startAnimation: () => void;
         pauseAnimation: () => void;
         backPage: (data: { loop: boolean }) => void;
@@ -70,7 +71,10 @@ export const EditorTools: Component<Props> = (
                 <ToolButton iconName="view_list" datatest="btn-list-view" stickyLeft={true}
                             width={40} height={height - 10}
                             key="btn-list-view" fontSize={30} colors={colors}
-                            actions={{ onclick: () => actions.changeToListViewScreen() }}/>
+                            actions={{
+                                onclick: () => actions.changeToListViewScreen(),
+                                onlongpress: () => actions.changeToTreeViewScreen(),
+                            }}/>
 
                 <ToolButton iconName="undo" datatest="btn-undo" width={35} height={height - 10}
                             key="btn-undo" fontSize={33.75} marginRight={5} colors={colors}

@@ -275,6 +275,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
         actions: {
             changeToDrawerScreen: actions.changeToDrawerScreen,
             changeToListViewScreen: actions.changeToListViewScreen,
+            changeToTreeViewScreen: actions.changeToTreeViewScreen,
             openMenuModal: actions.openMenuModal,
             startAnimation: actions.startAnimation,
             pauseAnimation: actions.pauseAnimation,

@@ -69,10 +69,10 @@ export const resources = {
     },
     ListViewImport: {
         Title: 'クリップボードから読み込み',
-        Description: 'IMPORT：現在の譜面を置き換え\nADD：独立したツリーとして追加',
+        Description: 'IMPORT：現在の譜面を置き換え\nINSERT：独立したツリーとして追加',
         Buttons: {
             Import: 'IMPORT',
-            Add: 'ADD',
+            Add: 'INSERT',
             Cancel: 'キャンセル',
         },
     },

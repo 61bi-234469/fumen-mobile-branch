@@ -1,6 +1,8 @@
 import { NextState, sequence } from './commons';
 import { action, actions, main } from '../actions';
 import { CommentType, gradientPatternFrom, ModeTypes, Piece, Screens, TouchTypes } from '../lib/enums';
+import { TreeViewMode } from '../lib/fumen/tree_types';
+import { createTreeFromPages, findNodeByPageIndex } from '../lib/fumen/tree_utils';
 import { resources, State } from '../states';
 import { animationActions } from './animation';
 import { gradientPieces } from './user_settings';
@@ -9,6 +11,7 @@ export interface ScreenActions {
     changeToReaderScreen: () => action;
     changeToDrawerScreen: (data: { refresh?: boolean }) => action;
     changeToListViewScreen: () => action;
+    changeToTreeViewScreen: () => action;
     changeToDrawingMode: () => action;
     changeToDrawingToolMode: () => action;
     changeToFlagsMode: () => action;
@@ -60,6 +63,34 @@ export const modeActions: Readonly<ScreenActions> = {
                     screen: Screens.ListView,
                 },
             }),
+        ]);
+    },
+    changeToTreeViewScreen: () => (state): NextState => {
+        const ensureTreeEnabled = state.tree.enabled ? undefined : actions.toggleTreeMode();
+        const rebuildTree = state.tree.enabled && (state.tree.nodes.length === 0 || state.tree.rootId === null)
+            ? (currentState: State): NextState => {
+                const tree = createTreeFromPages(currentState.fumen.pages);
+                const currentNode = findNodeByPageIndex(tree, currentState.fumen.currentIndex);
+                return {
+                    tree: {
+                        ...currentState.tree,
+                        enabled: true,
+                        nodes: tree.nodes,
+                        rootId: tree.rootId,
+                        activeNodeId: currentNode?.id ?? null,
+                    },
+                };
+            }
+            : undefined;
+        const ensureTreeViewMode = state.tree.viewMode === TreeViewMode.Tree
+            ? undefined
+            : actions.setTreeViewMode({ mode: TreeViewMode.Tree });
+
+        return sequence(state, [
+            ensureTreeEnabled,
+            rebuildTree,
+            ensureTreeViewMode,
+            actions.changeToListViewScreen(),
         ]);
     },
     changeToDrawingMode: () => (state): NextState => {

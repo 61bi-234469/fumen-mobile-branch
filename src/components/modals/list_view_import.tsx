@@ -68,14 +68,14 @@ export const ListViewImportModal: Component<ListViewImportModalProps> = ({ actio
                 </div>
 
                 <div key="modal-footer" className="modal-footer">
-                    <a href="#" key="btn-import" datatest="btn-import"
-                       className="waves-effect waves-light btn red" onclick={doImport}>
-                        {i18n.ListViewImport.Buttons.Import()}
-                    </a>
-
                     <a href="#" key="btn-add" datatest="btn-add"
                        className="waves-effect waves-light btn red" onclick={doAdd}>
                         {i18n.ListViewImport.Buttons.Add()}
+                    </a>
+
+                    <a href="#" key="btn-import" datatest="btn-import"
+                       className="waves-effect waves-light btn red" onclick={doImport}>
+                        {i18n.ListViewImport.Buttons.Import()}
                     </a>
 
                     <a href="#" key="btn-cancel" datatest="btn-cancel"
