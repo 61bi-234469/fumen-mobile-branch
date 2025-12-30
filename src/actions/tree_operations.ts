@@ -33,6 +33,8 @@ import {
     isDescendant,
     validateTree,
     embedTreeInPages,
+    ensureVirtualRoot,
+    isVirtualNode,
 } from '../lib/fumen/tree_utils';
 import { OperationTask, toPrimitivePage, toPage, PrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
@@ -263,6 +265,7 @@ export interface TreeOperationActions {
 
     // Tree operations with history support
     addBranchFromCurrentNode: (data?: { parentNodeId?: TreeNodeId }) => action;
+    addRootFromCurrentNode: () => action;
     insertNodeAfterCurrent: (data?: { parentNodeId?: TreeNodeId }) => action;
     removeCurrentTreeNode: (data?: { removeDescendants?: boolean }) => action;
 
@@ -333,11 +336,11 @@ export const toTreeOperationTask = (
  */
 const getOrCreateTree = (state: State): SerializedTree => {
     if (state.tree.nodes.length > 0 && state.tree.rootId) {
-        return {
+        return ensureVirtualRoot({
             nodes: state.tree.nodes,
             rootId: state.tree.rootId,
             version: 1,
-        };
+        });
     }
     return createTreeFromPages(state.fumen.pages);
 };
@@ -352,13 +355,13 @@ const getCurrentNode = (state: State, overrideNodeId?: TreeNodeId): TreeNode | u
     // First try override node ID
     if (overrideNodeId) {
         const node = findNode(tree, overrideNodeId);
-        if (node) return node;
+        if (node && !isVirtualNode(node)) return node;
     }
 
     // Then try activeNodeId
     if (state.tree.activeNodeId) {
         const node = findNode(tree, state.tree.activeNodeId);
-        if (node) return node;
+        if (node && !isVirtualNode(node)) return node;
     }
 
     // Fall back to current page index
@@ -463,7 +466,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         const tree = getOrCreateTree(state);
         const node = findNode(tree, nodeId);
 
-        if (!node) return undefined;
+        if (!node || isVirtualNode(node)) return undefined;
 
         return {
             tree: {
@@ -544,6 +547,64 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
 
         // Import actions dynamically to avoid circular dependency
+        const { mementoActions } = require('./memento');
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: newPages,
+                    maxPage: newPages.length,
+                    currentIndex: newPageIndex,
+                },
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: newNodeId,
+                },
+            }),
+        ]);
+    },
+
+    /**
+     * Add a new top-level page under the virtual root
+     */
+    addRootFromCurrentNode: () => (state): NextState => {
+        if (!state.tree.enabled) return undefined;
+
+        const tree = getOrCreateTree(state);
+        if (!tree.rootId) return undefined;
+
+        const currentNode = getCurrentNode(state);
+        if (!currentNode) return undefined;
+
+        const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+
+        const currentPage = state.fumen.pages[currentNode.pageIndex];
+        const pagesObj = new Pages(state.fumen.pages);
+        const newPageIndex = state.fumen.pages.length;
+
+        const resolvedField = pagesObj.getField(currentNode.pageIndex, PageFieldOperation.All);
+
+        let commentRefIndex = currentNode.pageIndex;
+        if (currentPage.comment.ref !== undefined) {
+            commentRefIndex = currentPage.comment.ref;
+        }
+
+        const newPage: Page = {
+            index: newPageIndex,
+            field: { obj: resolvedField.copy() },
+            comment: { ref: commentRefIndex },
+            flags: { ...currentPage.flags, quiz: false },
+        };
+
+        const { tree: newTree, newNodeId } = addBranchNode(tree, tree.rootId, newPageIndex);
+        const newPages = [...state.fumen.pages, newPage];
+
+        const nextSnapshot = createSnapshot(newTree, newPages, newPageIndex);
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
         const { mementoActions } = require('./memento');
 
         return sequence(state, [

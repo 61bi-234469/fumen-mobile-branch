@@ -4,7 +4,12 @@ import { memento } from '../memento';
 import { HistoryTask } from '../history_task';
 import { Page } from '../lib/fumen/types';
 import { State } from '../states';
-import { embedTreeInPages, extractTreeFromPages, findNodeByPageIndex } from '../lib/fumen/tree_utils';
+import {
+    embedTreeInPages,
+    extractTreeFromPages,
+    findNodeByPageIndex,
+    getDefaultActiveNodeId,
+} from '../lib/fumen/tree_utils';
 import { initialTreeState, SerializedTree } from '../lib/fumen/tree_types';
 
 export interface MementoActions {
@@ -76,7 +81,7 @@ export const mementoActions: Readonly<MementoActions> = {
             enabled: true,
             nodes: tree.nodes,
             rootId: tree.rootId,
-            activeNodeId: findNodeByPageIndex(tree, index)?.id ?? tree.rootId,
+            activeNodeId: findNodeByPageIndex(tree, index)?.id ?? getDefaultActiveNodeId(tree),
         } : {
             ...initialTreeState,
         };

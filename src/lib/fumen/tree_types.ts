@@ -5,6 +5,9 @@
 /** Unique identifier for tree nodes */
 export type TreeNodeId = string;
 
+/** Page index for virtual root nodes (not mapped to pages array) */
+export const VIRTUAL_PAGE_INDEX = -1;
+
 /** Add mode for determining behavior when adding pages */
 export enum AddMode {
     Branch = 'Branch',   // Create new branch from current node
@@ -30,7 +33,7 @@ export interface TreeNode {
     id: TreeNodeId;
     /** Parent node ID (null for root nodes) */
     parentId: TreeNodeId | null;
-    /** Index into the pages array */
+    /** Index into the pages array (-1 for virtual root) */
     pageIndex: number;
     /** Ordered children IDs (children[0] is the main route) */
     childrenIds: TreeNodeId[];
@@ -43,7 +46,7 @@ export interface SerializedTree {
     /** Root node ID */
     rootId: TreeNodeId | null;
     /** Schema version for future migrations */
-    version: 1;
+    version: 1 | 2;
 }
 
 /** Graph layout position for a node */

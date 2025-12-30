@@ -6,7 +6,7 @@ import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { Page } from '../../lib/fumen/types';
 import { TreeNode, TreeNodeId, SerializedTree, TreeLayout, TreeDragMode } from '../../lib/fumen/tree_types';
-import { calculateTreeLayout, findNode, getNodeDfsNumbers, canMoveNode } from '../../lib/fumen/tree_utils';
+import { calculateTreeLayout, findNode, getNodeDfsNumbers, canMoveNode, isVirtualNode } from '../../lib/fumen/tree_utils';
 import { generateThumbnail } from '../../lib/thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
 
@@ -632,6 +632,7 @@ export const FumenGraph: Component<Props> = ({
 
     // Create Pages object for comment extraction
     const pagesObj = new Pages(pages);
+    const renderableNodes = tree.nodes.filter(node => !isVirtualNode(node));
 
     // Calculate DFS numbering for nodes
     const dfsNumbers = getNodeDfsNumbers(tree);
@@ -647,7 +648,7 @@ export const FumenGraph: Component<Props> = ({
     const sourcePageIndex = sourceNode?.pageIndex ?? -1;
 
     // Render nodes with DFS numbers and drag state
-    const nodes = tree.nodes.map((node) => {
+    const nodes = renderableNodes.map((node) => {
         const dfsNumber = dfsNumbers.get(node.id) ?? 0;
         const isDragSource = node.id === dragSourceNodeId;
         const allowDescendant = !buttonDropMovesSubtree;
@@ -697,7 +698,7 @@ export const FumenGraph: Component<Props> = ({
         e.stopPropagation();
     };
 
-    const commentInputs = tree.nodes.map((node) => {
+    const commentInputs = renderableNodes.map((node) => {
         const pos = getNodePixelPosition(layout, node.id);
         if (!pos) return null;
 
@@ -915,7 +916,7 @@ export const FumenGraph: Component<Props> = ({
 
         // Build a map from pageIndex to node for quick lookup
         const pageIndexToNode = new Map<number, TreeNode>();
-        tree.nodes.forEach(n => pageIndexToNode.set(n.pageIndex, n));
+        renderableNodes.forEach(n => pageIndexToNode.set(n.pageIndex, n));
 
         // Check each possible slot position
         let foundSlot: number | null = null;

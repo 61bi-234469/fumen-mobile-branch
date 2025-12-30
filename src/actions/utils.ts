@@ -22,6 +22,8 @@ import {
     createTreeFromPages,
     findNodeByPageIndex,
     insertPagesIntoTree,
+    ensureVirtualRoot,
+    getDefaultActiveNodeId,
 } from '../lib/fumen/tree_utils';
 import { initialTreeState, SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
 import { getURLQuery } from '../params';
@@ -105,19 +107,20 @@ export const utilsActions: Readonly<UtilsActions> = {
 
         // Extract tree data from pages if present
         const { cleanedPages, tree } = extractTreeFromPages(pages);
-        console.log('loadPages: extracted tree =', tree ? `nodes=${tree.nodes.length}` : 'null');
+        const normalizedTree = tree ? ensureVirtualRoot(tree) : null;
+        console.log('loadPages: extracted tree =', normalizedTree ? `nodes=${normalizedTree.nodes.length}` : 'null');
 
         const urlQuery = getURLQuery();
         const treeEnabledParam = parseBooleanParam(urlQuery.get('tree'));
         const treeViewModeParam = parseTreeViewModeParam(urlQuery.get('treeView'));
 
         // Set up tree state
-        let treeState = tree ? {
+        let treeState = normalizedTree ? {
             ...initialTreeState,
             enabled: true,
-            nodes: tree.nodes,
-            rootId: tree.rootId,
-            activeNodeId: tree.rootId,
+            nodes: normalizedTree.nodes,
+            rootId: normalizedTree.rootId,
+            activeNodeId: getDefaultActiveNodeId(normalizedTree),
         } : { ...initialTreeState };
 
         if (treeEnabledParam !== undefined) {
@@ -130,7 +133,7 @@ export const utilsActions: Readonly<UtilsActions> = {
                         enabled: true,
                         nodes: createdTree.nodes,
                         rootId: createdTree.rootId,
-                        activeNodeId: currentNode?.id ?? createdTree.rootId,
+                        activeNodeId: currentNode?.id ?? getDefaultActiveNodeId(createdTree),
                     };
                 } else {
                     treeState = {

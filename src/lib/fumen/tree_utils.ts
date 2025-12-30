@@ -11,7 +11,7 @@ import {
     TreeLayout,
     NodePosition,
     NodeConnection,
-    AddMode,
+    VIRTUAL_PAGE_INDEX,
 } from './tree_types';
 
 // ============================================================================
@@ -22,6 +22,88 @@ import {
  * Generate a unique node ID
  */
 export const generateNodeId = (): TreeNodeId => generateKey(12);
+
+// ============================================================================
+// Virtual Root Helpers
+// ============================================================================
+
+/**
+ * Check if a node is a virtual root (not mapped to pages)
+ */
+export const isVirtualNode = (node: TreeNode): boolean => node.pageIndex === VIRTUAL_PAGE_INDEX;
+
+/**
+ * Ensure the tree has a virtual root node.
+ * If the current root is not virtual, wrap all top-level nodes under a new virtual root.
+ */
+export const ensureVirtualRoot = (tree: SerializedTree): SerializedTree => {
+    if (!tree.rootId || tree.nodes.length === 0) {
+        return tree;
+    }
+
+    const currentRoot = findNode(tree, tree.rootId);
+    if (currentRoot && isVirtualNode(currentRoot)) {
+        return tree;
+    }
+
+    const topLevelNodes = tree.nodes.filter(node => node.parentId === null);
+    if (topLevelNodes.length === 0) {
+        return tree;
+    }
+
+    const virtualRootId = generateNodeId();
+    const virtualRoot: TreeNode = {
+        id: virtualRootId,
+        parentId: null,
+        pageIndex: VIRTUAL_PAGE_INDEX,
+        childrenIds: topLevelNodes.map(node => node.id),
+    };
+
+    const updatedNodes = tree.nodes.map((node) => {
+        if (node.parentId === null) {
+            return {
+                ...node,
+                parentId: virtualRootId,
+            };
+        }
+        return node;
+    });
+
+    return {
+        ...tree,
+        nodes: [...updatedNodes, virtualRoot],
+        rootId: virtualRootId,
+        version: 2,
+    };
+};
+
+/**
+ * Get a stable active node ID for selection.
+ */
+export const getDefaultActiveNodeId = (
+    tree: SerializedTree,
+    fallbackPageIndex: number = 0,
+): TreeNodeId | null => {
+    const fallbackNode = findNodeByPageIndex(tree, fallbackPageIndex);
+    if (fallbackNode) {
+        return fallbackNode.id;
+    }
+
+    if (!tree.rootId) {
+        return null;
+    }
+
+    const rootNode = findNode(tree, tree.rootId);
+    if (!rootNode) {
+        return null;
+    }
+
+    if (isVirtualNode(rootNode)) {
+        return rootNode.childrenIds[0] ?? null;
+    }
+
+    return rootNode.id;
+};
 
 // ============================================================================
 // Tree Creation
@@ -36,7 +118,7 @@ export const createTreeFromPages = (pages: Page[]): SerializedTree => {
         return {
             nodes: [],
             rootId: null,
-            version: 1,
+            version: 2,
         };
     }
 
@@ -64,10 +146,28 @@ export const createTreeFromPages = (pages: Page[]): SerializedTree => {
         prevNodeId = nodeId;
     });
 
+    const virtualRootId = generateNodeId();
+    const virtualRoot: TreeNode = {
+        id: virtualRootId,
+        parentId: null,
+        pageIndex: VIRTUAL_PAGE_INDEX,
+        childrenIds: nodes.length > 0 ? [nodes[0].id] : [],
+    };
+
+    const updatedNodes = nodes.map((node, index) => {
+        if (index === 0) {
+            return {
+                ...node,
+                parentId: virtualRootId,
+            };
+        }
+        return node;
+    });
+
     return {
-        nodes,
-        rootId: nodes.length > 0 ? nodes[0].id : null,
-        version: 1,
+        nodes: [...updatedNodes, virtualRoot],
+        rootId: virtualRootId,
+        version: 2,
     };
 };
 
@@ -86,6 +186,9 @@ export const findNode = (tree: SerializedTree, nodeId: TreeNodeId): TreeNode | u
  * Find a node by page index
  */
 export const findNodeByPageIndex = (tree: SerializedTree, pageIndex: number): TreeNode | undefined => {
+    if (pageIndex < 0) {
+        return undefined;
+    }
     return tree.nodes.find(n => n.pageIndex === pageIndex);
 };
 
@@ -109,7 +212,7 @@ export const getPathToNode = (tree: SerializedTree, nodeId: TreeNodeId): TreeNod
  * Get all leaf nodes (nodes with no children)
  */
 export const getLeafNodes = (tree: SerializedTree): TreeNode[] => {
-    return tree.nodes.filter(node => node.childrenIds.length === 0);
+    return tree.nodes.filter(node => node.childrenIds.length === 0 && !isVirtualNode(node));
 };
 
 /**
@@ -150,6 +253,11 @@ export const calculateTreeLayout = (tree: SerializedTree): TreeLayout => {
     const connections: NodeConnection[] = [];
 
     if (!tree.rootId) {
+        return { connections, positions, maxDepth: 0, maxLane: 0 };
+    }
+
+    const rootNode = findNode(tree, tree.rootId);
+    if (!rootNode) {
         return { connections, positions, maxDepth: 0, maxLane: 0 };
     }
 
@@ -201,7 +309,22 @@ export const calculateTreeLayout = (tree: SerializedTree): TreeLayout => {
         return Math.max(lane, nextLane);
     };
 
-    assignPositions(tree.rootId, 0, 0);
+    const startNodeIds = isVirtualNode(rootNode)
+        ? rootNode.childrenIds
+        : [rootNode.id];
+
+    if (startNodeIds.length === 0) {
+        return { connections, positions, maxDepth: 0, maxLane: 0 };
+    }
+
+    startNodeIds.forEach((nodeId, index) => {
+        if (index === 0) {
+            assignPositions(nodeId, 0, 0);
+        } else {
+            currentLane += 1;
+            assignPositions(nodeId, 0, currentLane);
+        }
+    });
 
     return {
         connections,
@@ -226,6 +349,11 @@ export const flattenTreeToPageIndices = (tree: SerializedTree): number[] => {
         return indices;
     }
 
+    const rootNode = findNode(tree, tree.rootId);
+    if (!rootNode) {
+        return indices;
+    }
+
     const visited = new Set<TreeNodeId>();
 
     const traverse = (nodeId: TreeNodeId) => {
@@ -238,11 +366,16 @@ export const flattenTreeToPageIndices = (tree: SerializedTree): number[] => {
         const node = findNode(tree, nodeId);
         if (!node) return;
 
-        indices.push(node.pageIndex);
+        if (!isVirtualNode(node)) {
+            indices.push(node.pageIndex);
+        }
         node.childrenIds.forEach(traverse);
     };
 
-    traverse(tree.rootId);
+    const startNodeIds = isVirtualNode(rootNode)
+        ? rootNode.childrenIds
+        : [rootNode.id];
+    startNodeIds.forEach(traverse);
     return indices;
 };
 
@@ -258,6 +391,11 @@ export const getNodeDfsNumbers = (tree: SerializedTree): Map<TreeNodeId, number>
         return nodeNumbers;
     }
 
+    const rootNode = findNode(tree, tree.rootId);
+    if (!rootNode) {
+        return nodeNumbers;
+    }
+
     const visited = new Set<TreeNodeId>();
     let counter = 1;
 
@@ -270,13 +408,18 @@ export const getNodeDfsNumbers = (tree: SerializedTree): Map<TreeNodeId, number>
         const node = findNode(tree, nodeId);
         if (!node) return;
 
-        nodeNumbers.set(nodeId, counter);
-        counter += 1;
+        if (!isVirtualNode(node)) {
+            nodeNumbers.set(nodeId, counter);
+            counter += 1;
+        }
 
         node.childrenIds.forEach(traverse);
     };
 
-    traverse(tree.rootId);
+    const startNodeIds = isVirtualNode(rootNode)
+        ? rootNode.childrenIds
+        : [rootNode.id];
+    startNodeIds.forEach(traverse);
     return nodeNumbers;
 };
 
@@ -1178,13 +1321,14 @@ export const reorderNode = (
 // ============================================================================
 
 const TREE_COMMENT_PREFIX = '#TREE=';
+const TREE_COMMENT_VERSION = 'v2';
 
 /**
  * Compact tree format for storage:
  * Each node is stored as: pageIndex,parentIndex,childrenIndices...
  * Nodes are separated by semicolons
- * Root index is stored first, followed by node data
- * Example: "0;0,-1,1;1,0,2,3;2,1;3,1" means:
+ * Version and root index are stored first, followed by node data
+ * Example: "v2;0;0,-1,1;1,0,2,3;2,1;3,1" means:
  *   - Root is node at index 0
  *   - Node 0: pageIndex=0, parent=-1 (root), children=[1]
  *   - Node 1: pageIndex=1, parent=0, children=[2,3]
@@ -1195,27 +1339,29 @@ const TREE_COMMENT_PREFIX = '#TREE=';
  * Serialize tree to compact format for embedding in comment
  */
 export const serializeTreeToComment = (tree: SerializedTree): string => {
-    if (!tree.rootId || tree.nodes.length === 0) {
+    const normalizedTree = ensureVirtualRoot(tree);
+
+    if (!normalizedTree.rootId || normalizedTree.nodes.length === 0) {
         return '';
     }
 
     // Create index mapping: nodeId -> index
     const idToIndex = new Map<TreeNodeId, number>();
-    tree.nodes.forEach((node, index) => {
+    normalizedTree.nodes.forEach((node, index) => {
         idToIndex.set(node.id, index);
     });
 
     // Find root index
-    const rootIndex = idToIndex.get(tree.rootId) ?? 0;
+    const rootIndex = idToIndex.get(normalizedTree.rootId) ?? 0;
 
     // Convert to compact format: "rootIndex;p,parentIdx,child1,child2,...;..."
-    const compactNodes = tree.nodes.map((node) => {
+    const compactNodes = normalizedTree.nodes.map((node) => {
         const parentIdx = node.parentId ? (idToIndex.get(node.parentId) ?? -1) : -1;
         const childIndices = node.childrenIds.map(id => idToIndex.get(id) ?? -1).filter(i => i >= 0);
         return [node.pageIndex, parentIdx, ...childIndices].join(',');
     });
 
-    const compact = `${rootIndex};${compactNodes.join(';')}`;
+    const compact = `${TREE_COMMENT_VERSION};${rootIndex};${compactNodes.join(';')}`;
 
     // Use btoa for base64 encoding
     const base64 = btoa(compact);
@@ -1253,9 +1399,17 @@ export const parseTreeFromComment = (comment: string): SerializedTree | null => 
         console.log('parseTreeFromComment: decoded length =', decoded.length,
             'first 50 chars:', decoded.substring(0, 50));
 
-        // Try compact format first (starts with number;)
-        if (/^\d+;/.test(decoded)) {
-            return parseCompactTree(decoded);
+        let parsedTree: SerializedTree | null = null;
+
+        if (decoded.startsWith(`${TREE_COMMENT_VERSION};`)) {
+            parsedTree = parseCompactTreeV2(decoded);
+        } else if (/^\d+;/.test(decoded)) {
+            // Try legacy compact format (starts with number;)
+            parsedTree = parseCompactTree(decoded);
+        }
+
+        if (parsedTree) {
+            return ensureVirtualRoot(parsedTree);
         }
 
         // Fall back to legacy JSON format
@@ -1267,9 +1421,52 @@ export const parseTreeFromComment = (comment: string): SerializedTree | null => 
             return null;
         }
 
-        return parsed as SerializedTree;
+        return ensureVirtualRoot(parsed as SerializedTree);
     } catch (e) {
         console.warn('Failed to parse tree from comment:', e);
+        return null;
+    }
+};
+
+/**
+ * Parse compact tree format (v2)
+ */
+const parseCompactTreeV2 = (compact: string): SerializedTree | null => {
+    try {
+        const parts = compact.split(';');
+        if (parts.length < 3) return null;
+        if (parts[0] !== TREE_COMMENT_VERSION) return null;
+
+        const rootIndex = parseInt(parts[1], 10);
+        const nodeParts = parts.slice(2);
+
+        // Generate node IDs for each node part
+        const nodeIds: TreeNodeId[] = nodeParts.map(() => generateNodeId());
+
+        // Parse nodes
+        const nodes: TreeNode[] = nodeParts.map((part, index) => {
+            const values = part.split(',').map(v => parseInt(v, 10));
+            const pageIndex = values[0] ?? 0;
+            const parentIdx = values[1] ?? -1;
+            const childIndices = values.slice(2);
+
+            return {
+                pageIndex,
+                childrenIds: childIndices.filter(idx => idx >= 0).map(idx => nodeIds[idx]),
+                id: nodeIds[index],
+                parentId: parentIdx >= 0 ? nodeIds[parentIdx] : null,
+            };
+        }).filter(node => node.pageIndex !== undefined);
+
+        if (nodes.length === 0) return null;
+
+        return {
+            nodes,
+            rootId: nodeIds[rootIndex],
+            version: 2,
+        };
+    } catch (e) {
+        console.warn('Failed to parse compact tree v2:', e);
         return null;
     }
 };
@@ -1360,10 +1557,17 @@ export const appendTreeToComment = (comment: string, tree: SerializedTree): stri
 export const validateTree = (tree: SerializedTree): { valid: boolean; errors: string[] } => {
     const errors: string[] = [];
     const nodeIds = new Set(tree.nodes.map(n => n.id));
+    const virtualNodes = tree.nodes.filter(node => isVirtualNode(node));
 
     // Check root exists
     if (tree.rootId && !nodeIds.has(tree.rootId)) {
         errors.push(`Root node ${tree.rootId} not found in nodes`);
+    }
+    if (virtualNodes.length > 1) {
+        errors.push('Multiple virtual roots detected');
+    }
+    if (virtualNodes.length === 1 && tree.rootId && virtualNodes[0].id !== tree.rootId) {
+        errors.push(`Virtual root ${virtualNodes[0].id} is not the rootId ${tree.rootId}`);
     }
 
     // Check each node
@@ -1380,8 +1584,8 @@ export const validateTree = (tree: SerializedTree): { valid: boolean; errors: st
             }
         });
 
-        // Check page index is non-negative
-        if (node.pageIndex < 0) {
+        // Check page index is non-negative (virtual root is allowed)
+        if (node.pageIndex < 0 && node.id !== tree.rootId) {
             errors.push(`Node ${node.id} has invalid page index ${node.pageIndex}`);
         }
     });

@@ -542,6 +542,25 @@ export const view: View<State, Actions> = (state, actions) => {
         zIndex: 100,
     });
 
+    const treeRootAddButtonStyle = style({
+        position: 'fixed',
+        bottom: px(70),
+        right: px(20),
+        width: px(44),
+        height: px(44),
+        borderRadius: '50%',
+        border: 'none',
+        backgroundColor: '#4CAF50',
+        color: '#fff',
+        fontSize: px(24),
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        zIndex: 100,
+    });
+
     const treeButtonToggleLabelStyle = style({
         fontSize: px(12),
         color: '#555',
@@ -912,6 +931,15 @@ export const view: View<State, Actions> = (state, actions) => {
             }, [
                 h('div', { style: treeButtonToggleKnobStyle }),
             ]),
+        ])] : []),
+
+        // Add top-level page button (tree view only)
+        ...(isTreeView ? [h('button', {
+            key: 'tree-root-add',
+            style: treeRootAddButtonStyle,
+            onclick: () => actions.addRootFromCurrentNode(),
+        }, [
+            h('i', { className: 'material-icons', style: style({ fontSize: px(24) }) }, 'add'),
         ])] : []),
 
     ]);
