@@ -36,7 +36,12 @@ export interface UtilsActions {
     loadFumen: (data: { fumen: string, purgeOnFailed?: boolean }) => action;
     loadNewFumen: () => action;
     commitAppendFumenData: (data: { position: 'next' | 'end' }) => action;
-    loadPages: (data: { pages: Page[], loadedFumen: string }) => action;
+    loadPages: (data: {
+        pages: Page[],
+        loadedFumen: string,
+        treeEnabledParam?: boolean,
+        treeViewModeParam?: TreeViewMode,
+    }) => action;
     appendPages: (data: { pages: Page[], pageIndex: number }) => action;
     refresh: () => action;
     openInPC: () => action;
@@ -72,6 +77,47 @@ const parseTreeViewModeParam = (value: string | undefined): TreeViewMode | undef
     return undefined;
 };
 
+const safeDecodeURIComponent = (value: string): string => {
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return value;
+    }
+};
+
+const parseFumenInput = (value: string): {
+    fumen: string;
+    treeParam?: boolean;
+    treeViewMode?: TreeViewMode;
+} => {
+    const trimmed = value.trim();
+
+    // Try to parse as URL and extract hash/search params (supports #?d=...)
+    try {
+        const url = new URL(trimmed);
+        const hash = url.hash.startsWith('#?') ? url.hash.slice(2) : url.hash.replace(/^#/, '');
+        const hashParams = new URLSearchParams(hash);
+        const searchParams = url.searchParams;
+        const getParam = (key: string) => hashParams.get(key) ?? searchParams.get(key);
+
+        const dParam = getParam('d');
+        if (dParam) {
+            return {
+                fumen: safeDecodeURIComponent(dParam),
+                treeParam: parseBooleanParam(getParam('tree') ?? undefined),
+                treeViewMode: parseTreeViewModeParam(getParam('treeView') ?? undefined),
+            };
+        }
+    } catch {
+        // Not a URL; fall through
+    }
+
+    // Fallback: accept percent-encoded raw fumen strings
+    return {
+        fumen: safeDecodeURIComponent(trimmed),
+    };
+};
+
 export const utilsActions: Readonly<UtilsActions> = {
     resize: ({ width, height }) => (state): NextState => {
         return {
@@ -91,7 +137,7 @@ export const utilsActions: Readonly<UtilsActions> = {
     loadNewFumen: () => (state): NextState => {
         return utilsActions.loadFumen({ fumen: 'v115@vhAAgH' })(state);
     },
-    loadPages: ({ pages, loadedFumen }) => (state): NextState => {
+    loadPages: ({ pages, loadedFumen, treeEnabledParam, treeViewModeParam }) => (state): NextState => {
         const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
         const prevTree: SerializedTree | null = hasTreeData ? {
             nodes: state.tree.nodes,
@@ -112,8 +158,10 @@ export const utilsActions: Readonly<UtilsActions> = {
         console.log('loadPages: extracted tree =', normalizedTree ? `nodes=${normalizedTree.nodes.length}` : 'null');
 
         const urlQuery = getURLQuery();
-        const treeEnabledParam = parseBooleanParam(urlQuery.get('tree'));
-        const treeViewModeParam = parseTreeViewModeParam(urlQuery.get('treeView'));
+        const urlTreeEnabledParam = parseBooleanParam(urlQuery.get('tree'));
+        const urlTreeViewModeParam = parseTreeViewModeParam(urlQuery.get('treeView'));
+        const finalTreeEnabledParam = treeEnabledParam ?? urlTreeEnabledParam;
+        const finalTreeViewModeParam = treeViewModeParam ?? urlTreeViewModeParam;
 
         // Set up tree state
         let treeState = normalizedTree ? {
@@ -124,8 +172,8 @@ export const utilsActions: Readonly<UtilsActions> = {
             activeNodeId: getDefaultActiveNodeId(normalizedTree),
         } : { ...initialTreeState };
 
-        if (treeEnabledParam !== undefined) {
-            if (treeEnabledParam) {
+        if (finalTreeEnabledParam !== undefined) {
+            if (finalTreeEnabledParam) {
                 if (!treeState.rootId || treeState.nodes.length === 0) {
                     const createdTree = createTreeFromPages(cleanedPages);
                     const currentNode = findNodeByPageIndex(createdTree, 0);
@@ -150,10 +198,10 @@ export const utilsActions: Readonly<UtilsActions> = {
             }
         }
 
-        if (treeViewModeParam !== undefined) {
+        if (finalTreeViewModeParam !== undefined) {
             treeState = {
                 ...treeState,
-                viewMode: treeViewModeParam,
+                viewMode: finalTreeViewModeParam,
             };
         }
 
@@ -351,10 +399,13 @@ const loadFumen = (fumen: string, purgeOnFailed: boolean): NextState => {
         return undefined;
     }
 
+    const parsedInput = parseFumenInput(fumen);
+    const normalizedFumen = parsedInput.fumen;
+
     (async () => {
         let pages: Page[];
         try {
-            pages = await decode(fumen);
+            pages = await decode(normalizedFumen);
         } catch (e: any) {
             console.error(e);
             if (purgeOnFailed) {
@@ -368,7 +419,12 @@ const loadFumen = (fumen: string, purgeOnFailed: boolean): NextState => {
         }
 
         try {
-            main.loadPages({ pages, loadedFumen: fumen });
+            main.loadPages({
+                pages,
+                loadedFumen: normalizedFumen,
+                treeEnabledParam: parsedInput.treeParam,
+                treeViewModeParam: parsedInput.treeViewMode,
+            });
             main.closeAllModals();
             main.clearFumenData();
         } catch (e: any) {
@@ -392,10 +448,13 @@ const appendFumen = (fumen: string, pageIndex: number): NextState => {
         return undefined;
     }
 
+    const parsedInput = parseFumenInput(fumen);
+    const normalizedFumen = parsedInput.fumen;
+
     (async () => {
         let pages: Page[];
         try {
-            pages = await decode(fumen);
+            pages = await decode(normalizedFumen);
         } catch (e: any) {
             console.error(e);
             if (e instanceof FumenError) {
