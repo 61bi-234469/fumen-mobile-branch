@@ -1126,7 +1126,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Validate that we can move to this target
         if (parentNodeId !== null) {
             const tree = getOrCreateTree(state);
-            const allowDescendantOnButtonDrop = true; // executeTreeDrop handles descendant cycles
+            const allowDescendantOnButtonDrop = !state.tree.buttonDropMovesSubtree;
             let canMove = canMoveNode(
                 tree,
                 state.tree.dragState.sourceNodeId,
@@ -1334,71 +1334,9 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     return treeOperationActions.endTreeDrag()(state);
                 }
 
-                const canMoveToTarget = canMoveNode(
-                    tree,
-                    sourceNodeId,
-                    targetButtonParentId,
-                    { allowDescendant: true },
-                );
+                const canMoveToTarget = canMoveNode(tree, sourceNodeId, targetButtonParentId);
                 if (!canMoveToTarget) {
                     return treeOperationActions.endTreeDrag()(state);
-                }
-
-                if (isDescendant(tree, sourceNodeId, targetButtonParentId)) {
-                    // Moving a subtree onto its descendant would cycle; fall back to node-only reparent.
-                    const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
-                    const detachedTree = detachNodeLeavingChildren(tree, sourceNodeId);
-                    const newTree = attachDetachedNodeToTarget(
-                        detachedTree,
-                        sourceNodeId,
-                        targetButtonParentId,
-                        targetButtonType,
-                    );
-
-                    const validation = validateTree(newTree);
-                    if (!validation.valid) {
-                        console.warn('executeTreeDrop: invalid tree after descendant button drop', validation.errors);
-                        return treeOperationActions.endTreeDrag()(state);
-                    }
-
-                    const normalized = normalizeTreeAndPages(
-                        newTree,
-                        state.fumen.pages,
-                        state.fumen.currentIndex,
-                        state.tree.activeNodeId,
-                    );
-                    const nextSnapshot = createSnapshot(
-                        normalized.tree,
-                        normalized.pages,
-                        normalized.currentIndex,
-                    );
-                    const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
-                    const { mementoActions } = require('./memento');
-
-                    return sequence(state, [
-                        mementoActions.registerHistoryTask({ task }),
-                        () => ({
-                            fumen: {
-                                ...state.fumen,
-                                pages: normalized.pages,
-                                maxPage: normalized.pages.length,
-                                currentIndex: normalized.currentIndex,
-                            },
-                            tree: {
-                                ...state.tree,
-                                nodes: normalized.tree.nodes,
-                                rootId: normalized.tree.rootId,
-                                dragState: {
-                                    ...state.tree.dragState,
-                                    sourceNodeId: null,
-                                    targetNodeId: null,
-                                    dropSlotIndex: null,
-                                    targetButtonParentId: null,
-                                    targetButtonType: null,
-                                },
-                            },
-                        }),
-                    ]);
                 }
 
                 const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);

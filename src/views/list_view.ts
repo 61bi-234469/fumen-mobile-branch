@@ -10,7 +10,7 @@ import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
 import { TreeViewMode, TreeDragMode } from '../lib/fumen/tree_types';
 import { style, px } from '../lib/types';
-import { canMoveNode, calculateTreeLayout } from '../lib/fumen/tree_utils';
+import { canMoveNode, calculateTreeLayout, findNode } from '../lib/fumen/tree_utils';
 
 // Tree view node dimensions (must match fumen_graph.tsx)
 const TREE_NODE_WIDTH = 120;
@@ -295,7 +295,8 @@ export const view: View<State, Actions> = (state, actions) => {
         const layout = calculateTreeLayout(tree);
         const dragMode = state.tree.dragState.mode;
         const sourceNodeId = state.tree.dragState.sourceNodeId;
-        const allowDescendantOnButtonDrop = true; // executeTreeDrop resolves descendant cycles safely
+        const sourceParentId = sourceNodeId ? findNode(tree, sourceNodeId)?.parentId ?? null : null;
+        const allowDescendantOnButtonDrop = !buttonDropMovesSubtree; // block descendant targets when moving subtree
         const isRootDragSource = buttonDropMovesSubtree && sourceNodeId !== null
             && tree.rootId !== null && sourceNodeId === tree.rootId;
 
@@ -337,7 +338,10 @@ export const view: View<State, Actions> = (state, actions) => {
             }
 
             // Check BRANCH button (orange) - only if node has children
-            if (node.childrenIds.length > 0) {
+            const hideBranchButton = sourceParentId !== null
+                && sourceParentId === node.id
+                && node.childrenIds.length <= 1;
+            if (node.childrenIds.length > 0 && !hideBranchButton) {
                 const branchButtonCenterX = nodeX + TREE_BUTTON_X;
                 const branchButtonCenterY = nodeY + TREE_BRANCH_BUTTON_Y;
 

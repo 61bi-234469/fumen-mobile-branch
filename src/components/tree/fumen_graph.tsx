@@ -6,7 +6,7 @@ import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { Page } from '../../lib/fumen/types';
 import { TreeNode, TreeNodeId, SerializedTree, TreeLayout, TreeDragMode } from '../../lib/fumen/tree_types';
-import { calculateTreeLayout, findNode, canMoveNode, isVirtualNode } from '../../lib/fumen/tree_utils';
+import { calculateTreeLayout, findNode, canMoveNode, isDescendant, isVirtualNode } from '../../lib/fumen/tree_utils';
 import { generateThumbnail } from '../../lib/thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
 
@@ -151,6 +151,7 @@ const renderNode = (
     isBranchButtonHighlighted: boolean,
     isParentOfDragSource: boolean,
     scale: number,
+    hideButtons: boolean,
 ) => {
     const pos = getNodePixelPosition(layout, node.id);
     if (!pos) return null;
@@ -172,6 +173,7 @@ const renderNode = (
         cursor: 'grab',
         opacity: isDragSource ? 0.5 : 1,
     });
+    const hideBranchButton = isParentOfDragSource && node.childrenIds.length <= 1;
 
     // Determine node background and stroke based on drag state
     let fillColor = '#fff';
@@ -245,7 +247,8 @@ const renderNode = (
                             actions.onDragOverButton(node.id, 'insert');
                             return;
                         }
-                        if (node.childrenIds.length > 0 && distToBranch <= buttonHitRadius && isValidButtonTarget) {
+                        if (!hideBranchButton && node.childrenIds.length > 0
+                            && distToBranch <= buttonHitRadius && isValidButtonTarget) {
                             e.stopPropagation(); // Prevent SVG handler from overriding
                             actions.onDragOverButton(node.id, 'branch');
                             return;
@@ -346,7 +349,7 @@ const renderNode = (
             {/* Add buttons - INSERT (green) and Branch (orange) */}
             {/* When dragging from a child node, parent's INSERT button becomes red delete button */}
             {/* and Branch button is hidden */}
-            {node.childrenIds.length > 0 ? (
+            {!hideButtons && (node.childrenIds.length > 0 ? (
                 // Two buttons: INSERT (green, at center/line level) and Branch (orange, below)
                 <g key="add-buttons">
                     {/* INSERT button - green normally, red when parent of drag source */}
@@ -407,6 +410,7 @@ const renderNode = (
                         </text>
                     </g>
                     {/* Orange Branch button */}
+                    {!hideBranchButton && (
                     <g
                         transform={`translate(${NODE_WIDTH + 4}, ${NODE_HEIGHT / 2 + ADD_BUTTON_SIZE + 4})`}
                         onmousedown={(e: MouseEvent) => {
@@ -461,6 +465,7 @@ const renderNode = (
                             +
                         </text>
                     </g>
+                    )}
                 </g>
             ) : (
                 // Single button: INSERT (green, centered) - red when parent of drag source
@@ -520,7 +525,7 @@ const renderNode = (
                         {isParentOfDragSource ? '−' : '+'}
                     </text>
                 </g>
-            )}
+            ))}
         </g>
     );
 };
@@ -635,9 +640,12 @@ export const FumenGraph: Component<Props> = ({
     const nodes = renderableNodes.map((node) => {
         const pageNumber = node.pageIndex + 1;
         const isDragSource = node.id === dragSourceNodeId;
-        const allowDescendantOnButtonDrop = true; // drop handler resolves descendant cycles
+        const allowDescendantOnButtonDrop = !buttonDropMovesSubtree;
         const isRootDragSource = buttonDropMovesSubtree && dragSourceNodeId !== null
             && tree.rootId !== null && dragSourceNodeId === tree.rootId;
+        const sourceParentId = dragSourceNodeId
+            ? findNode(tree, dragSourceNodeId)?.parentId ?? null
+            : null;
         const isValidDropTarget = dragSourceNodeId !== null
             && node.id !== dragSourceNodeId
             && canMoveNode(tree, dragSourceNodeId, node.id);
@@ -645,6 +653,11 @@ export const FumenGraph: Component<Props> = ({
             && node.id !== dragSourceNodeId
             && !isRootDragSource
             && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant: allowDescendantOnButtonDrop });
+        const hideButtons = isDragging
+            && buttonDropMovesSubtree
+            && dragSourceNodeId !== null
+            && node.id !== dragSourceNodeId
+            && isDescendant(tree, dragSourceNodeId, node.id);
 
         // Calculate button highlight state
         const isInsertButtonHighlighted = isDragging
@@ -674,6 +687,7 @@ export const FumenGraph: Component<Props> = ({
             isBranchButtonHighlighted,
             isParentOfDragSource,
             scale,
+            hideButtons,
         );
     });
 
@@ -780,9 +794,12 @@ export const FumenGraph: Component<Props> = ({
     // Handle mouse move on SVG to detect drop slots and buttons
     const handleSvgMouseMove = (e: MouseEvent) => {
         if (!isDragging) return;
-        const allowDescendantOnButtonDrop = true; // drop handler resolves descendant cycles
+        const allowDescendantOnButtonDrop = !buttonDropMovesSubtree;
         const isRootDragSource = buttonDropMovesSubtree && dragSourceNodeId !== null
             && tree.rootId !== null && dragSourceNodeId === tree.rootId;
+        const sourceParentId = dragSourceNodeId
+            ? findNode(tree, dragSourceNodeId)?.parentId ?? null
+            : null;
 
         const svg = e.currentTarget as SVGSVGElement;
         const rect = svg.getBoundingClientRect();
@@ -832,7 +849,10 @@ export const FumenGraph: Component<Props> = ({
             }
 
             // Check BRANCH button (only if node has children)
-            if (node.childrenIds.length > 0) {
+            const hideBranchButton = sourceParentId !== null
+                && sourceParentId === node.id
+                && node.childrenIds.length <= 1;
+            if (node.childrenIds.length > 0 && !hideBranchButton) {
                 const branchBtnY = pos.y + NODE_HEIGHT / 2 + ADD_BUTTON_SIZE + 4;
                 const distToBranch = Math.sqrt((mouseX - insertBtnX) ** 2 + (mouseY - branchBtnY) ** 2);
 
