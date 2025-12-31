@@ -1199,6 +1199,64 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             const tree = getOrCreateTree(state);
             const targetNode = findNode(tree, targetButtonParentId);
 
+            // Delete the dragged node when dropping onto its parent's insert button
+            // (only when MoveWithChildren is off; subtree deletion is handled below)
+            if (targetButtonType === 'insert' && targetNode && !moveSubtreeOnButtonDrop) {
+                const sourceNode = findNode(tree, sourceNodeId);
+                if (sourceNode && sourceNode.parentId === targetButtonParentId) {
+                    const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+                    const newTree = removeNode(tree, sourceNodeId, false);
+
+                    const activeNodeId = state.tree.activeNodeId;
+                    const activeRemoved = activeNodeId !== null && activeNodeId === sourceNodeId;
+                    const nextActiveNodeId = activeRemoved ? sourceNode.parentId : activeNodeId;
+                    const nextActiveNode = nextActiveNodeId ? findNode(newTree, nextActiveNodeId) : undefined;
+                    const nextCurrentIndex = activeRemoved
+                        ? (nextActiveNode?.pageIndex ?? state.fumen.currentIndex)
+                        : state.fumen.currentIndex;
+
+                    const normalized = normalizeTreeAndPages(
+                        newTree,
+                        state.fumen.pages,
+                        nextCurrentIndex,
+                        nextActiveNodeId,
+                    );
+                    const nextSnapshot = createSnapshot(
+                        normalized.tree,
+                        normalized.pages,
+                        normalized.currentIndex,
+                    );
+                    const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+                    const { mementoActions } = require('./memento');
+
+                    return sequence(state, [
+                        mementoActions.registerHistoryTask({ task }),
+                        () => ({
+                            fumen: {
+                                ...state.fumen,
+                                pages: normalized.pages,
+                                maxPage: normalized.pages.length,
+                                currentIndex: normalized.currentIndex,
+                            },
+                            tree: {
+                                ...state.tree,
+                                nodes: normalized.tree.nodes,
+                                rootId: normalized.tree.rootId,
+                                activeNodeId: nextActiveNodeId,
+                                dragState: {
+                                    ...state.tree.dragState,
+                                    sourceNodeId: null,
+                                    targetNodeId: null,
+                                    dropSlotIndex: null,
+                                    targetButtonParentId: null,
+                                    targetButtonType: null,
+                                },
+                            },
+                        }),
+                    ]);
+                }
+            }
+
             // No-op guard: dragging only child back onto its own parent as a new branch
             if (
                 targetButtonType === 'branch' &&
