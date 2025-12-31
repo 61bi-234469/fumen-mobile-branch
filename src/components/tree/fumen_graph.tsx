@@ -147,7 +147,6 @@ const renderNode = (
     isValidButtonTarget: boolean,
     dragMode: TreeDragMode,
     isDragging: boolean,
-    sourcePageIndex: number,
     isInsertButtonHighlighted: boolean,
     isBranchButtonHighlighted: boolean,
     isParentOfDragSource: boolean,
@@ -262,17 +261,7 @@ const renderNode = (
                     const isLeftHalf = xInNode < NODE_WIDTH / 2;
                     const pageIndex = node.pageIndex;
 
-                    if (dragMode === TreeDragMode.Reorder) {
-                        // Reorder mode: slot-based like list view
-                        const slotIndex = isLeftHalf ? pageIndex : pageIndex + 1;
-                        // Skip no-op slots
-                        const isNoOpSlot = slotIndex === sourcePageIndex || slotIndex === sourcePageIndex + 1;
-                        if (!isNoOpSlot) {
-                            actions.onDragOverSlot(slotIndex);
-                        } else {
-                            actions.onDragOverSlot(-1);  // Invalid slot
-                        }
-                    } else if (isValidDropTarget) {
+                    if (dragMode !== TreeDragMode.Reorder && isValidDropTarget) {
                         // Attach modes: show slot after target node (INSERT position)
                         // For AttachSingle/AttachBranch, the slot is always after the target
                         actions.onDragOverNode(node.id);
@@ -544,7 +533,7 @@ const renderNode = (
 const DROP_SLOT_WIDTH = 6;
 
 /**
- * Render drop slot indicator for Reorder mode (visual only, hit detection is on nodes)
+ * Render drop slot indicator for attach modes (visual only, hit detection is on nodes)
  */
 const renderDropSlot = (
     slotIndex: number,
@@ -642,13 +631,11 @@ export const FumenGraph: Component<Props> = ({
     // Calculate source page index for drag operations
     const isDragging = dragSourceNodeId !== null;
     const sourceNode = isDragging ? findNode(tree, dragSourceNodeId) : null;
-    const sourcePageIndex = sourceNode?.pageIndex ?? -1;
-
     // Render nodes with page numbers and drag state
     const nodes = renderableNodes.map((node) => {
         const pageNumber = node.pageIndex + 1;
         const isDragSource = node.id === dragSourceNodeId;
-        const allowDescendant = !buttonDropMovesSubtree;
+        const allowDescendantOnButtonDrop = true; // drop handler resolves descendant cycles
         const isRootDragSource = buttonDropMovesSubtree && dragSourceNodeId !== null
             && tree.rootId !== null && dragSourceNodeId === tree.rootId;
         const isValidDropTarget = dragSourceNodeId !== null
@@ -657,7 +644,7 @@ export const FumenGraph: Component<Props> = ({
         const isValidButtonTarget = dragSourceNodeId !== null
             && node.id !== dragSourceNodeId
             && !isRootDragSource
-            && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant });
+            && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant: allowDescendantOnButtonDrop });
 
         // Calculate button highlight state
         const isInsertButtonHighlighted = isDragging
@@ -683,7 +670,6 @@ export const FumenGraph: Component<Props> = ({
             isValidButtonTarget,
             dragMode,
             isDragging,
-            sourcePageIndex,
             isInsertButtonHighlighted,
             isBranchButtonHighlighted,
             isParentOfDragSource,
@@ -763,11 +749,9 @@ export const FumenGraph: Component<Props> = ({
 
     // Render drop slots
     const dropSlots: JSX.Element[] = [];
-    if (isDragging && dropSlotIndex !== null) {
-        // For Attach modes, use targetNodeId to find the position
-        // For Reorder mode, use pageIndex-based lookup
-        if (dragMode !== TreeDragMode.Reorder && dragTargetNodeId !== null) {
-            // Attach mode: show indicator after the target node
+    if (isDragging && dropSlotIndex !== null && dragMode !== TreeDragMode.Reorder) {
+        // Attach mode: show indicator after the target node
+        if (dragTargetNodeId !== null) {
             const targetNode = findNode(tree, dragTargetNodeId);
             if (targetNode) {
                 const pos = getNodePixelPosition(layout, targetNode.id);
@@ -776,43 +760,6 @@ export const FumenGraph: Component<Props> = ({
                     const slotX = pos.x + NODE_WIDTH + HORIZONTAL_GAP / 2;
                     const slotY = pos.y;
                     dropSlots.push(renderDropSlot(dropSlotIndex, slotX, slotY));
-                }
-            }
-        } else {
-            // Reorder mode: use pageIndex-based lookup
-            // Build a map from pageIndex to node for quick lookup
-            const pageIndexToNode = new Map<number, TreeNode>();
-            tree.nodes.forEach(n => pageIndexToNode.set(n.pageIndex, n));
-
-            // Slot N means "insert before page N" (between page N-1 and page N)
-            // Slot pages.length means "insert after last page"
-
-            if (dropSlotIndex < pages.length) {
-                // Slot before page at dropSlotIndex
-                const targetNode = pageIndexToNode.get(dropSlotIndex);
-                if (targetNode) {
-                    const pos = getNodePixelPosition(layout, targetNode.id);
-                    if (pos) {
-                        // Center between previous node and current node
-                        // For slot 0 (before first node), place at left edge of node to avoid clipping
-                        const slotX = dropSlotIndex === 0
-                            ? pos.x - DROP_SLOT_WIDTH - 4  // Left edge with small gap
-                            : pos.x - HORIZONTAL_GAP / 2;
-                        const slotY = pos.y;
-                        dropSlots.push(renderDropSlot(dropSlotIndex, slotX, slotY));
-                    }
-                }
-            } else {
-                // Slot after the last page
-                const lastPageNode = pageIndexToNode.get(pages.length - 1);
-                if (lastPageNode) {
-                    const pos = getNodePixelPosition(layout, lastPageNode.id);
-                    if (pos) {
-                        // Center after the last node
-                        const slotX = pos.x + NODE_WIDTH + HORIZONTAL_GAP / 2;
-                        const slotY = pos.y;
-                        dropSlots.push(renderDropSlot(dropSlotIndex, slotX, slotY));
-                    }
                 }
             }
         }
@@ -833,7 +780,7 @@ export const FumenGraph: Component<Props> = ({
     // Handle mouse move on SVG to detect drop slots and buttons
     const handleSvgMouseMove = (e: MouseEvent) => {
         if (!isDragging) return;
-        const allowDescendant = !buttonDropMovesSubtree;
+        const allowDescendantOnButtonDrop = true; // drop handler resolves descendant cycles
         const isRootDragSource = buttonDropMovesSubtree && dragSourceNodeId !== null
             && tree.rootId !== null && dragSourceNodeId === tree.rootId;
 
@@ -860,7 +807,7 @@ export const FumenGraph: Component<Props> = ({
             const isValidTarget = dragSourceNodeId !== null
                 && node.id !== dragSourceNodeId
                 && !isRootDragSource
-                && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant });
+                && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant: allowDescendantOnButtonDrop });
 
             // DEBUG: Log each node's button position and distance
             const insertBtnX = pos.x + NODE_WIDTH + 4;
@@ -908,55 +855,10 @@ export const FumenGraph: Component<Props> = ({
             actions.onDragLeaveButton();
         }
 
-        // Only check slots in Reorder mode
+        // Tree view reorder slots are disabled; keep button drag only.
         if (dragMode !== TreeDragMode.Reorder) return;
-
-        // Build a map from pageIndex to node for quick lookup
-        const pageIndexToNode = new Map<number, TreeNode>();
-        renderableNodes.forEach(n => pageIndexToNode.set(n.pageIndex, n));
-
-        // Check each possible slot position
-        let foundSlot: number | null = null;
-
-        for (let slotIdx = 0; slotIdx <= pages.length; slotIdx += 1) {
-            // Skip no-op slots
-            const isNoOpSlot = slotIdx === sourcePageIndex || slotIdx === sourcePageIndex + 1;
-            if (isNoOpSlot) continue;
-
-            let slotX: number;
-            let slotY: number;
-
-            if (slotIdx < pages.length) {
-                const targetNode = pageIndexToNode.get(slotIdx);
-                if (!targetNode) continue;
-                const pos = getNodePixelPosition(layout, targetNode.id);
-                if (!pos) continue;
-                // For slot 0, use left edge of node
-                slotX = slotIdx === 0
-                    ? pos.x - DROP_SLOT_WIDTH - 4
-                    : pos.x - HORIZONTAL_GAP / 2;
-                slotY = pos.y;
-            } else {
-                const lastNode = pageIndexToNode.get(pages.length - 1);
-                if (!lastNode) continue;
-                const pos = getNodePixelPosition(layout, lastNode.id);
-                if (!pos) continue;
-                slotX = pos.x + NODE_WIDTH + HORIZONTAL_GAP / 2;
-                slotY = pos.y;
-            }
-
-            // Check if mouse is within the slot hit area
-            const hitWidth = HORIZONTAL_GAP;
-            const hitHeight = NODE_HEIGHT;
-            if (mouseX >= slotX - hitWidth / 2 && mouseX <= slotX + hitWidth / 2 &&
-                mouseY >= slotY && mouseY <= slotY + hitHeight) {
-                foundSlot = slotIdx;
-                break;
-            }
-        }
-
-        if (foundSlot !== null) {
-            actions.onDragOverSlot(foundSlot);
+        if (dropSlotIndex !== null) {
+            actions.onDragOverSlot(-1);
         }
     };
 

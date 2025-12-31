@@ -29,7 +29,6 @@ import {
     moveSubtreeToInsertPosition,
     moveSubtreeToParent,
     moveNodeWithRightSiblingsToParent,
-    reorderNode,
     canMoveNode,
     isDescendant,
     validateTree,
@@ -1127,8 +1126,13 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         // Validate that we can move to this target
         if (parentNodeId !== null) {
             const tree = getOrCreateTree(state);
-            const allowDescendant = !state.tree.buttonDropMovesSubtree;
-            let canMove = canMoveNode(tree, state.tree.dragState.sourceNodeId, parentNodeId, { allowDescendant });
+            const allowDescendantOnButtonDrop = true; // executeTreeDrop handles descendant cycles
+            let canMove = canMoveNode(
+                tree,
+                state.tree.dragState.sourceNodeId,
+                parentNodeId,
+                { allowDescendant: allowDescendantOnButtonDrop },
+            );
             if (state.tree.buttonDropMovesSubtree && tree.rootId
                 && state.tree.dragState.sourceNodeId === tree.rootId) {
                 canMove = false;
@@ -1330,8 +1334,71 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     return treeOperationActions.endTreeDrag()(state);
                 }
 
-                if (!canMoveNode(tree, sourceNodeId, targetButtonParentId)) {
+                const canMoveToTarget = canMoveNode(
+                    tree,
+                    sourceNodeId,
+                    targetButtonParentId,
+                    { allowDescendant: true },
+                );
+                if (!canMoveToTarget) {
                     return treeOperationActions.endTreeDrag()(state);
+                }
+
+                if (isDescendant(tree, sourceNodeId, targetButtonParentId)) {
+                    // Moving a subtree onto its descendant would cycle; fall back to node-only reparent.
+                    const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+                    const detachedTree = detachNodeLeavingChildren(tree, sourceNodeId);
+                    const newTree = attachDetachedNodeToTarget(
+                        detachedTree,
+                        sourceNodeId,
+                        targetButtonParentId,
+                        targetButtonType,
+                    );
+
+                    const validation = validateTree(newTree);
+                    if (!validation.valid) {
+                        console.warn('executeTreeDrop: invalid tree after descendant button drop', validation.errors);
+                        return treeOperationActions.endTreeDrag()(state);
+                    }
+
+                    const normalized = normalizeTreeAndPages(
+                        newTree,
+                        state.fumen.pages,
+                        state.fumen.currentIndex,
+                        state.tree.activeNodeId,
+                    );
+                    const nextSnapshot = createSnapshot(
+                        normalized.tree,
+                        normalized.pages,
+                        normalized.currentIndex,
+                    );
+                    const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+                    const { mementoActions } = require('./memento');
+
+                    return sequence(state, [
+                        mementoActions.registerHistoryTask({ task }),
+                        () => ({
+                            fumen: {
+                                ...state.fumen,
+                                pages: normalized.pages,
+                                maxPage: normalized.pages.length,
+                                currentIndex: normalized.currentIndex,
+                            },
+                            tree: {
+                                ...state.tree,
+                                nodes: normalized.tree.nodes,
+                                rootId: normalized.tree.rootId,
+                                dragState: {
+                                    ...state.tree.dragState,
+                                    sourceNodeId: null,
+                                    targetNodeId: null,
+                                    dropSlotIndex: null,
+                                    targetButtonParentId: null,
+                                    targetButtonType: null,
+                                },
+                            },
+                        }),
+                    ]);
                 }
 
                 const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
@@ -1519,33 +1586,9 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             ]);
         }
 
-        // Priority 2: For Reorder mode, use slot-based reordering (like list view)
+        // Tree view reorder via drag is disabled.
         if (mode === TreeDragMode.Reorder) {
-            if (sourceNodeId === null || dropSlotIndex === null) {
-                return treeOperationActions.endTreeDrag()(state);
-            }
-
-            const tree = getOrCreateTree(state);
-            const sourceNode = findNode(tree, sourceNodeId);
-            if (!sourceNode) {
-                return treeOperationActions.endTreeDrag()(state);
-            }
-
-            const fromIndex = sourceNode.pageIndex;
-            const toSlotIndex = dropSlotIndex;
-
-            // Skip no-op operations
-            if (toSlotIndex === fromIndex || toSlotIndex === fromIndex + 1) {
-                return treeOperationActions.endTreeDrag()(state);
-            }
-
-            // Use the same reorderPage action as list view
-            const { listViewActions } = require('./list_view');
-
-            return sequence(state, [
-                listViewActions.reorderPage({ fromIndex, toSlotIndex }),
-                treeOperationActions.endTreeDrag(),
-            ]);
+            return treeOperationActions.endTreeDrag()(state);
         }
 
         // Priority 3: For Attach modes, use node-based targeting
