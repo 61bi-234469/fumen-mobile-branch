@@ -57,6 +57,9 @@ export const resources = {
         MoveWithChildren: 'Move with children',
         GrayAfterLineClear: 'Gray out cleared lines',
     },
+    ListView: {
+        TrimTopBlank: 'Trim top blank',
+    },
     ListViewExport: {
         Title: 'エクスポート',
         Description: 'エクスポート形式を選択してください。',

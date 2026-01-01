@@ -24,9 +24,6 @@ const TREE_INSERT_BUTTON_Y = TREE_NODE_HEIGHT / 2;
 const TREE_BRANCH_BUTTON_Y = TREE_NODE_HEIGHT / 2 + TREE_ADD_BUTTON_SIZE + 4;
 
 const TOOLS_HEIGHT = 50;
-const COLUMNS = 5;
-const ITEM_MIN_WIDTH = 100;
-const ITEM_MAX_WIDTH = 160;
 
 // Pinch-to-zoom state (kept outside component for persistence across renders)
 let pinchState: {
@@ -68,55 +65,90 @@ export const view: View<State, Actions> = (state, actions) => {
     const isTreeView = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
     const buttonDropMovesSubtree = state.tree.buttonDropMovesSubtree;
     const grayAfterLineClear = state.tree.grayAfterLineClear;
+    const trimTopBlank = state.listView.trimTopBlank;
     const gridContainerHeight = state.display.height - TOOLS_HEIGHT;
-
-    const baseItemSize = Math.max(
-        ITEM_MIN_WIDTH,
-        Math.min(ITEM_MAX_WIDTH, Math.floor((state.display.width - 20) / COLUMNS)),
-    );
-    const itemSize = Math.round(baseItemSize * state.listView.scale);
-    const gap = 8;
-    const padding = 10;
 
     // Returns slot index (0 = before first page, N = after last page)
     const getDropSlotFromTouch = (touchX: number, touchY: number, gridElement: HTMLElement): number | null => {
-        const rect = gridElement.getBoundingClientRect();
-        const x = touchX - rect.left - padding;
-        const y = touchY - rect.top - padding + gridElement.scrollTop;
-
-        if (y < 0) return null;
-
-        const col = Math.floor(x / (itemSize + gap));
-        const row = Math.floor(y / (itemSize + 80 + gap));
-
-        if (row < 0) return null;
-
         const pageCount = state.fumen.pages.length;
+        if (pageCount === 0) return null;
 
-        // Calculate position within the item
-        const xInItem = x - col * (itemSize + gap);
-        const isLeftHalf = xInItem < itemSize / 2;
+        const itemElements = Array.from(
+            gridElement.querySelectorAll('[datatest^="list-view-item-"]'),
+        ) as HTMLElement[];
 
-        // Calculate page index at this grid position
-        const pageIndex = row * COLUMNS + col;
+        const items = itemElements
+            .map((element) => {
+                const datatest = element.getAttribute('datatest') ?? '';
+                const match = /list-view-item-(\d+)/.exec(datatest);
+                if (!match) {
+                    return null;
+                }
+                return {
+                    index: Number(match[1]),
+                    rect: element.getBoundingClientRect(),
+                };
+            })
+            .filter((item): item is { index: number; rect: DOMRect } => item !== null);
 
-        let slotIndex: number;
+        if (items.length === 0) {
+            return null;
+        }
 
-        if (col < 0) {
-            // Left of first column - slot at start of row
-            slotIndex = row * COLUMNS;
-        } else if (col >= COLUMNS) {
-            // Right of last column - slot at end of row
-            slotIndex = Math.min((row + 1) * COLUMNS, pageCount);
-        } else if (pageIndex >= pageCount) {
-            // Beyond last page - slot after last page
-            slotIndex = pageCount;
-        } else if (isLeftHalf) {
-            // Left half of item - slot before this item
-            slotIndex = pageIndex;
+        items.sort((a, b) => {
+            const rowDiff = a.rect.top - b.rect.top;
+            return rowDiff !== 0 ? rowDiff : a.rect.left - b.rect.left;
+        });
+
+        const rows: Array<{ top: number; bottom: number; items: typeof items }> = [];
+        const rowThreshold = 4;
+
+        for (const item of items) {
+            const lastRow = rows[rows.length - 1];
+            if (!lastRow || Math.abs(item.rect.top - lastRow.top) > rowThreshold) {
+                rows.push({
+                    top: item.rect.top,
+                    bottom: item.rect.bottom,
+                    items: [item],
+                });
+            } else {
+                lastRow.items.push(item);
+                lastRow.top = Math.min(lastRow.top, item.rect.top);
+                lastRow.bottom = Math.max(lastRow.bottom, item.rect.bottom);
+            }
+        }
+
+        let targetRow = rows.find((row) => touchY >= row.top && touchY <= row.bottom);
+        if (!targetRow) {
+            targetRow = rows.reduce((closest, row) => {
+                const closestCenter = (closest.top + closest.bottom) / 2;
+                const rowCenter = (row.top + row.bottom) / 2;
+                return Math.abs(touchY - rowCenter) < Math.abs(touchY - closestCenter) ? row : closest;
+            }, rows[0]);
+        }
+
+        const rowItems = [...targetRow.items].sort((a, b) => a.rect.left - b.rect.left);
+        const firstItem = rowItems[0];
+        const lastItem = rowItems[rowItems.length - 1];
+
+        let slotIndex: number = lastItem.index + 1;
+
+        if (touchX < firstItem.rect.left) {
+            slotIndex = firstItem.index;
+        } else if (touchX > lastItem.rect.right) {
+            slotIndex = lastItem.index + 1;
         } else {
-            // Right half of item - slot after this item
-            slotIndex = pageIndex + 1;
+            for (const item of rowItems) {
+                if (touchX >= item.rect.left && touchX <= item.rect.right) {
+                    const isLeftHalf = touchX < item.rect.left + item.rect.width / 2;
+                    slotIndex = isLeftHalf ? item.index : item.index + 1;
+                    break;
+                }
+                if (touchX < item.rect.left) {
+                    slotIndex = item.index;
+                    break;
+                }
+            }
         }
 
         // Clamp to valid range [0, pageCount]
@@ -782,6 +814,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     containerWidth: state.display.width,
                     containerHeight: gridContainerHeight,
                     scale: state.listView.scale,
+                    trimTopBlank,
                     actions: {
                         onDragStart: (pageIndex: number) => {
                             actions.setListViewDragState({
@@ -925,6 +958,19 @@ export const view: View<State, Actions> = (state, actions) => {
                 h('i', { className: 'material-icons', style: style({ fontSize: px(28) }) }, 'arrow_forward'),
             ]),
         ]),
+
+        // List view toggles (bottom right, list view only)
+        ...(!isTreeView ? [div({
+            key: 'list-toggle-group',
+            style: treeToggleGroupStyle,
+        }, [
+            renderTreeToggle(
+                'list-trim-top-toggle',
+                i18n.ListView.TrimTopBlank(),
+                trimTopBlank,
+                () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
+            ),
+        ])] : []),
 
         // Tree toggles (bottom right, tree view only)
         ...(isTreeView ? [div({

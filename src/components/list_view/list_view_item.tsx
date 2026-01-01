@@ -67,6 +67,9 @@ export const ListViewItem: Component<Props> = ({
         cursor: 'grab',
         transition: 'opacity 0.2s',
         position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
     });
 
     const indicatorStyle = style({
@@ -117,6 +120,10 @@ export const ListViewItem: Component<Props> = ({
 
     const fieldAreaStyle = {
         ...style({
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            flexGrow: 1,
             userSelect: 'none',
             cursor: 'grab',
         }),

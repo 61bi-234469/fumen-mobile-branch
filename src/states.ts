@@ -117,6 +117,7 @@ export interface State {
             dropTargetIndex: number | null;
         };
         scale: number;
+        trimTopBlank: boolean;
     };
     tree: TreeState;
     version: string;
@@ -219,6 +220,7 @@ export const initState: Readonly<State> = {
             dropTargetIndex: null,
         },
         scale: 1.0,
+        trimTopBlank: false,
     },
     tree: initialTreeState,
     version: VERSION,

@@ -14,18 +14,10 @@ export function generateThumbnail(
     pages: Page[],
     pageIndex: number,
     guideLineColor: boolean,
+    trimTopBlank: boolean = false,
 ): string {
     const canvas = document.createElement('canvas');
     canvas.width = THUMBNAIL_WIDTH;
-    canvas.height = THUMBNAIL_HEIGHT;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-        return '';
-    }
-
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
 
     const pagesObj = new Pages(pages);
     const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
@@ -53,6 +45,22 @@ export function generateThumbnail(
         }
     }
 
+    const topFilledRow = trimTopBlank ? findTopFilledRow(fieldArray) : null;
+    const visibleTopRow = trimTopBlank
+        ? (topFilledRow === null ? 0 : Math.min(FieldConstants.Height - 1, topFilledRow + 1))
+        : FieldConstants.Height - 1;
+    const visibleRows = visibleTopRow + 1;
+
+    canvas.height = visibleRows * BLOCK_SIZE;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        return '';
+    }
+
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, THUMBNAIL_WIDTH, canvas.height);
+
     // Detect filled lines
     const filledLines = new Set<number>();
     for (let y = 0; y < FieldConstants.Height; y += 1) {
@@ -78,12 +86,14 @@ export function generateThumbnail(
             const color = decidePieceColor(piece, highlight, guideLineColor);
 
             ctx.fillStyle = color;
-            ctx.fillRect(
-                x * BLOCK_SIZE,
-                (FieldConstants.Height - 1 - y) * BLOCK_SIZE,
-                BLOCK_SIZE - 0.5,
-                BLOCK_SIZE - 0.5,
-            );
+            if (y <= visibleTopRow) {
+                ctx.fillRect(
+                    x * BLOCK_SIZE,
+                    (visibleTopRow - y) * BLOCK_SIZE,
+                    BLOCK_SIZE - 0.5,
+                    BLOCK_SIZE - 0.5,
+                );
+            }
         }
     }
 
@@ -100,20 +110,34 @@ export function generateThumbnail(
             const py = coordinate.y + pos[1];
 
             if (px >= 0 && px < FieldConstants.Width && py >= 0 && py < FieldConstants.Height) {
-                const blockHighlight = filledLines.has(py) ? HighlightType.Highlight1 : HighlightType.Highlight2;
-                ctx.fillStyle = decidePieceColor(type, blockHighlight, guideLineColor);
-                ctx.fillRect(
-                    px * BLOCK_SIZE,
-                    (FieldConstants.Height - 1 - py) * BLOCK_SIZE,
-                    BLOCK_SIZE - 0.5,
-                    BLOCK_SIZE - 0.5,
-                );
+                if (py <= visibleTopRow) {
+                    const blockHighlight = filledLines.has(py) ? HighlightType.Highlight1 : HighlightType.Highlight2;
+                    ctx.fillStyle = decidePieceColor(type, blockHighlight, guideLineColor);
+                    ctx.fillRect(
+                        px * BLOCK_SIZE,
+                        (visibleTopRow - py) * BLOCK_SIZE,
+                        BLOCK_SIZE - 0.5,
+                        BLOCK_SIZE - 0.5,
+                    );
+                }
             }
         }
     }
 
     return canvas.toDataURL('image/png');
 }
+
+const findTopFilledRow = (fieldArray: (number | undefined)[]): number | null => {
+    for (let y = FieldConstants.Height - 1; y >= 0; y -= 1) {
+        for (let x = 0; x < FieldConstants.Width; x += 1) {
+            const piece = fieldArray[x + y * FieldConstants.Width];
+            if (piece !== undefined && piece !== 0) {
+                return y;
+            }
+        }
+    }
+    return null;
+};
 
 function getPiecePositions(piece: number, rotation: number): number[][] {
     const shapes: { [key: number]: { [key: number]: number[][] } } = {

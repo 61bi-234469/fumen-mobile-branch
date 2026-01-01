@@ -214,6 +214,7 @@ export interface ListViewActions {
     changeToEditorFromListView: () => action;
     setListViewDragState: (data: { draggingIndex: number | null; dropTargetIndex: number | null }) => action;
     setListViewScale: (data: { scale: number }) => action;
+    setListViewTrimTopBlank: (data: { enabled: boolean }) => action;
     reorderPage: (data: { fromIndex: number; toSlotIndex: number }) => action;
     updatePageComment: (data: { pageIndex: number; comment: string }) => action;
     navigateToPageFromListView: (data: { pageIndex: number }) => action;
@@ -398,6 +399,14 @@ export const listViewActions: Readonly<ListViewActions> = {
             listView: {
                 ...state.listView,
                 scale: clampedScale,
+            },
+        };
+    },
+    setListViewTrimTopBlank: ({ enabled }) => (state): NextState => {
+        return {
+            listView: {
+                ...state.listView,
+                trimTopBlank: enabled,
             },
         };
     },

@@ -13,6 +13,7 @@ interface Props {
     containerWidth: number;
     containerHeight: number;
     scale: number;
+    trimTopBlank: boolean;
     actions: {
         onDragStart: (pageIndex: number) => void;
         onDragOver: (pageIndex: number, e: DragEvent) => void;
@@ -36,6 +37,7 @@ export const ListViewGrid: Component<Props> = ({
     containerWidth,
     containerHeight,
     scale,
+    trimTopBlank,
     actions,
 }) => {
     const baseItemSize = Math.max(
@@ -59,7 +61,7 @@ export const ListViewGrid: Component<Props> = ({
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'flex-start',
-        alignItems: 'flex-start',
+        alignItems: 'stretch',
         gap: '8px',
     });
 
@@ -85,7 +87,7 @@ export const ListViewGrid: Component<Props> = ({
     };
 
     const items = pages.map((page, index) => {
-        const thumbnailSrc = generateThumbnail(pages, index, guideLineColor);
+        const thumbnailSrc = generateThumbnail(pages, index, guideLineColor, trimTopBlank);
         const commentText = getCommentText(index);
         const commentChanged = isCommentChanged(index);
 
