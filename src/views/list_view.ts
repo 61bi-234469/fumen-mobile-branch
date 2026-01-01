@@ -10,18 +10,13 @@ import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
 import { TreeViewMode, TreeDragMode } from '../lib/fumen/tree_types';
 import { style, px } from '../lib/types';
-import { canMoveNode, calculateTreeLayout, findNode } from '../lib/fumen/tree_utils';
-
-// Tree view node dimensions (must match fumen_graph.tsx)
-const TREE_NODE_WIDTH = 120;
-const TREE_NODE_HEIGHT = 310;
-const TREE_HORIZONTAL_GAP = 50;
-const TREE_VERTICAL_GAP = 30;
-const TREE_PADDING = 20;
-const TREE_ADD_BUTTON_SIZE = 32;
-const TREE_BUTTON_X = TREE_NODE_WIDTH + 4;
-const TREE_INSERT_BUTTON_Y = TREE_NODE_HEIGHT / 2;
-const TREE_BRANCH_BUTTON_Y = TREE_NODE_HEIGHT / 2 + TREE_ADD_BUTTON_SIZE + 4;
+import { canMoveNode, findNode } from '../lib/fumen/tree_utils';
+import {
+    TREE_ADD_BUTTON_SIZE,
+    TREE_BUTTON_X,
+    TREE_NODE_WIDTH,
+    calculateTreeViewLayout,
+} from '../lib/fumen/tree_view_layout';
 
 const TOOLS_HEIGHT = 50;
 
@@ -233,19 +228,20 @@ export const view: View<State, Actions> = (state, actions) => {
             rootId: state.tree.rootId,
             version: 1 as const,
         };
-        const layout = calculateTreeLayout(tree);
+        const treeViewLayout = calculateTreeViewLayout(tree, state.fumen.pages, trimTopBlank);
         const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
 
         for (const node of state.tree.nodes) {
-            const pos = layout.positions.get(node.id);
-            if (!pos) continue;
+            const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
+            if (!nodeLayout) continue;
 
-            const nodeX = TREE_PADDING + pos.x * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
-            const nodeY = TREE_PADDING + pos.y * (TREE_NODE_HEIGHT + TREE_VERTICAL_GAP);
+            const nodeX = nodeLayout.x;
+            const nodeY = nodeLayout.y;
+            const nodeHeight = nodeLayout.height;
 
             // Check INSERT button (green)
             const insertButtonCenterX = nodeX + TREE_BUTTON_X;
-            const insertButtonCenterY = nodeY + TREE_INSERT_BUTTON_Y;
+            const insertButtonCenterY = nodeY + nodeHeight / 2;
 
             const distToInsert = Math.sqrt(
                 (svgX - insertButtonCenterX) ** 2 +
@@ -259,7 +255,7 @@ export const view: View<State, Actions> = (state, actions) => {
             // Check BRANCH button (orange) - only if node has children
             if (node.childrenIds.length > 0) {
                 const branchButtonCenterX = nodeX + TREE_BUTTON_X;
-                const branchButtonCenterY = nodeY + TREE_BRANCH_BUTTON_Y;
+                const branchButtonCenterY = nodeY + nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + 4;
 
                 const distToBranch = Math.sqrt(
                     (svgX - branchButtonCenterX) ** 2 +
@@ -324,7 +320,7 @@ export const view: View<State, Actions> = (state, actions) => {
             version: 1 as const,
         };
 
-        const layout = calculateTreeLayout(tree);
+        const treeViewLayout = calculateTreeViewLayout(tree, state.fumen.pages, trimTopBlank);
         const dragMode = state.tree.dragState.mode;
         const sourceNodeId = state.tree.dragState.sourceNodeId;
         const sourceParentId = sourceNodeId ? findNode(tree, sourceNodeId)?.parentId ?? null : null;
@@ -342,15 +338,16 @@ export const view: View<State, Actions> = (state, actions) => {
 
         // First pass: Check ALL buttons (they have priority over nodes)
         for (const node of state.tree.nodes) {
-            const pos = layout.positions.get(node.id);
-            if (!pos) continue;
+            const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
+            if (!nodeLayout) continue;
 
-            const nodeX = TREE_PADDING + pos.x * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
-            const nodeY = TREE_PADDING + pos.y * (TREE_NODE_HEIGHT + TREE_VERTICAL_GAP);
+            const nodeX = nodeLayout.x;
+            const nodeY = nodeLayout.y;
+            const nodeHeight = nodeLayout.height;
 
             // Check INSERT button (green)
             const insertButtonCenterX = nodeX + TREE_BUTTON_X;
-            const insertButtonCenterY = nodeY + TREE_INSERT_BUTTON_Y;
+            const insertButtonCenterY = nodeY + nodeHeight / 2;
 
             const distToInsert = Math.sqrt(
                 (svgX - insertButtonCenterX) ** 2 +
@@ -375,7 +372,7 @@ export const view: View<State, Actions> = (state, actions) => {
                 && node.childrenIds.length <= 1;
             if (node.childrenIds.length > 0 && !hideBranchButton) {
                 const branchButtonCenterX = nodeX + TREE_BUTTON_X;
-                const branchButtonCenterY = nodeY + TREE_BRANCH_BUTTON_Y;
+                const branchButtonCenterY = nodeY + nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + 4;
 
                 const distToBranch = Math.sqrt(
                     (svgX - branchButtonCenterX) ** 2 +
@@ -399,15 +396,16 @@ export const view: View<State, Actions> = (state, actions) => {
         // Second pass: Check node bounds (only if no button was found)
         if (foundButtonParentId === null) {
             for (const node of state.tree.nodes) {
-                const pos = layout.positions.get(node.id);
-                if (!pos) continue;
+                const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
+                if (!nodeLayout) continue;
 
-                const nodeX = TREE_PADDING + pos.x * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
-                const nodeY = TREE_PADDING + pos.y * (TREE_NODE_HEIGHT + TREE_VERTICAL_GAP);
+                const nodeX = nodeLayout.x;
+                const nodeY = nodeLayout.y;
+                const nodeHeight = nodeLayout.height;
 
                 // Check if touch is within node bounds
                 if (svgX >= nodeX && svgX <= nodeX + TREE_NODE_WIDTH &&
-                    svgY >= nodeY && svgY <= nodeY + TREE_NODE_HEIGHT) {
+                    svgY >= nodeY && svgY <= nodeY + nodeHeight) {
                     const pageIndex = node.pageIndex;
 
                     if (dragMode !== TreeDragMode.Reorder) {
@@ -548,13 +546,20 @@ export const view: View<State, Actions> = (state, actions) => {
         pinchState.active = false;
     };
 
+    const treeToggleGap = 8;
+    const treeTogglePillHeight = 40;
+    const treeToggleCount = isTreeView ? 3 : 0;
+    const treeRootAddButtonBottom = 20
+        + treeToggleCount * treeTogglePillHeight
+        + Math.max(0, treeToggleCount - 1) * treeToggleGap;
+
     const treeToggleGroupStyle = style({
         position: 'fixed',
         bottom: px(20),
         right: px(20),
         display: 'flex',
         flexDirection: 'column',
-        gap: px(8),
+        gap: px(treeToggleGap),
         alignItems: 'flex-end',
         zIndex: 100,
     });
@@ -571,7 +576,7 @@ export const view: View<State, Actions> = (state, actions) => {
 
     const treeRootAddButtonStyle = style({
         position: 'fixed',
-        bottom: px(108),
+        bottom: px(treeRootAddButtonBottom),
         right: px(20),
         width: px(44),
         height: px(44),
@@ -729,6 +734,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     dragTargetButtonParentId: state.tree.dragState.targetButtonParentId,
                     dragTargetButtonType: state.tree.dragState.targetButtonType,
                     buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+                    trimTopBlank,
                     actions: {
                         onNodeClick: (nodeId) => {
                             // Only navigate if not dragging
@@ -992,6 +998,12 @@ export const view: View<State, Actions> = (state, actions) => {
                 () => actions.setTreeState({
                     grayAfterLineClear: !grayAfterLineClear,
                 }),
+            ),
+            renderTreeToggle(
+                'tree-trim-top-toggle',
+                i18n.ListView.TrimTopBlank(),
+                trimTopBlank,
+                () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
             ),
         ])] : []),
 

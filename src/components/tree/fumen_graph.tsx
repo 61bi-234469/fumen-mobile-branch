@@ -5,30 +5,31 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { Page } from '../../lib/fumen/types';
-import { TreeNode, TreeNodeId, SerializedTree, TreeLayout, TreeDragMode } from '../../lib/fumen/tree_types';
-import { calculateTreeLayout, findNode, canMoveNode, isDescendant, isVirtualNode } from '../../lib/fumen/tree_utils';
+import { TreeNode, TreeNodeId, SerializedTree, TreeDragMode } from '../../lib/fumen/tree_types';
+import { findNode, canMoveNode, isDescendant, isVirtualNode } from '../../lib/fumen/tree_utils';
 import { generateThumbnail } from '../../lib/thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
+import {
+    TREE_ADD_BUTTON_SIZE,
+    TREE_COMMENT_HEIGHT,
+    TREE_COMMENT_MARGIN_X,
+    TREE_COMMENT_TOP_OFFSET,
+    TREE_COMMENT_WIDTH,
+    TREE_HORIZONTAL_GAP,
+    TREE_NODE_RADIUS,
+    TREE_NODE_WIDTH,
+    TREE_PADDING,
+    TREE_PAGE_NUMBER_OFFSET,
+    TREE_THUMBNAIL_WIDTH,
+    calculateTreeViewLayout,
+    TreeNodeLayout,
+} from '../../lib/fumen/tree_view_layout';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 // Thumbnail aspect ratio matches tetris field (10:23)
-const THUMBNAIL_WIDTH = 100;
-const THUMBNAIL_HEIGHT = 230;
-const NODE_WIDTH = THUMBNAIL_WIDTH + 20;  // 120px - padding for thumbnail
-const NODE_HEIGHT = THUMBNAIL_HEIGHT + 80; // 310px - space for thumbnail + number + comment
-const HORIZONTAL_GAP = 50;
-const VERTICAL_GAP = 30;
-const PADDING = 20;
-const NODE_RADIUS = 8;
-const ADD_BUTTON_SIZE = 32; // Larger touch target for add button
-const COMMENT_BOX_MARGIN_X = 8;
-const COMMENT_BOX_TOP = THUMBNAIL_HEIGHT + 32;
-const COMMENT_BOX_BOTTOM_PADDING = 8;
-const COMMENT_BOX_WIDTH = NODE_WIDTH - COMMENT_BOX_MARGIN_X * 2;
-const COMMENT_BOX_HEIGHT = NODE_HEIGHT - COMMENT_BOX_TOP - COMMENT_BOX_BOTTOM_PADDING;
 
 // ============================================================================
 // Props Interface
@@ -49,6 +50,7 @@ interface Props {
     dragTargetButtonParentId: TreeNodeId | null;
     dragTargetButtonType: 'insert' | 'branch' | null;
     buttonDropMovesSubtree: boolean;
+    trimTopBlank: boolean;
     actions: {
         onNodeClick: (nodeId: TreeNodeId) => void;
         onAddBranch: (parentNodeId: TreeNodeId) => void;
@@ -69,43 +71,34 @@ interface Props {
 // Helper Functions
 // ============================================================================
 
-/**
- * Get node position in pixels
- */
-const getNodePixelPosition = (
-    layout: TreeLayout,
+const getNodeLayout = (
+    nodeLayouts: Map<TreeNodeId, TreeNodeLayout>,
     nodeId: TreeNodeId,
-): { x: number; y: number } | null => {
-    const pos = layout.positions.get(nodeId);
-    if (!pos) return null;
-
-    return {
-        x: PADDING + pos.x * (NODE_WIDTH + HORIZONTAL_GAP),
-        y: PADDING + pos.y * (NODE_HEIGHT + VERTICAL_GAP),
-    };
+): TreeNodeLayout | null => {
+    return nodeLayouts.get(nodeId) ?? null;
 };
 
 /**
  * Render connection line between nodes
  */
 const renderConnection = (
-    layout: TreeLayout,
+    nodeLayouts: Map<TreeNodeId, TreeNodeLayout>,
     fromId: TreeNodeId,
     toId: TreeNodeId,
     isBranch: boolean,
     activeNodeId: TreeNodeId | null,
 ) => {
-    const fromPos = getNodePixelPosition(layout, fromId);
-    const toPos = getNodePixelPosition(layout, toId);
+    const fromPos = getNodeLayout(nodeLayouts, fromId);
+    const toPos = getNodeLayout(nodeLayouts, toId);
 
     if (!fromPos || !toPos) return null;
 
-    // Start after the add button (NODE_WIDTH + button offset + button radius)
-    const x1 = fromPos.x + NODE_WIDTH + 4 + ADD_BUTTON_SIZE / 2 + 4;
+    // Start after the add button (TREE_NODE_WIDTH + button offset + button radius)
+    const x1 = fromPos.x + TREE_NODE_WIDTH + 4 + TREE_ADD_BUTTON_SIZE / 2 + 4;
     // Main axis is at node center Y
-    const y1 = fromPos.y + NODE_HEIGHT / 2;
+    const y1 = fromPos.y + fromPos.height / 2;
     const x2 = toPos.x;
-    const y2 = toPos.y + NODE_HEIGHT / 2;
+    const y2 = toPos.y + toPos.height / 2;
 
     const isActive = fromId === activeNodeId || toId === activeNodeId;
 
@@ -136,7 +129,7 @@ const renderConnection = (
  */
 const renderNode = (
     node: TreeNode,
-    layout: TreeLayout,
+    nodeLayout: TreeNodeLayout,
     pages: Page[],
     guideLineColor: boolean,
     activeNodeId: TreeNodeId | null,
@@ -152,18 +145,20 @@ const renderNode = (
     isParentOfDragSource: boolean,
     scale: number,
     hideButtons: boolean,
+    trimTopBlank: boolean,
 ) => {
-    const pos = getNodePixelPosition(layout, node.id);
-    if (!pos) return null;
+    const pos = { x: nodeLayout.x, y: nodeLayout.y };
 
     const isActive = node.id === activeNodeId;
     const page = pages[node.pageIndex];
+    const nodeHeight = nodeLayout.height;
+    const thumbnailHeight = nodeLayout.thumbnailHeight;
 
     // Generate thumbnail with error handling
     let thumbnailSrc = '';
     try {
         if (page) {
-            thumbnailSrc = generateThumbnail(pages, node.pageIndex, guideLineColor);
+            thumbnailSrc = generateThumbnail(pages, node.pageIndex, guideLineColor, trimTopBlank);
         }
     } catch (e) {
         console.warn(`Failed to generate thumbnail for page ${node.pageIndex}:`, e);
@@ -224,16 +219,16 @@ const renderNode = (
                     const yInNode = mouseYInSvg - pos.y;
 
                     // Check if mouse is over button area (right side of node)
-                    // Buttons are at x = NODE_WIDTH + 4 (relative to node), so check if we're past NODE_WIDTH
-                    const buttonAreaStartX = NODE_WIDTH;
+                    // Buttons are at x = TREE_NODE_WIDTH + 4 (relative to node), so check if we're past TREE_NODE_WIDTH
+                    const buttonAreaStartX = TREE_NODE_WIDTH;
                     const isOverButtonArea = xInNode >= buttonAreaStartX;
 
                     if (isOverButtonArea) {
                         // Mouse is in button area - check which button
-                        const buttonCenterX = NODE_WIDTH + 4;
-                        const insertButtonCenterY = NODE_HEIGHT / 2;
-                        const branchButtonCenterY = NODE_HEIGHT / 2 + ADD_BUTTON_SIZE + 4;
-                        const buttonHitRadius = ADD_BUTTON_SIZE / 2 + 6;
+                        const buttonCenterX = TREE_NODE_WIDTH + 4;
+                        const insertButtonCenterY = nodeHeight / 2;
+                        const branchButtonCenterY = nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + 4;
+                        const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
 
                         const distToInsert = Math.sqrt(
                             (xInNode - buttonCenterX) ** 2 + (yInNode - insertButtonCenterY) ** 2,
@@ -261,7 +256,7 @@ const renderNode = (
                     // Not over button area - handle slot detection
                     // Don't clear button target here - SVG handler will manage it
 
-                    const isLeftHalf = xInNode < NODE_WIDTH / 2;
+                    const isLeftHalf = xInNode < TREE_NODE_WIDTH / 2;
                     const pageIndex = node.pageIndex;
 
                     if (dragMode !== TreeDragMode.Reorder && isValidDropTarget) {
@@ -292,10 +287,10 @@ const renderNode = (
         >
             {/* Node background */}
             <rect
-                width={NODE_WIDTH}
-                height={NODE_HEIGHT}
-                rx={NODE_RADIUS}
-                ry={NODE_RADIUS}
+                width={TREE_NODE_WIDTH}
+                height={nodeHeight}
+                rx={TREE_NODE_RADIUS}
+                ry={TREE_NODE_RADIUS}
                 fill={fillColor}
                 stroke={strokeColor}
                 stroke-width={strokeWidth}
@@ -304,18 +299,18 @@ const renderNode = (
             {/* Thumbnail */}
             {thumbnailSrc && (
                 <image
-                    x={(NODE_WIDTH - THUMBNAIL_WIDTH) / 2}
+                    x={(TREE_NODE_WIDTH - TREE_THUMBNAIL_WIDTH) / 2}
                     y={8}
-                    width={THUMBNAIL_WIDTH}
-                    height={THUMBNAIL_HEIGHT}
+                    width={TREE_THUMBNAIL_WIDTH}
+                    height={thumbnailHeight}
                     href={thumbnailSrc}
                 />
             )}
 
             {/* Page number - clickable link to jump to page */}
             <text
-                x={NODE_WIDTH / 2}
-                y={THUMBNAIL_HEIGHT + 24}
+                x={TREE_NODE_WIDTH / 2}
+                y={thumbnailHeight + TREE_PAGE_NUMBER_OFFSET}
                 text-anchor="middle"
                 font-size="16"
                 font-weight="bold"
@@ -339,7 +334,7 @@ const renderNode = (
             {/* Branch indicator (shows if node has multiple children) */}
             {node.childrenIds.length > 1 && (
                 <circle
-                    cx={NODE_WIDTH - 10}
+                    cx={TREE_NODE_WIDTH - 10}
                     cy={10}
                     r={8}
                     fill="#FF9800"
@@ -354,7 +349,7 @@ const renderNode = (
                 <g key="add-buttons">
                     {/* INSERT button - green normally, red when parent of drag source */}
                     <g
-                        transform={`translate(${NODE_WIDTH + 4}, ${NODE_HEIGHT / 2})`}
+                        transform={`translate(${TREE_NODE_WIDTH + 4}, ${nodeHeight / 2})`}
                         onmousedown={(e: MouseEvent) => {
                             e.stopPropagation();
                         }}
@@ -388,11 +383,11 @@ const renderNode = (
                         style={style({ cursor: 'pointer' })}
                     >
                         <circle
-                            r={ADD_BUTTON_SIZE / 2 + 6}
+                            r={TREE_ADD_BUTTON_SIZE / 2 + 6}
                             fill="transparent"
                         />
                         <circle
-                            r={ADD_BUTTON_SIZE / 2}
+                            r={TREE_ADD_BUTTON_SIZE / 2}
                             fill={isParentOfDragSource
                                 ? (isInsertButtonHighlighted ? '#EF5350' : '#F44336')
                                 : (isInsertButtonHighlighted ? '#81C784' : '#4CAF50')}
@@ -412,7 +407,7 @@ const renderNode = (
                     {/* Orange Branch button */}
                     {!hideBranchButton && (
                     <g
-                        transform={`translate(${NODE_WIDTH + 4}, ${NODE_HEIGHT / 2 + ADD_BUTTON_SIZE + 4})`}
+                        transform={`translate(${TREE_NODE_WIDTH + 4}, ${nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + 4})`}
                         onmousedown={(e: MouseEvent) => {
                             e.stopPropagation();
                         }}
@@ -446,11 +441,11 @@ const renderNode = (
                         style={style({ cursor: 'pointer' })}
                     >
                         <circle
-                            r={ADD_BUTTON_SIZE / 2 + 6}
+                            r={TREE_ADD_BUTTON_SIZE / 2 + 6}
                             fill="transparent"
                         />
                         <circle
-                            r={ADD_BUTTON_SIZE / 2}
+                            r={TREE_ADD_BUTTON_SIZE / 2}
                             fill={isBranchButtonHighlighted ? '#FFB74D' : '#FF9800'}
                             stroke="#fff"
                             stroke-width={isBranchButtonHighlighted ? 3 : 2}
@@ -470,7 +465,7 @@ const renderNode = (
             ) : (
                 // Single button: INSERT (green, centered) - red when parent of drag source
                 <g
-                    transform={`translate(${NODE_WIDTH + 4}, ${NODE_HEIGHT / 2})`}
+                    transform={`translate(${TREE_NODE_WIDTH + 4}, ${nodeHeight / 2})`}
                     onmousedown={(e: MouseEvent) => {
                         e.stopPropagation();
                     }}
@@ -504,11 +499,11 @@ const renderNode = (
                     style={style({ cursor: 'pointer' })}
                 >
                     <circle
-                        r={ADD_BUTTON_SIZE / 2 + 6}
+                        r={TREE_ADD_BUTTON_SIZE / 2 + 6}
                         fill="transparent"
                     />
                     <circle
-                        r={ADD_BUTTON_SIZE / 2}
+                        r={TREE_ADD_BUTTON_SIZE / 2}
                         fill={isParentOfDragSource
                             ? (isInsertButtonHighlighted ? '#EF5350' : '#F44336')
                             : (isInsertButtonHighlighted ? '#81C784' : '#4CAF50')}
@@ -544,6 +539,7 @@ const renderDropSlot = (
     slotIndex: number,
     x: number,
     y: number,
+    height: number,
 ) => {
     return (
         <g key={`drop-slot-${slotIndex}`}>
@@ -552,7 +548,7 @@ const renderDropSlot = (
                 x={x - DROP_SLOT_WIDTH / 2}
                 y={y}
                 width={DROP_SLOT_WIDTH}
-                height={NODE_HEIGHT}
+                height={height}
                 rx={DROP_SLOT_WIDTH / 2}
                 fill="#2196F3"
             />
@@ -575,6 +571,7 @@ export const FumenGraph: Component<Props> = ({
     dragTargetButtonParentId,
     dragTargetButtonType,
     buttonDropMovesSubtree,
+    trimTopBlank,
     actions,
 }) => {
     // Handle empty tree
@@ -597,12 +594,14 @@ export const FumenGraph: Component<Props> = ({
     }
 
     // Calculate layout
-    const layout = calculateTreeLayout(tree);
+    const treeViewLayout = calculateTreeViewLayout(tree, pages, trimTopBlank);
+    const { layout } = treeViewLayout;
 
     // Calculate SVG dimensions (add extra space for add button on the right)
-    const buttonExtraWidth = ADD_BUTTON_SIZE + 10;
-    const baseWidth = PADDING * 2 + (layout.maxDepth + 1) * (NODE_WIDTH + HORIZONTAL_GAP) + buttonExtraWidth;
-    const baseHeight = PADDING * 2 + (layout.maxLane + 1) * (NODE_HEIGHT + VERTICAL_GAP);
+    const buttonExtraWidth = TREE_ADD_BUTTON_SIZE + 10;
+    const baseWidth = TREE_PADDING * 2 + (layout.maxDepth + 1) * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP)
+        + buttonExtraWidth;
+    const baseHeight = TREE_PADDING * 2 + treeViewLayout.contentHeight;
 
     // Apply scale to dimensions
     const scaledWidth = Math.max(containerWidth, baseWidth * scale);
@@ -630,7 +629,7 @@ export const FumenGraph: Component<Props> = ({
 
     // Render connections
     const connections = layout.connections.map(conn =>
-        renderConnection(layout, conn.fromId, conn.toId, conn.isBranch, activeNodeId),
+        renderConnection(treeViewLayout.nodeLayouts, conn.fromId, conn.toId, conn.isBranch, activeNodeId),
     );
 
     // Calculate source page index for drag operations
@@ -670,9 +669,14 @@ export const FumenGraph: Component<Props> = ({
         // Check if this node is the parent of the drag source
         const isParentOfDragSource = isDragging && sourceNode != null && sourceNode.parentId === node.id;
 
+        const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
+        if (!nodeLayout) {
+            return null;
+        }
+
         return renderNode(
             node,
-            layout,
+            nodeLayout,
             pages,
             guideLineColor,
             activeNodeId,
@@ -688,6 +692,7 @@ export const FumenGraph: Component<Props> = ({
             isParentOfDragSource,
             scale,
             hideButtons,
+            trimTopBlank,
         );
     });
 
@@ -696,8 +701,8 @@ export const FumenGraph: Component<Props> = ({
     };
 
     const commentInputs = renderableNodes.map((node) => {
-        const pos = getNodePixelPosition(layout, node.id);
-        if (!pos) return null;
+        const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
+        if (!nodeLayout) return null;
 
         let commentText = '';
         try {
@@ -716,10 +721,10 @@ export const FumenGraph: Component<Props> = ({
         const isCommentChanged = page?.comment.text !== undefined;
         const showGreenStyle = hasComment && isCommentChanged;
 
-        const left = (pos.x + COMMENT_BOX_MARGIN_X) * scale;
-        const top = (pos.y + COMMENT_BOX_TOP) * scale;
-        const width = COMMENT_BOX_WIDTH * scale;
-        const height = COMMENT_BOX_HEIGHT * scale;
+        const left = (nodeLayout.x + TREE_COMMENT_MARGIN_X) * scale;
+        const top = (nodeLayout.y + nodeLayout.thumbnailHeight + TREE_COMMENT_TOP_OFFSET) * scale;
+        const width = TREE_COMMENT_WIDTH * scale;
+        const height = TREE_COMMENT_HEIGHT * scale;
 
         const fontSize = Math.max(8, Math.round(11 * scale));
         const paddingY = Math.max(1, Math.round(2 * scale));
@@ -768,12 +773,13 @@ export const FumenGraph: Component<Props> = ({
         if (dragTargetNodeId !== null) {
             const targetNode = findNode(tree, dragTargetNodeId);
             if (targetNode) {
-                const pos = getNodePixelPosition(layout, targetNode.id);
-                if (pos) {
+                const targetLayout = treeViewLayout.nodeLayouts.get(targetNode.id);
+                if (targetLayout) {
                     // Show indicator after target node (INSERT position)
-                    const slotX = pos.x + NODE_WIDTH + HORIZONTAL_GAP / 2;
-                    const slotY = pos.y;
-                    dropSlots.push(renderDropSlot(dropSlotIndex, slotX, slotY));
+                    const slotX = targetLayout.x + TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP / 2;
+                    const laneOffset = treeViewLayout.laneOffsets[targetLayout.lane] ?? 0;
+                    const slotY = TREE_PADDING + laneOffset;
+                    dropSlots.push(renderDropSlot(dropSlotIndex, slotX, slotY, targetLayout.laneHeight));
                 }
             }
         }
@@ -813,12 +819,12 @@ export const FumenGraph: Component<Props> = ({
         console.log('dragSourceNodeId:', dragSourceNodeId);
 
         // First, check for button hits (priority over slots)
-        const buttonHitRadius = ADD_BUTTON_SIZE / 2 + 6;
+        const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
         let foundButton: { nodeId: TreeNodeId; type: 'insert' | 'branch' } | null = null;
 
         for (const node of tree.nodes) {
-            const pos = getNodePixelPosition(layout, node.id);
-            if (!pos) continue;
+            const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
+            if (!nodeLayout) continue;
 
             // Check if this node is a valid drop target
             const isValidTarget = dragSourceNodeId !== null
@@ -827,15 +833,15 @@ export const FumenGraph: Component<Props> = ({
                 && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant: allowDescendantOnButtonDrop });
 
             // DEBUG: Log each node's button position and distance
-            const insertBtnX = pos.x + NODE_WIDTH + 4;
-            const insertBtnY = pos.y + NODE_HEIGHT / 2;
+            const insertBtnX = nodeLayout.x + TREE_NODE_WIDTH + 4;
+            const insertBtnY = nodeLayout.y + nodeLayout.height / 2;
             const distToInsert = Math.sqrt((mouseX - insertBtnX) ** 2 + (mouseY - insertBtnY) ** 2);
 
             console.log(`Node ${node.id}:`, {
                 isValidTarget,
                 distToInsert,
                 buttonHitRadius,
-                nodePos: pos,
+                nodePos: nodeLayout,
                 insertBtnPos: { x: insertBtnX, y: insertBtnY },
                 isHit: distToInsert <= buttonHitRadius,
             });
@@ -853,7 +859,7 @@ export const FumenGraph: Component<Props> = ({
                 && sourceParentId === node.id
                 && node.childrenIds.length <= 1;
             if (node.childrenIds.length > 0 && !hideBranchButton) {
-                const branchBtnY = pos.y + NODE_HEIGHT / 2 + ADD_BUTTON_SIZE + 4;
+                const branchBtnY = nodeLayout.y + nodeLayout.height / 2 + TREE_ADD_BUTTON_SIZE + 4;
                 const distToBranch = Math.sqrt((mouseX - insertBtnX) ** 2 + (mouseY - branchBtnY) ** 2);
 
                 if (distToBranch <= buttonHitRadius) {

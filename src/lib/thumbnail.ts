@@ -6,8 +6,8 @@ import { FieldConstants } from './enums';
 import { SerializedTree } from './fumen/tree_types';
 import { calculateTreeLayout, findNode, getNodeDfsNumbers } from './fumen/tree_utils';
 
-const THUMBNAIL_WIDTH = 100;
-const THUMBNAIL_HEIGHT = 230;
+export const THUMBNAIL_WIDTH = 100;
+export const THUMBNAIL_HEIGHT = 230;
 const BLOCK_SIZE = THUMBNAIL_WIDTH / FieldConstants.Width;
 
 export function generateThumbnail(
@@ -23,28 +23,7 @@ export function generateThumbnail(
     const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
     const page = pages[pageIndex];
 
-    // Build field array with piece positions for line detection
-    // tslint:disable-next-line:prefer-array-literal
-    const fieldArray: (number | undefined)[] = Array(FieldConstants.Width * FieldConstants.Height);
-    for (let y = 0; y < FieldConstants.Height; y += 1) {
-        for (let x = 0; x < FieldConstants.Width; x += 1) {
-            fieldArray[x + y * FieldConstants.Width] = field.get(x, y);
-        }
-    }
-
-    // Add current piece to field array for line detection
-    if (page && page.piece) {
-        const { type, rotation, coordinate } = page.piece;
-        const positions = getPiecePositions(type, rotation);
-        for (const pos of positions) {
-            const px = coordinate.x + pos[0];
-            const py = coordinate.y + pos[1];
-            if (px >= 0 && px < FieldConstants.Width && py >= 0 && py < FieldConstants.Height) {
-                fieldArray[px + py * FieldConstants.Width] = type;
-            }
-        }
-    }
-
+    const fieldArray = buildFieldArray(field, page);
     const topFilledRow = trimTopBlank ? findTopFilledRow(fieldArray) : null;
     const visibleTopRow = trimTopBlank
         ? (topFilledRow === null ? 0 : Math.min(FieldConstants.Height - 1, topFilledRow + 1))
@@ -126,6 +105,56 @@ export function generateThumbnail(
 
     return canvas.toDataURL('image/png');
 }
+
+export function getThumbnailHeight(
+    pages: Page[],
+    pageIndex: number,
+    trimTopBlank: boolean,
+): number {
+    if (!trimTopBlank) {
+        return THUMBNAIL_HEIGHT;
+    }
+
+    const pagesObj = new Pages(pages);
+    const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
+    const page = pages[pageIndex];
+    const fieldArray = buildFieldArray(field, page);
+
+    const topFilledRow = findTopFilledRow(fieldArray);
+    const visibleTopRow = topFilledRow === null
+        ? 0
+        : Math.min(FieldConstants.Height - 1, topFilledRow + 1);
+    const visibleRows = visibleTopRow + 1;
+
+    return visibleRows * BLOCK_SIZE;
+}
+
+const buildFieldArray = (
+    field: import('./fumen/field').Field,
+    page?: Page,
+): (number | undefined)[] => {
+    // tslint:disable-next-line:prefer-array-literal
+    const fieldArray: (number | undefined)[] = Array(FieldConstants.Width * FieldConstants.Height);
+    for (let y = 0; y < FieldConstants.Height; y += 1) {
+        for (let x = 0; x < FieldConstants.Width; x += 1) {
+            fieldArray[x + y * FieldConstants.Width] = field.get(x, y);
+        }
+    }
+
+    if (page && page.piece) {
+        const { type, rotation, coordinate } = page.piece;
+        const positions = getPiecePositions(type, rotation);
+        for (const pos of positions) {
+            const px = coordinate.x + pos[0];
+            const py = coordinate.y + pos[1];
+            if (px >= 0 && px < FieldConstants.Width && py >= 0 && py < FieldConstants.Height) {
+                fieldArray[px + py * FieldConstants.Width] = type;
+            }
+        }
+    }
+
+    return fieldArray;
+};
 
 const findTopFilledRow = (fieldArray: (number | undefined)[]): number | null => {
     for (let y = FieldConstants.Height - 1; y >= 0; y -= 1) {
