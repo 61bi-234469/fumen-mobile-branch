@@ -76,7 +76,10 @@ export const calculateTreeViewLayout = (
 
         const laneHeight = laneHeights[pos.y] ?? metrics.height;
         const x = TREE_PADDING + pos.x * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP);
-        const y = TREE_PADDING + laneOffsets[pos.y] + (laneHeight - metrics.height);
+        const laneOffset = trimTopBlank
+            ? (laneHeight - metrics.height) / 2
+            : (laneHeight - metrics.height);
+        const y = TREE_PADDING + laneOffsets[pos.y] + laneOffset;
 
         nodeLayouts.set(nodeId, {
             id: nodeId,
