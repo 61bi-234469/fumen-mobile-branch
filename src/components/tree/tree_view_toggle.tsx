@@ -41,13 +41,17 @@ export const TreeViewToggle: Component<Props> = ({
 
     const toggleContainerStyle = style({
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        gap: '6px',
+        justifyContent: 'center',
+        gap: '2px',
+        height: px(height),
     });
 
     const labelStyle = style({
         fontSize: '11px',
-        color: '#666',
+        lineHeight: '11px',
+        color: '#fff',
         whiteSpace: 'nowrap',
     });
 
@@ -107,7 +111,7 @@ export const TreeViewToggle: Component<Props> = ({
         <div key="tree-view-toggle" style={containerStyle}>
             {/* Tree mode toggle switch */}
             <div style={toggleContainerStyle}>
-                <span style={labelStyle}>Tree</span>
+                <span style={labelStyle}>tree:</span>
                 <div
                     key="tree-switch"
                     style={switchStyle}

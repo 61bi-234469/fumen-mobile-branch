@@ -549,14 +549,16 @@ export const view: View<State, Actions> = (state, actions) => {
     const treeToggleGap = 8;
     const treeTogglePillHeight = 40;
     const treeToggleCount = isTreeView ? 3 : 0;
-    const treeRootAddButtonBottom = 20
+    const cornerOffset = 8;
+    const treeRootAddButtonBottomOffset = cornerOffset - 20;
+    const treeRootAddButtonBottom = treeRootAddButtonBottomOffset
         + treeToggleCount * treeTogglePillHeight
         + Math.max(0, treeToggleCount - 1) * treeToggleGap;
 
     const treeToggleGroupStyle = style({
         position: 'fixed',
-        bottom: px(20),
-        right: px(20),
+        bottom: px(cornerOffset),
+        right: px(cornerOffset),
         display: 'flex',
         flexDirection: 'column',
         gap: px(treeToggleGap),
@@ -577,7 +579,7 @@ export const view: View<State, Actions> = (state, actions) => {
     const treeRootAddButtonStyle = style({
         position: 'fixed',
         bottom: px(treeRootAddButtonBottom),
-        right: px(20),
+        right: px(cornerOffset),
         width: px(44),
         height: px(44),
         borderRadius: '50%',
@@ -594,7 +596,7 @@ export const view: View<State, Actions> = (state, actions) => {
     });
 
     const treeButtonToggleLabelStyle = style({
-        fontSize: px(12),
+        fontSize: px(10),
         color: '#555',
         whiteSpace: 'nowrap',
     });
@@ -901,8 +903,8 @@ export const view: View<State, Actions> = (state, actions) => {
             key: 'undo-redo-buttons',
             style: style({
                 position: 'fixed',
-                bottom: px(20),
-                left: px(20),
+                bottom: px(cornerOffset),
+                left: px(cornerOffset),
                 display: 'flex',
                 flexDirection: 'row',
                 gap: px(10),
@@ -984,6 +986,12 @@ export const view: View<State, Actions> = (state, actions) => {
             style: treeToggleGroupStyle,
         }, [
             renderTreeToggle(
+                'tree-trim-top-toggle',
+                i18n.ListView.TrimTopBlank(),
+                trimTopBlank,
+                () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
+            ),
+            renderTreeToggle(
                 'tree-button-drop-toggle',
                 i18n.TreeView.MoveWithChildren(),
                 buttonDropMovesSubtree,
@@ -998,12 +1006,6 @@ export const view: View<State, Actions> = (state, actions) => {
                 () => actions.setTreeState({
                     grayAfterLineClear: !grayAfterLineClear,
                 }),
-            ),
-            renderTreeToggle(
-                'tree-trim-top-toggle',
-                i18n.ListView.TrimTopBlank(),
-                trimTopBlank,
-                () => actions.setListViewTrimTopBlank({ enabled: !trimTopBlank }),
             ),
         ])] : []),
 
