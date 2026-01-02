@@ -18,6 +18,7 @@ interface Props {
     iconName: string;
     sticky?: boolean;
     stickyLeft?: boolean;
+    stickyOffset?: number;
     marginRight?: number;
     marginLeft?: number;
     datatest?: string;
@@ -36,7 +37,7 @@ interface Props {
 export const ToolButton: Component<Props & SizedIconProps> = (
     {
         height, width, fontSize, key, iconName, sticky = false, stickyLeft = false,
-        marginLeft = undefined, marginRight = 0,
+        stickyOffset = 10, marginLeft = undefined, marginRight = 0,
         datatest, colors, enable = true, actions,
     },
 ) => {
@@ -46,8 +47,8 @@ export const ToolButton: Component<Props & SizedIconProps> = (
         width: px(width),
         marginLeft: sticky ? 'auto' : marginLeft,
         position: sticky || stickyLeft ? 'absolute' : undefined,
-        right: sticky ? '10px' : undefined,
-        left: stickyLeft ? '10px' : undefined,
+        right: sticky ? px(stickyOffset) : undefined,
+        left: stickyLeft ? px(stickyOffset) : undefined,
         marginRight: px(marginRight),
     });
 
