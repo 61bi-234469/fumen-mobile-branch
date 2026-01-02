@@ -551,6 +551,8 @@ export const view: View<State, Actions> = (state, actions) => {
     const treeToggleCount = isTreeView ? 3 : 0;
     const cornerOffset = 8;
     const treeRootAddButtonBottomOffset = cornerOffset - 20;
+    const bottomControlOpacity = 0.8;
+    const bottomControlDisabledOpacity = 0.45;
     const treeRootAddButtonBottom = treeRootAddButtonBottomOffset
         + treeToggleCount * treeTogglePillHeight
         + Math.max(0, treeToggleCount - 1) * treeToggleGap;
@@ -574,6 +576,7 @@ export const view: View<State, Actions> = (state, actions) => {
         borderRadius: '16px',
         backgroundColor: '#fff',
         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        opacity: bottomControlOpacity,
     });
 
     const treeRootAddButtonStyle = style({
@@ -592,6 +595,7 @@ export const view: View<State, Actions> = (state, actions) => {
         alignItems: 'center',
         justifyContent: 'center',
         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        opacity: bottomControlOpacity,
         zIndex: 100,
     });
 
@@ -927,7 +931,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                    opacity: state.history.undoCount > 0 ? '1' : '0.5',
+                    opacity: state.history.undoCount > 0 ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
                 }),
                 onclick: () => {
                     if (state.history.undoCount > 0) {
@@ -954,7 +958,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                    opacity: state.history.redoCount > 0 ? '1' : '0.5',
+                    opacity: state.history.redoCount > 0 ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
                 }),
                 onclick: () => {
                     if (state.history.redoCount > 0) {

@@ -60,8 +60,8 @@ export const ListViewTools: Component<Props> = (
                     height={height - 10}
                     key="btn-back-to-editor"
                     fontSize={30}
-                    marginLeft={10}
-                    marginRight={15}
+                    marginLeft={3}
+                    marginRight={4}
                     colors={palette}
                     actions={{
                         onclick: () => actions.changeToEditorFromListView(),
@@ -73,7 +73,7 @@ export const ListViewTools: Component<Props> = (
                     height={height - 10}
                     minWidth={60}
                     fontSize={14}
-                    marginRight={5}
+                    marginRight={1}
                 >
                     {`${maxPage} pages`}
                 </ToolText>
@@ -89,7 +89,7 @@ export const ListViewTools: Component<Props> = (
                     }}
                 />
 
-                <div style={style({ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: px(5) })}>
+                <div style={style({ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: px(1) })}>
                     <ToolButton
                         iconName="compare_arrows"
                         datatest="btn-all-mirror"
@@ -136,7 +136,7 @@ export const ListViewTools: Component<Props> = (
                         height={height - 10}
                         key="btn-export-image"
                         fontSize={24}
-                        marginRight={10}
+                        marginRight={3}
                         colors={palette}
                         actions={{
                             onclick: () => actions.openListViewExportModal(),

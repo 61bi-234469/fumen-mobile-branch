@@ -34,9 +34,9 @@ export const TreeViewToggle: Component<Props> = ({
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
-        gap: '8px',
+        gap: '4px',
         height: px(height),
-        padding: '0 8px',
+        padding: '0 2px',
     });
 
     const toggleContainerStyle = style({
@@ -44,7 +44,7 @@ export const TreeViewToggle: Component<Props> = ({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '2px',
+        gap: '0px',
         height: px(height),
     });
 
@@ -124,7 +124,7 @@ export const TreeViewToggle: Component<Props> = ({
 
             {/* View mode buttons (only shown when tree is enabled) */}
             {treeEnabled && (
-                <div style={style({ display: 'flex', gap: '4px' })}>
+                <div style={style({ display: 'flex', gap: '1px' })}>
                     <button
                         key="btn-list-view"
                         style={currentViewMode === TreeViewMode.List ? activeButtonStyle : inactiveButtonStyle}

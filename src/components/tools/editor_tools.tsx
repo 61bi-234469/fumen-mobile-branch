@@ -77,27 +77,27 @@ export const EditorTools: Component<Props> = (
                             }}/>
 
                 <ToolButton iconName="undo" datatest="btn-undo" width={35} height={height - 10}
-                            key="btn-undo" fontSize={33.75} marginRight={3} colors={colors}
+                            key="btn-undo" fontSize={33.75} marginRight={2} colors={colors}
                             actions={{ onclick: () => actions.undo() }} enable={0 < undoCount || 0 < inferenceCount}/>
 
                 <ToolButton iconName="redo" datatest="btn-redo" width={35} height={height - 10}
-                            key="btn-redo" fontSize={33.75} marginRight={5} colors={colors}
+                            key="btn-redo" fontSize={33.75} marginRight={4} colors={colors}
                             actions={{ onclick: () => actions.redo() }} enable={0 < redoCount}/>
 
                 <ToolButton iconName="navigate_before" datatest="btn-back-page" width={35} height={height - 10}
-                            key="btn-back-page" fontSize={33.75} marginRight={3} colors={colors}
+                            key="btn-back-page" fontSize={33.75} marginRight={2} colors={colors}
                             actions={{
                                 onclick: () => actions.backPage({ loop: false }),
                                 onlongpress: () => actions.firstPage(),
                             }} enable={1 < currentPage}/>
 
                 <ToolText datatest="text-pages" height={height - 10}
-                          minWidth={75} fontSize={18} marginRight={3}>
+                          minWidth={75} fontSize={18} marginRight={2}>
                     {pages}
                 </ToolText>
 
                 <ToolButton iconName="navigate_next" datatest="btn-next-page" width={35} height={height - 10}
-                            key="btn-next-page" fontSize={33.75} marginRight={5} colors={colors}
+                            key="btn-next-page" fontSize={33.75} marginRight={4} colors={colors}
                             actions={{
                                 onclick: () => actions.nextPage({ loop: false }),
                                 onlongpress: () => actions.lastPage(),
@@ -105,16 +105,16 @@ export const EditorTools: Component<Props> = (
                             enable={currentPage < maxPage}/>
 
                 <ToolButton iconName="home" datatest="btn-drawing-tool" width={40} height={height - 10}
-                            key="btn-drawing-tool" fontSize={30} marginRight={5} colors={colors}
+                            key="btn-drawing-tool" fontSize={30} marginRight={4} colors={colors}
                             actions={{ onclick: () => actions.changeToDrawingToolMode() }}
                             enable={modeType !== ModeTypes.DrawingTool}/>
 
                 <ToolButton iconName="add" datatest="btn-insert-page" width={35} height={height - 10}
-                            key="btn-insert-page" fontSize={30} marginRight={3} colors={colors}
+                            key="btn-insert-page" fontSize={30} marginRight={2} colors={colors}
                             actions={{ onclick: () => actions.duplicatePageOnly({ index: currentPage }) }}/>
 
                 <ToolTextButton datatest="btn-new-gray" width={35} height={height - 10}
-                            key="btn-new-gray" fontSize={16} marginRight={5} colors={colors}
+                            key="btn-new-gray" fontSize={16} marginRight={4} colors={colors}
                             actions={{ onclick: () => actions.duplicatePageToGray({ index: currentPage }) }}>
                     +G
                 </ToolTextButton>
