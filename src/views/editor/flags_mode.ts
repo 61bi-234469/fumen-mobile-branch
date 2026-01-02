@@ -1,5 +1,5 @@
 import { div } from '@hyperapp/html';
-import { switchButton, switchIconContents, toolSpace } from '../editor_buttons';
+import { keyButton, switchButton, switchIconContents, toolSpace } from '../editor_buttons';
 import { EditorLayout, toolStyle } from './editor';
 
 export const flagsMode = ({ layout, currentIndex, keyPage, flags, actions }: {
@@ -14,6 +14,8 @@ export const flagsMode = ({ layout, currentIndex, keyPage, flags, actions }: {
     actions: {
         removePage: (data: { index: number }) => void;
         changeToDrawingMode: () => void;
+        changeToRef: (data: { index: number }) => void;
+        changeToKey: (data: { index: number }) => void;
         changeLockFlag: (data: { index: number, enable: boolean }) => void;
         changeRiseFlag: (data: { index: number, enable: boolean }) => void;
         changeMirrorFlag: (data: { index: number, enable: boolean }) => void;
@@ -27,6 +29,13 @@ export const flagsMode = ({ layout, currentIndex, keyPage, flags, actions }: {
             width: layout.buttons.size.width,
             margin: toolButtonMargin,
             key: 'div-space',
+        }),
+        keyButton({
+            toolButtonMargin,
+            keyPage,
+            currentIndex,
+            actions,
+            width: layout.buttons.size.width,
         }),
         switchButton({
             borderWidth: 1,

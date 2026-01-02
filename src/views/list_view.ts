@@ -60,6 +60,9 @@ export const view: View<State, Actions> = (state, actions) => {
     const isTreeView = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
     const buttonDropMovesSubtree = state.tree.buttonDropMovesSubtree;
     const grayAfterLineClear = state.tree.grayAfterLineClear;
+    const treeViewNavLocked = isTreeView && Date.now() < state.tree.treeViewNavLockUntil;
+    const undoEnabled = state.history.undoCount > 0 && !treeViewNavLocked;
+    const redoEnabled = state.history.redoCount > 0 && !treeViewNavLocked;
     const trimTopBlank = state.listView.trimTopBlank;
     const gridContainerHeight = state.display.height - TOOLS_HEIGHT;
 
@@ -923,22 +926,22 @@ export const view: View<State, Actions> = (state, actions) => {
                     height: px(50),
                     borderRadius: '50%',
                     border: 'none',
-                    backgroundColor: state.history.undoCount > 0 ? '#1565C0' : '#9E9E9E',
+                    backgroundColor: undoEnabled ? '#1565C0' : '#9E9E9E',
                     color: '#fff',
                     fontSize: px(24),
-                    cursor: state.history.undoCount > 0 ? 'pointer' : 'default',
+                    cursor: undoEnabled ? 'pointer' : 'default',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                    opacity: state.history.undoCount > 0 ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
+                    opacity: undoEnabled ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
                 }),
                 onclick: () => {
-                    if (state.history.undoCount > 0) {
+                    if (undoEnabled) {
                         actions.undo();
                     }
                 },
-                disabled: state.history.undoCount <= 0,
+                disabled: !undoEnabled,
             }, [
                 h('i', { className: 'material-icons', style: style({ fontSize: px(28) }) }, 'arrow_back'),
             ]),
@@ -950,22 +953,22 @@ export const view: View<State, Actions> = (state, actions) => {
                     height: px(50),
                     borderRadius: '50%',
                     border: 'none',
-                    backgroundColor: state.history.redoCount > 0 ? '#1565C0' : '#9E9E9E',
+                    backgroundColor: redoEnabled ? '#1565C0' : '#9E9E9E',
                     color: '#fff',
                     fontSize: px(24),
-                    cursor: state.history.redoCount > 0 ? 'pointer' : 'default',
+                    cursor: redoEnabled ? 'pointer' : 'default',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                    opacity: state.history.redoCount > 0 ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
+                    opacity: redoEnabled ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
                 }),
                 onclick: () => {
-                    if (state.history.redoCount > 0) {
+                    if (redoEnabled) {
                         actions.redo();
                     }
                 },
-                disabled: state.history.redoCount <= 0,
+                disabled: !redoEnabled,
             }, [
                 h('i', { className: 'material-icons', style: style({ fontSize: px(28) }) }, 'arrow_forward'),
             ]),

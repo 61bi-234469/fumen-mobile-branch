@@ -1,12 +1,20 @@
 import { Piece, TouchTypes } from '../../lib/enums';
 import { div } from '@hyperapp/html';
-import { colorButton, iconContents, inferenceButton, keyButton, toolButton, toolSpace } from '../editor_buttons';
+import {
+    colorButton,
+    iconContents,
+    inferenceButton,
+    switchButton,
+    switchIconContents,
+    toolButton,
+    toolSpace,
+} from '../editor_buttons';
 import { EditorLayout, toolStyle } from './editor';
 
-export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, colorize, actions }: {
+export const toolMode = ({ layout, currentIndex, grayAfterLineClear, touchType, modePiece, colorize, actions }: {
     layout: EditorLayout;
     currentIndex: number;
-    keyPage: boolean;
+    grayAfterLineClear: boolean;
     touchType: TouchTypes;
     modePiece: Piece | undefined;
     colorize: boolean;
@@ -17,8 +25,7 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
         changeToUtilsMode: () => void;
         changeToDrawPieceMode: () => void;
         changeToFillMode: () => void;
-        changeToRef: (data: { index: number }) => void;
-        changeToKey: (data: { index: number }) => void;
+        setTreeState: (data: { grayAfterLineClear: boolean }) => void;
         selectPieceColor: (data: { piece: Piece }) => void;
         selectInferencePieceColor: () => void;
         changeToMovePieceMode: () => void;
@@ -35,13 +42,22 @@ export const toolMode = ({ layout, currentIndex, keyPage, touchType, modePiece, 
     const pieces = [Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray];
 
     return div({ style: toolStyle(layout) }, [
-        keyButton({
-            toolButtonMargin,
-            keyPage,
-            currentIndex,
-            actions,
+        switchButton({
+            borderWidth: 1,
             width: layout.buttons.size.width,
-        }),
+            margin: toolButtonMargin,
+            backgroundColorClass: 'red',
+            textColor: '#333',
+            borderColor: '#f44336',
+            datatest: 'btn-gray-after-line-clear',
+            key: 'btn-gray-after-line-clear',
+            onclick: () => actions.setTreeState({ grayAfterLineClear: !grayAfterLineClear }),
+            enable: grayAfterLineClear,
+        }, switchIconContents({
+            description: 'gray',
+            iconSize: 18,
+            enable: grayAfterLineClear,
+        })),
         toolButton({
             borderWidth: 1,
             width: layout.buttons.size.width,

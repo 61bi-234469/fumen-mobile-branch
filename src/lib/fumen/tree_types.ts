@@ -115,6 +115,8 @@ export interface TreeState {
     buttonDropMovesSubtree: boolean;
     /** Convert cleared lines to gray when creating new nodes */
     grayAfterLineClear: boolean;
+    /** Disable undo/redo briefly after switching to tree view */
+    treeViewNavLockUntil: number;
     /** Zoom scale for tree view (1.0 = 100%) */
     scale: number;
 }
@@ -139,6 +141,7 @@ export const initialTreeState: TreeState = {
     viewMode: TreeViewMode.List,
     dragState: initialTreeDragState,
     buttonDropMovesSubtree: false,
-    grayAfterLineClear: true,
+    grayAfterLineClear: false,
+    treeViewNavLockUntil: 0,
     scale: 1.0,
 };

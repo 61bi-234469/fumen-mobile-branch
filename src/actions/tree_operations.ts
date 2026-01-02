@@ -3,7 +3,7 @@
  */
 
 import { State } from '../states';
-import { action } from '../actions';
+import { action, main } from '../actions';
 import { NextState, sequence } from './commons';
 import {
     AddMode,
@@ -551,11 +551,16 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
      */
     setTreeViewMode: ({ mode }) => (state): NextState => {
         if (mode === TreeViewMode.Tree) {
+            const lockUntil = Date.now() + 500;
+            setTimeout(() => {
+                main.refresh();
+            }, 500);
             return sequence(state, [
                 () => ({
                     tree: {
                         ...state.tree,
                         viewMode: mode,
+                        treeViewNavLockUntil: lockUntil,
                     },
                 }),
                 treeOperationActions.normalizeTreePageOrder(),
@@ -566,6 +571,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             tree: {
                 ...state.tree,
                 viewMode: mode,
+                treeViewNavLockUntil: 0,
             },
         };
     },

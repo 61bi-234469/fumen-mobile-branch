@@ -53,10 +53,25 @@ export const modeActions: Readonly<ScreenActions> = {
         ]);
     },
     changeToListViewScreen: () => (state): NextState => {
+        const lockTreeNav = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree
+            ? () => {
+                const lockUntil = Date.now() + 500;
+                setTimeout(() => {
+                    main.refresh();
+                }, 500);
+                return {
+                    tree: {
+                        ...state.tree,
+                        treeViewNavLockUntil: lockUntil,
+                    },
+                };
+            }
+            : undefined;
         return sequence(state, [
             actions.fixInferencePiece(),
             actions.resetInferencePiece(),
             animationActions.pauseAnimation(),
+            lockTreeNav,
             () => ({
                 mode: {
                     ...state.mode,

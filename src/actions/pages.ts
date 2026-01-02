@@ -170,7 +170,9 @@ export const pageActions: Readonly<PageActions> = {
         const pages = fumen.pages;
 
         const prevPage = pages[index - 1];
-        const insert = prevPage !== undefined && prevPage.field.obj === undefined
+        const shouldInsertKey = state.tree.grayAfterLineClear
+            || (prevPage !== undefined && prevPage.field.obj !== undefined);
+        const insert = !shouldInsertKey
             ? pageActions.insertRefPage
             : pageActions.insertKeyPage;
 
@@ -820,6 +822,10 @@ const insertKeyPage = ({ index }: { index: number }) => (state: Readonly<State>)
     const pages = new Pages(state.fumen.pages);
     pages.insertKeyPage(index);
     const newPages = pages.pages;
+    const insertedPage = newPages[index];
+    if (state.tree.grayAfterLineClear && insertedPage?.field.obj !== undefined) {
+        insertedPage.field.obj.convertToGray();
+    }
 
     // Update tree if tree data exists (even when view is disabled)
     const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
@@ -908,9 +914,13 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
 
     const primitivePage = toPrimitivePage(insertedPage);
 
-    // フィールドをリセットする
+    // フィールドをリセットする（Gray有効時はグレー化）
     if (insertedPage.field.obj !== undefined) {
-        insertedPage.field.obj = new Field({});
+        if (state.tree.grayAfterLineClear) {
+            insertedPage.field.obj.convertToGray();
+        } else {
+            insertedPage.field.obj = new Field({});
+        }
     }
 
     // コメントをリセットする

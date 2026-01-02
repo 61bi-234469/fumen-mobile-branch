@@ -209,7 +209,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                 return toolMode({
                     layout,
                     actions,
-                    keyPage,
+                    grayAfterLineClear: state.tree.grayAfterLineClear,
                     touchType: state.mode.touch,
                     currentIndex: state.fumen.currentIndex,
                     modePiece: state.mode.piece,
@@ -287,7 +287,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                 return toolMode({
                     layout,
                     actions,
-                    keyPage,
+                    grayAfterLineClear: state.tree.grayAfterLineClear,
                     touchType: state.mode.touch,
                     currentIndex: state.fumen.currentIndex,
                     modePiece: state.mode.piece,

@@ -6,17 +6,30 @@ import { Page } from '../lib/fumen/types';
 import { State } from '../states';
 import {
     embedTreeInPages,
+    createTreeFromPages,
     extractTreeFromPages,
     findNodeByPageIndex,
     getDefaultActiveNodeId,
 } from '../lib/fumen/tree_utils';
-import { initialTreeState, SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
+import {
+    initialTreeDragState,
+    initialTreeState,
+    SerializedTree,
+    TreeViewMode,
+    VIRTUAL_PAGE_INDEX,
+} from '../lib/fumen/tree_types';
 
 export interface MementoActions {
     registerHistoryTask: (data: { task: HistoryTask, mergeKey?: string }) => action;
     undo: () => action;
     redo: () => action;
-    loadPagesViaHistory: (data: { pages: Page[], index: number, undoCount: number, redoCount: number, treeViewMode?: TreeViewMode }) => action;
+    loadPagesViaHistory: (data: {
+        pages: Page[],
+        index: number,
+        undoCount: number,
+        redoCount: number,
+        treeViewMode?: TreeViewMode
+    }) => action;
     setHistoryCount: (data: { redoCount: number, undoCount: number }) => action;
 }
 
@@ -75,18 +88,62 @@ export const mementoActions: Readonly<MementoActions> = {
         // Extract tree data from restored pages if present
         const { cleanedPages, tree } = extractTreeFromPages(pages);
 
-        // Restore tree state from extracted tree data, or reset if no tree data
-        const treeState = tree ? {
-            ...state.tree,
-            enabled: true,
-            nodes: tree.nodes,
-            rootId: tree.rootId,
-            activeNodeId: findNodeByPageIndex(tree, index)?.id ?? getDefaultActiveNodeId(tree),
-            viewMode: treeViewMode ?? state.tree.viewMode,
-        } : {
-            ...initialTreeState,
-            viewMode: treeViewMode ?? initialTreeState.viewMode,
-        };
+        const hasTreeState = state.tree.nodes.length > 0 && state.tree.rootId !== null;
+        const treeInBounds = hasTreeState && state.tree.nodes.every((node) => (
+            node.pageIndex === VIRTUAL_PAGE_INDEX
+            || (0 <= node.pageIndex && node.pageIndex < cleanedPages.length)
+        ));
+
+        // Restore tree state from extracted tree data, or keep/rebuild if no tree data
+        const treeState = (() => {
+            if (tree) {
+                return {
+                    ...state.tree,
+                    enabled: true,
+                    nodes: tree.nodes,
+                    rootId: tree.rootId,
+                    activeNodeId: findNodeByPageIndex(tree, index)?.id ?? getDefaultActiveNodeId(tree),
+                    viewMode: treeViewMode ?? state.tree.viewMode,
+                    dragState: initialTreeDragState,
+                };
+            }
+
+            if (treeInBounds) {
+                const currentTree: SerializedTree = {
+                    nodes: state.tree.nodes,
+                    rootId: state.tree.rootId,
+                    version: 1,
+                };
+                return {
+                    ...state.tree,
+                    activeNodeId: findNodeByPageIndex(currentTree, index)?.id ?? state.tree.activeNodeId,
+                    viewMode: treeViewMode ?? state.tree.viewMode,
+                    dragState: initialTreeDragState,
+                };
+            }
+
+            if (state.tree.enabled) {
+                const rebuiltTree = createTreeFromPages(cleanedPages);
+                return {
+                    ...state.tree,
+                    enabled: true,
+                    nodes: rebuiltTree.nodes,
+                    rootId: rebuiltTree.rootId,
+                    activeNodeId: findNodeByPageIndex(rebuiltTree, index)?.id
+                        ?? getDefaultActiveNodeId(rebuiltTree),
+                    viewMode: treeViewMode ?? state.tree.viewMode,
+                    dragState: initialTreeDragState,
+                };
+            }
+
+            return {
+                ...initialTreeState,
+                grayAfterLineClear: state.tree.grayAfterLineClear,
+                buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+                scale: state.tree.scale,
+                viewMode: treeViewMode ?? initialTreeState.viewMode,
+            };
+        })();
 
         return sequence(state, [
             actions.setPages({ pages: cleanedPages, open: false }),
