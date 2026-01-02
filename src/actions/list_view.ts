@@ -517,6 +517,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                 state.fumen.pages,
                 state.fumen.guideLineColor,
                 tree,
+                state.listView.trimTopBlank,
             );
             filenamePrefix = 'fumen_tree';
         } else {
@@ -524,6 +525,7 @@ export const listViewActions: Readonly<ListViewActions> = {
             dataURL = generateListViewExportImage(
                 state.fumen.pages,
                 state.fumen.guideLineColor,
+                state.listView.trimTopBlank,
             );
             filenamePrefix = 'fumen_list';
         }
