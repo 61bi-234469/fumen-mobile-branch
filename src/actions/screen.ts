@@ -53,25 +53,25 @@ export const modeActions: Readonly<ScreenActions> = {
         ]);
     },
     changeToListViewScreen: () => (state): NextState => {
-        const lockTreeNav = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree
-            ? () => {
-                const lockUntil = Date.now() + 500;
-                setTimeout(() => {
-                    main.refresh();
-                }, 500);
-                return {
-                    tree: {
-                        ...state.tree,
-                        treeViewNavLockUntil: lockUntil,
-                    },
-                };
-            }
-            : undefined;
+        // Always lock undo/redo buttons for 500ms to prevent accidental presses
+        // from screen transition touch events (buttons are at same coordinates)
+        const lockListViewNav = () => {
+            const lockUntil = Date.now() + 500;
+            setTimeout(() => {
+                main.refresh();
+            }, 500);
+            return {
+                tree: {
+                    ...state.tree,
+                    treeViewNavLockUntil: lockUntil,
+                },
+            };
+        };
         return sequence(state, [
             actions.fixInferencePiece(),
             actions.resetInferencePiece(),
             animationActions.pauseAnimation(),
-            lockTreeNav,
+            lockListViewNav,
             () => ({
                 mode: {
                     ...state.mode,

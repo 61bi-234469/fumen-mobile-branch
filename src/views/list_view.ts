@@ -60,9 +60,11 @@ export const view: View<State, Actions> = (state, actions) => {
     const isTreeView = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
     const buttonDropMovesSubtree = state.tree.buttonDropMovesSubtree;
     const grayAfterLineClear = state.tree.grayAfterLineClear;
-    const treeViewNavLocked = isTreeView && Date.now() < state.tree.treeViewNavLockUntil;
-    const undoEnabled = state.history.undoCount > 0 && !treeViewNavLocked;
-    const redoEnabled = state.history.redoCount > 0 && !treeViewNavLocked;
+    // Lock undo/redo buttons for 500ms after transitioning to list/tree view
+    // This prevents accidental button presses from screen transition touch events
+    const listViewNavLocked = Date.now() < state.tree.treeViewNavLockUntil;
+    const undoEnabled = state.history.undoCount > 0 && !listViewNavLocked;
+    const redoEnabled = state.history.redoCount > 0 && !listViewNavLocked;
     const trimTopBlank = state.listView.trimTopBlank;
     const gridContainerHeight = state.display.height - TOOLS_HEIGHT;
 
