@@ -28,6 +28,8 @@ import {
     removePagesFromTree,
 } from '../lib/fumen/tree_utils';
 import { SerializedTree } from '../lib/fumen/tree_types';
+import { toTreeOperationTask, createSnapshot } from './tree_operations';
+import { mementoActions } from './memento';
 
 declare const M: any;
 const safeDecodeClipboardFumen = (value: string): string => {
@@ -776,33 +778,58 @@ export const parseToBlocks = (field: Field, move?: Move, commands?: Page['comman
 };
 
 const insertRefPage = ({ index }: { index: number }) => (state: Readonly<State>): NextState => {
-    const pages = new Pages(state.fumen.pages);
-    pages.insertRefPage(index);
-    const newPages = pages.pages;
-
-    // Update tree if tree data exists (even when view is disabled)
+    // Check if tree data exists
     const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
-    const updateTree = hasTreeData
-        ? (() => {
-            const currentTree: SerializedTree = {
-                nodes: state.tree.nodes,
-                rootId: state.tree.rootId,
-                version: 1,
-            };
-            // Insert new page after the previous page (index - 1), or at root if index is 0
-            const parentPageIndex = index > 0 ? index - 1 : 0;
-            const newTree = insertPageIntoTree(currentTree, index, parentPageIndex);
-            const currentNode = findNodeByPageIndex(newTree, index);
-            return {
+
+    if (hasTreeData) {
+        // Use tree operation task for proper undo/redo with tree structure
+        const currentTree: SerializedTree = {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1,
+        };
+
+        // Create snapshot before changes
+        const prevSnapshot = createSnapshot(currentTree, state.fumen.pages, state.fumen.currentIndex);
+
+        // Apply page changes
+        const pagesObj = new Pages(state.fumen.pages);
+        pagesObj.insertRefPage(index);
+        const newPages = pagesObj.pages;
+
+        // Insert new page after the previous page (index - 1), or at root if index is 0
+        const parentPageIndex = index > 0 ? index - 1 : 0;
+        const newTree = insertPageIntoTree(currentTree, index, parentPageIndex);
+        const currentNode = findNodeByPageIndex(newTree, index);
+
+        // Create snapshot after changes
+        const nextSnapshot = createSnapshot(newTree, newPages, index);
+
+        // Create tree operation task
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: newPages,
+                    maxPage: newPages.length,
+                },
                 tree: {
                     ...state.tree,
                     nodes: newTree.nodes,
                     rootId: newTree.rootId,
                     activeNodeId: currentNode?.id ?? null,
                 },
-            };
-        })()
-        : {};
+            }),
+        ]);
+    }
+
+    // No tree data - use original page-only task
+    const pagesObj = new Pages(state.fumen.pages);
+    pagesObj.insertRefPage(index);
+    const newPages = pagesObj.pages;
 
     const task = toInsertPageTask(index, [toPrimitivePage(newPages[index])], state.fumen.currentIndex);
     return sequence(state, [
@@ -813,43 +840,71 @@ const insertRefPage = ({ index }: { index: number }) => (state: Readonly<State>)
                 pages: newPages,
                 maxPage: newPages.length,
             },
-            ...updateTree,
         }),
     ]);
 };
 
 const insertKeyPage = ({ index }: { index: number }) => (state: Readonly<State>): NextState => {
-    const pages = new Pages(state.fumen.pages);
-    pages.insertKeyPage(index);
-    const newPages = pages.pages;
-    const insertedPage = newPages[index];
-    if (state.tree.grayAfterLineClear && insertedPage?.field.obj !== undefined) {
-        insertedPage.field.obj.convertToGray();
-    }
-
-    // Update tree if tree data exists (even when view is disabled)
+    // Check if tree data exists
     const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
-    const updateTree = hasTreeData
-        ? (() => {
-            const currentTree: SerializedTree = {
-                nodes: state.tree.nodes,
-                rootId: state.tree.rootId,
-                version: 1,
-            };
-            // Insert new page after the previous page (index - 1), or at root if index is 0
-            const parentPageIndex = index > 0 ? index - 1 : 0;
-            const newTree = insertPageIntoTree(currentTree, index, parentPageIndex);
-            const currentNode = findNodeByPageIndex(newTree, index);
-            return {
+
+    if (hasTreeData) {
+        // Use tree operation task for proper undo/redo with tree structure
+        const currentTree: SerializedTree = {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1,
+        };
+
+        // Create snapshot before changes
+        const prevSnapshot = createSnapshot(currentTree, state.fumen.pages, state.fumen.currentIndex);
+
+        // Apply page changes
+        const pagesObj = new Pages(state.fumen.pages);
+        pagesObj.insertKeyPage(index);
+        const newPages = pagesObj.pages;
+        const insertedPage = newPages[index];
+        if (state.tree.grayAfterLineClear && insertedPage?.field.obj !== undefined) {
+            insertedPage.field.obj.convertToGray();
+        }
+
+        // Insert new page after the previous page (index - 1), or at root if index is 0
+        const parentPageIndex = index > 0 ? index - 1 : 0;
+        const newTree = insertPageIntoTree(currentTree, index, parentPageIndex);
+        const currentNode = findNodeByPageIndex(newTree, index);
+
+        // Create snapshot after changes
+        const nextSnapshot = createSnapshot(newTree, newPages, index);
+
+        // Create tree operation task
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: newPages,
+                    maxPage: newPages.length,
+                },
                 tree: {
                     ...state.tree,
                     nodes: newTree.nodes,
                     rootId: newTree.rootId,
                     activeNodeId: currentNode?.id ?? null,
                 },
-            };
-        })()
-        : {};
+            }),
+        ]);
+    }
+
+    // No tree data - use original page-only task
+    const pagesObj = new Pages(state.fumen.pages);
+    pagesObj.insertKeyPage(index);
+    const newPages = pagesObj.pages;
+    const insertedPage = newPages[index];
+    if (state.tree.grayAfterLineClear && insertedPage?.field.obj !== undefined) {
+        insertedPage.field.obj.convertToGray();
+    }
 
     const task = toInsertPageTask(index, [toPrimitivePage(newPages[index])], state.fumen.currentIndex);
     return sequence(state, [
@@ -860,14 +915,104 @@ const insertKeyPage = ({ index }: { index: number }) => (state: Readonly<State>)
                 pages: newPages,
                 maxPage: newPages.length,
             },
-            ...updateTree,
         }),
     ]);
 };
 
 const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>): NextState => {
-    let pages = state.fumen.pages;
+    // Check if tree data exists
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
 
+    if (hasTreeData) {
+        // Use tree operation task for proper undo/redo with tree structure
+        const currentTree: SerializedTree = {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1,
+        };
+
+        // Create snapshot before changes
+        const prevSnapshot = createSnapshot(currentTree, state.fumen.pages, state.fumen.currentIndex);
+
+        // Apply all page changes
+        let pages = state.fumen.pages;
+
+        // 次のページをKeyにする
+        const nextPage = pages[index];
+        if (nextPage !== undefined && nextPage.field.ref !== undefined) {
+            const pagesObj = new Pages(pages);
+            pagesObj.toKeyPage(index);
+            pages = pagesObj.pages;
+        }
+
+        // 次のページのコメントを固定する
+        if (nextPage !== undefined && nextPage.comment.ref !== undefined) {
+            const pagesObj = new Pages(pages);
+            pagesObj.freezeComment(index);
+            pages = pagesObj.pages;
+        }
+
+        // 次のページの前にKeyPageを追加
+        {
+            const pagesObj = new Pages(pages);
+            pagesObj.insertKeyPage(index);
+            pages = pagesObj.pages;
+        }
+
+        // 追加したページのコメントを固定する
+        const insertedPage = pages[index];
+        if (insertedPage !== undefined && insertedPage.comment.text === undefined) {
+            const pagesObj = new Pages(pages);
+            pagesObj.freezeComment(index);
+            pages = pagesObj.pages;
+        }
+
+        // フィールドをリセットする（Gray有効時はグレー化）
+        if (insertedPage.field.obj !== undefined) {
+            if (state.tree.grayAfterLineClear) {
+                insertedPage.field.obj.convertToGray();
+            } else {
+                insertedPage.field.obj = new Field({});
+            }
+        }
+
+        // コメントをリセットする
+        if (insertedPage.comment.text !== undefined) {
+            insertedPage.comment.text = '';
+        }
+
+        // Insert new page after the previous page (index - 1), or at root if index is 0
+        const parentPageIndex = index > 0 ? index - 1 : 0;
+        const newTree = insertPageIntoTree(currentTree, index, parentPageIndex);
+        const currentNode = findNodeByPageIndex(newTree, index);
+
+        // Create snapshot after changes
+        const nextSnapshot = createSnapshot(newTree, pages, index);
+
+        // Create tree operation task
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages,
+                    maxPage: pages.length,
+                    currentIndex: index,
+                },
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: currentNode?.id ?? null,
+                },
+            }),
+        ]);
+    }
+
+    // No tree data - use original page-only tasks
+    let pages = state.fumen.pages;
     const tasks = [];
 
     // 次のページをKeyにする
@@ -934,30 +1079,6 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
         tasks.push(task);
     }
 
-    // Update tree if tree data exists (even when view is disabled)
-    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
-    const updateTree = hasTreeData
-        ? (() => {
-            const currentTree: SerializedTree = {
-                nodes: state.tree.nodes,
-                rootId: state.tree.rootId,
-                version: 1,
-            };
-            // Insert new page after the previous page (index - 1), or at root if index is 0
-            const parentPageIndex = index > 0 ? index - 1 : 0;
-            const newTree = insertPageIntoTree(currentTree, index, parentPageIndex);
-            const currentNode = findNodeByPageIndex(newTree, index);
-            return {
-                tree: {
-                    ...state.tree,
-                    nodes: newTree.nodes,
-                    rootId: newTree.rootId,
-                    activeNodeId: currentNode?.id ?? null,
-                },
-            };
-        })()
-        : {};
-
     return sequence(state, [
         actions.registerHistoryTask({ task: toPageTaskStack(tasks, state.fumen.currentIndex) }),
         () => ({
@@ -967,39 +1088,63 @@ const insertNewPage = ({ index }: { index: number }) => (state: Readonly<State>)
                 maxPage: pages.length,
                 currentIndex: index,
             },
-            ...updateTree,
         }),
     ]);
 };
 
 const duplicatePage = ({ index }: { index: number }) => (state: Readonly<State>): NextState => {
-    const pages = new Pages(state.fumen.pages);
-    pages.duplicatePage(index);
-    const newPages = pages.pages;
-
-    // Update tree if tree data exists (even when view is disabled)
+    // Check if tree data exists
     const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
-    const updateTree = hasTreeData
-        ? (() => {
-            const currentTree: SerializedTree = {
-                nodes: state.tree.nodes,
-                rootId: state.tree.rootId,
-                version: 1,
-            };
-            // Insert duplicated page after the current page (index - 1 because it was inserted at index)
-            const parentPageIndex = index > 0 ? index - 1 : 0;
-            const newTree = insertPageIntoTree(currentTree, index, parentPageIndex);
-            const currentNode = findNodeByPageIndex(newTree, index);
-            return {
+
+    if (hasTreeData) {
+        // Use tree operation task for proper undo/redo with tree structure
+        const currentTree: SerializedTree = {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1,
+        };
+
+        // Create snapshot before changes
+        const prevSnapshot = createSnapshot(currentTree, state.fumen.pages, state.fumen.currentIndex);
+
+        // Apply page changes
+        const pagesObj = new Pages(state.fumen.pages);
+        pagesObj.duplicatePage(index);
+        const newPages = pagesObj.pages;
+
+        // Insert duplicated page after the current page (index - 1 because it was inserted at index)
+        const parentPageIndex = index > 0 ? index - 1 : 0;
+        const newTree = insertPageIntoTree(currentTree, index, parentPageIndex);
+        const currentNode = findNodeByPageIndex(newTree, index);
+
+        // Create snapshot after changes
+        const nextSnapshot = createSnapshot(newTree, newPages, index);
+
+        // Create tree operation task
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: newPages,
+                    maxPage: newPages.length,
+                },
                 tree: {
                     ...state.tree,
                     nodes: newTree.nodes,
                     rootId: newTree.rootId,
                     activeNodeId: currentNode?.id ?? null,
                 },
-            };
-        })()
-        : {};
+            }),
+        ]);
+    }
+
+    // No tree data - use original page-only task
+    const pagesObj = new Pages(state.fumen.pages);
+    pagesObj.duplicatePage(index);
+    const newPages = pagesObj.pages;
 
     const task = toInsertPageTask(index, [toPrimitivePage(newPages[index])], state.fumen.currentIndex);
     return sequence(state, [
@@ -1010,7 +1155,6 @@ const duplicatePage = ({ index }: { index: number }) => (state: Readonly<State>)
                 pages: newPages,
                 maxPage: newPages.length,
             },
-            ...updateTree,
         }),
     ]);
 };
@@ -1027,6 +1171,77 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
         return;
     }
 
+    // Check if tree data exists
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+
+    if (hasTreeData) {
+        // Use tree operation task for proper undo/redo with tree structure
+        const currentTree: SerializedTree = {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1,
+        };
+
+        // Create snapshot before changes
+        const prevSnapshot = createSnapshot(currentTree, pages, state.fumen.currentIndex);
+
+        // Apply page changes
+        const currentPage = pages[index];
+        const nextPageIndex = index + 1;
+        const nextPage = pages[nextPageIndex];
+        const pagesObj = new Pages(pages);
+
+        // 次のページがあるときはKeyにする
+        if (nextPage !== undefined) {
+            if (nextPage.field.obj === undefined) {
+                pagesObj.toKeyPage(nextPageIndex);
+            }
+
+            if (nextPage.comment.ref !== undefined) {
+                pagesObj.freezeComment(nextPageIndex);
+            }
+
+            if (index === 0 && currentPage.flags.colorize !== nextPage.flags.colorize) {
+                nextPage.flags.colorize = currentPage.flags.colorize;
+            }
+        }
+
+        // 現ページの削除
+        pagesObj.deletePage(index, index + 1);
+
+        const newPages = pagesObj.pages;
+        const nextIndex = index < newPages.length ? index : newPages.length - 1;
+
+        // Update tree
+        const newTree = removePageFromTree(currentTree, index);
+        const currentNode = findNodeByPageIndex(newTree, nextIndex);
+
+        // Create snapshot after changes
+        const nextSnapshot = createSnapshot(newTree, newPages, nextIndex);
+
+        // Create tree operation task
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: newPages,
+                    maxPage: newPages.length,
+                    currentIndex: nextIndex,
+                },
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: currentNode?.id ?? null,
+                },
+            }),
+        ]);
+    }
+
+    // No tree data - use original page-only tasks
     const currentPage = pages[index];
     const nextPageIndex = index + 1;
     const nextPage = pages[nextPageIndex];
@@ -1062,28 +1277,6 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
     const newPages = pagesObj.pages;
     const nextIndex = index < newPages.length ? index : newPages.length - 1;
 
-    // Update tree if tree data exists (even when view is disabled)
-    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
-    const updateTree = hasTreeData
-        ? (() => {
-            const currentTree: SerializedTree = {
-                nodes: state.tree.nodes,
-                rootId: state.tree.rootId,
-                version: 1,
-            };
-            const newTree = removePageFromTree(currentTree, index);
-            const currentNode = findNodeByPageIndex(newTree, nextIndex);
-            return {
-                tree: {
-                    ...state.tree,
-                    nodes: newTree.nodes,
-                    rootId: newTree.rootId,
-                    activeNodeId: currentNode?.id ?? null,
-                },
-            };
-        })()
-        : {};
-
     return sequence(state, [
         actions.registerHistoryTask({ task: toPageTaskStack(tasks, index) }),
         () => ({
@@ -1093,7 +1286,6 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
                 maxPage: newPages.length,
                 currentIndex: nextIndex,
             },
-            ...updateTree,
         }),
     ]);
 };
@@ -1111,6 +1303,56 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
         return;
     }
 
+    // Check if tree data exists
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+
+    if (hasTreeData) {
+        // Use tree operation task for proper undo/redo with tree structure
+        const currentTree: SerializedTree = {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1,
+        };
+
+        // Create snapshot before changes
+        const prevSnapshot = createSnapshot(currentTree, pages, state.fumen.currentIndex);
+
+        // Apply page changes
+        const pagesObj = new Pages(pages);
+        pagesObj.deletePage(nextPageIndex, pages.length);
+        const newPages = pagesObj.pages;
+        const nextIndex = pageIndex < newPages.length ? pageIndex : newPages.length - 1;
+
+        // Update tree
+        const newTree = removePagesFromTree(currentTree, nextPageIndex, pages.length);
+        const currentNode = findNodeByPageIndex(newTree, nextIndex);
+
+        // Create snapshot after changes
+        const nextSnapshot = createSnapshot(newTree, newPages, nextIndex);
+
+        // Create tree operation task
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: newPages,
+                    maxPage: newPages.length,
+                    currentIndex: nextIndex,
+                },
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: currentNode?.id ?? null,
+                },
+            }),
+        ]);
+    }
+
+    // No tree data - use original page-only task
     const pagesObj = new Pages(pages);
 
     // 次のページ以降を削除
@@ -1121,28 +1363,6 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
     const newPages = pagesObj.pages;
     const nextIndex = pageIndex < newPages.length ? pageIndex : newPages.length - 1;
 
-    // Update tree if tree data exists (even when view is disabled)
-    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
-    const updateTree = hasTreeData
-        ? (() => {
-            const currentTree: SerializedTree = {
-                nodes: state.tree.nodes,
-                rootId: state.tree.rootId,
-                version: 1,
-            };
-            const newTree = removePagesFromTree(currentTree, nextPageIndex, pages.length);
-            const currentNode = findNodeByPageIndex(newTree, nextIndex);
-            return {
-                tree: {
-                    ...state.tree,
-                    nodes: newTree.nodes,
-                    rootId: newTree.rootId,
-                    activeNodeId: currentNode?.id ?? null,
-                },
-            };
-        })()
-        : {};
-
     return sequence(state, [
         actions.registerHistoryTask({ task }),
         () => ({
@@ -1152,7 +1372,6 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
                 maxPage: newPages.length,
                 currentIndex: nextIndex,
             },
-            ...updateTree,
         }),
     ]);
 };
@@ -1174,6 +1393,74 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
         return;
     }
 
+    // Check if tree data exists
+    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+
+    if (hasTreeData) {
+        // Use tree operation task for proper undo/redo with tree structure
+        const currentTree: SerializedTree = {
+            nodes: state.tree.nodes,
+            rootId: state.tree.rootId,
+            version: 1,
+        };
+
+        // Create snapshot before changes
+        const prevSnapshot = createSnapshot(currentTree, pages, state.fumen.currentIndex);
+
+        // Apply all page changes
+        const currentPage = pages[pageIndex];
+        const pagesObj = new Pages(pages);
+
+        // 次のページがあるときはKeyにする
+        if (currentPage !== undefined) {
+            if (currentPage.field.obj === undefined) {
+                pagesObj.toKeyPage(pageIndex);
+            }
+
+            if (currentPage.comment.ref !== undefined) {
+                pagesObj.freezeComment(pageIndex);
+            }
+
+            if (firstPage.flags.colorize !== currentPage.flags.colorize) {
+                currentPage.flags.colorize = firstPage.flags.colorize;
+            }
+        }
+
+        // 前までのページを削除
+        pagesObj.deletePage(0, pageIndex);
+        const newPages = pagesObj.pages;
+
+        // Update tree
+        const newTree = removePagesFromTree(currentTree, 0, pageIndex);
+        const currentNode = findNodeByPageIndex(newTree, 0);
+
+        // Create snapshot after changes
+        const nextSnapshot = createSnapshot(newTree, newPages, 0);
+
+        // Create tree operation task
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: newPages,
+                    maxPage: newPages.length,
+                    currentIndex: 0,
+                },
+                tree: {
+                    ...state.tree,
+                    nodes: newTree.nodes,
+                    rootId: newTree.rootId,
+                    activeNodeId: currentNode?.id ?? null,
+                },
+            }),
+            actions.reopenCurrentPage(),
+        ]);
+    }
+
+    // No tree data - use original page-only tasks
     const currentPage = pages[pageIndex];
     const pagesObj = new Pages(pages);
     const tasks: OperationTask[] = [];
@@ -1206,28 +1493,6 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
 
     const newPages = pagesObj.pages;
 
-    // Update tree if tree data exists (even when view is disabled)
-    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
-    const updateTree = hasTreeData
-        ? (() => {
-            const currentTree: SerializedTree = {
-                nodes: state.tree.nodes,
-                rootId: state.tree.rootId,
-                version: 1,
-            };
-            const newTree = removePagesFromTree(currentTree, 0, pageIndex);
-            const currentNode = findNodeByPageIndex(newTree, 0);
-            return {
-                tree: {
-                    ...state.tree,
-                    nodes: newTree.nodes,
-                    rootId: newTree.rootId,
-                    activeNodeId: currentNode?.id ?? null,
-                },
-            };
-        })()
-        : {};
-
     return sequence(state, [
         actions.registerHistoryTask({ task: toPageTaskStack(tasks, pageIndex) }),
         () => ({
@@ -1237,10 +1502,8 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
                 maxPage: newPages.length,
                 currentIndex: 0,
             },
-            ...updateTree,
         }),
         actions.reopenCurrentPage(),
     ]);
 };
-
 

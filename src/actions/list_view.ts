@@ -675,6 +675,17 @@ export const listViewActions: Readonly<ListViewActions> = {
             };
         }
 
+        if (treeState.enabled && treeState.viewMode === TreeViewMode.Tree) {
+            const lockUntil = Date.now() + 500;
+            setTimeout(() => {
+                main.refresh();
+            }, 500);
+            treeState = {
+                ...treeState,
+                treeViewNavLockUntil: lockUntil,
+            };
+        }
+
         const primitiveNexts = cleanedPages.map(toPrimitivePage);
         const task = toInsertPageTask(insertIndex, primitiveNexts, state.fumen.currentIndex);
 
