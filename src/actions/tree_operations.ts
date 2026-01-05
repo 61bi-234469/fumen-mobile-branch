@@ -1040,7 +1040,9 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             tree: {
                 ...state.tree,
                 ...data,
-                treeViewNavLockUntil: shouldLock ? lockUntil : (data.treeViewNavLockUntil ?? state.tree.treeViewNavLockUntil),
+                treeViewNavLockUntil: shouldLock
+                    ? lockUntil
+                    : (data.treeViewNavLockUntil ?? state.tree.treeViewNavLockUntil),
             },
         };
     },

@@ -604,29 +604,26 @@ export const pageActions: Readonly<PageActions> = {
         }
         return pageActions.removePage({ index: currentIndex })(state);
     },
-        insertPageFromClipboard: () => (state): NextState => {
+    insertPageFromClipboard: () => (state): NextState => {
         const currentIndex = state.fumen.currentIndex;
 
         (async () => {
             try {
-                // クリチE�Eボ�Eドからテキストを読み取り
                 const text = await navigator.clipboard.readText();
 
                 const fumenData = parseFumenFromClipboard(text);
                 if (!fumenData) {
-                    M.toast({ html: "No fumen data in clipboard", classes: 'top-toast', displayLength: 1500 });
+                    M.toast({ html: 'No fumen data in clipboard', classes: 'top-toast', displayLength: 1500 });
                     return;
                 }
 
-                // チE��ーチE(decode関数はv/d/D/V/m/M全てに対応済み)
                 const decodedPages = await decode(fumenData);
 
-                // 次のペ�Eジに挿入�E�Eainを使用して状態を更新�E�E
                 main.appendPages({ pages: decodedPages, pageIndex: currentIndex + 1 });
-                M.toast({ html: "Inserted from clipboard", classes: 'top-toast', displayLength: 1000 });
+                M.toast({ html: 'Inserted from clipboard', classes: 'top-toast', displayLength: 1000 });
             } catch (error) {
                 console.error(error);
-                M.toast({ html: "Failed to insert: " + error, classes: 'top-toast', displayLength: 1500 });
+                M.toast({ html: `Failed to insert: ${error}`, classes: 'top-toast', displayLength: 1500 });
             }
         })();
 
@@ -1506,4 +1503,3 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
         actions.reopenCurrentPage(),
     ]);
 };
-

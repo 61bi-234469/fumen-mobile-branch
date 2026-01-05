@@ -100,7 +100,7 @@ export const view: View<State, Actions> = (state, actions) => {
             return rowDiff !== 0 ? rowDiff : a.rect.left - b.rect.left;
         });
 
-        const rows: Array<{ top: number; bottom: number; items: typeof items }> = [];
+        const rows: { top: number; bottom: number; items: typeof items }[] = [];
         const rowThreshold = 4;
 
         for (const item of items) {
@@ -118,7 +118,7 @@ export const view: View<State, Actions> = (state, actions) => {
             }
         }
 
-        let targetRow = rows.find((row) => touchY >= row.top && touchY <= row.bottom);
+        let targetRow = rows.find(row => touchY >= row.top && touchY <= row.bottom);
         if (!targetRow) {
             targetRow = rows.reduce((closest, row) => {
                 const closestCenter = (closest.top + closest.bottom) / 2;
@@ -727,6 +727,7 @@ export const view: View<State, Actions> = (state, actions) => {
             // Conditionally render FumenGraph or ListViewGrid based on tree mode
             isTreeView
                 ? FumenGraph({
+                    trimTopBlank,
                     tree: {
                         nodes: state.tree.nodes,
                         rootId: state.tree.rootId,
@@ -745,7 +746,6 @@ export const view: View<State, Actions> = (state, actions) => {
                     dragTargetButtonParentId: state.tree.dragState.targetButtonParentId,
                     dragTargetButtonType: state.tree.dragState.targetButtonType,
                     buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
-                    trimTopBlank,
                     actions: {
                         onNodeClick: (nodeId) => {
                             // Only navigate if not dragging
@@ -824,6 +824,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     },
                 })
                 : ListViewGrid({
+                    trimTopBlank,
                     pages: state.fumen.pages,
                     guideLineColor: state.fumen.guideLineColor,
                     draggingIndex: state.listView.dragState.draggingIndex,
@@ -831,7 +832,6 @@ export const view: View<State, Actions> = (state, actions) => {
                     containerWidth: state.display.width,
                     containerHeight: gridContainerHeight,
                     scale: state.listView.scale,
-                    trimTopBlank,
                     actions: {
                         onDragStart: (pageIndex: number) => {
                             actions.setListViewDragState({

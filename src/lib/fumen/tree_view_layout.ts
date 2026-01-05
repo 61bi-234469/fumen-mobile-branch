@@ -59,7 +59,7 @@ export const calculateTreeViewLayout = (
             const thumbnailHeight = getThumbnailHeight(pages, node.pageIndex, trimTopBlank);
             const nodeHeight = thumbnailHeight + TREE_NODE_EXTRA_HEIGHT;
 
-            nodeHeights.set(node.id, { height: nodeHeight, thumbnailHeight });
+            nodeHeights.set(node.id, { thumbnailHeight, height: nodeHeight });
             laneHeights[pos.y] = Math.max(laneHeights[pos.y], nodeHeight);
         });
 
@@ -82,14 +82,14 @@ export const calculateTreeViewLayout = (
         const y = TREE_PADDING + laneOffsets[pos.y] + laneOffset;
 
         nodeLayouts.set(nodeId, {
-            id: nodeId,
             x,
             y,
+            laneHeight,
+            id: nodeId,
+            thumbnailHeight: metrics.thumbnailHeight,
             width: TREE_NODE_WIDTH,
             height: metrics.height,
             lane: pos.y,
-            laneHeight,
-            thumbnailHeight: metrics.thumbnailHeight,
         });
     });
 

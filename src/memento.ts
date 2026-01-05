@@ -75,9 +75,9 @@ interface Result {
 
 export const memento = (() => {
     const undoQueue: HistoryTask[] = [];
-    const undoViewModes: Array<TreeViewMode | undefined> = [];
+    const undoViewModes: (TreeViewMode | undefined)[] = [];
     let redoQueue: HistoryTask[] = [];
-    let redoViewModes: Array<TreeViewMode | undefined> = [];
+    let redoViewModes: (TreeViewMode | undefined)[] = [];
 
     return {
         // 自動保存

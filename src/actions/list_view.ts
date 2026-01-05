@@ -624,7 +624,7 @@ export const listViewActions: Readonly<ListViewActions> = {
             || state.tree.enabled
             || treeEnabledParam === true;
 
-        let baseTree: SerializedTree | null = hasExistingTreeData
+        const baseTree: SerializedTree | null = hasExistingTreeData
             ? {
                 nodes: state.tree.nodes,
                 rootId: state.tree.rootId,
@@ -727,10 +727,10 @@ export const listViewActions: Readonly<ListViewActions> = {
                 if (mode === 'import') {
                     // Replace all pages
                     main.loadPages({
-                        pages: decodedPages,
-                        loadedFumen: fumenData,
                         treeEnabledParam,
                         treeViewModeParam,
+                        pages: decodedPages,
+                        loadedFumen: fumenData,
                     });
                     const msg = `Replaced with ${decodedPages.length} pages`;
                     M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
@@ -739,9 +739,9 @@ export const listViewActions: Readonly<ListViewActions> = {
 
                 // Add as independent tree
                 main.addPagesFromClipboard({
-                    pages: decodedPages,
                     treeEnabledParam,
                     treeViewModeParam,
+                    pages: decodedPages,
                 });
                 const msg = `Added ${decodedPages.length} pages`;
                 M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });

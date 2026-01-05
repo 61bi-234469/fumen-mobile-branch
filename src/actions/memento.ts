@@ -28,7 +28,7 @@ export interface MementoActions {
         index: number,
         undoCount: number,
         redoCount: number,
-        treeViewMode?: TreeViewMode
+        treeViewMode?: TreeViewMode,
     }) => action;
     setHistoryCount: (data: { redoCount: number, undoCount: number }) => action;
 }
@@ -89,7 +89,7 @@ export const mementoActions: Readonly<MementoActions> = {
         const { cleanedPages, tree } = extractTreeFromPages(pages);
 
         const hasTreeState = state.tree.nodes.length > 0 && state.tree.rootId !== null;
-        const treeInBounds = hasTreeState && state.tree.nodes.every((node) => (
+        const treeInBounds = hasTreeState && state.tree.nodes.every(node => (
             node.pageIndex === VIRTUAL_PAGE_INDEX
             || (0 <= node.pageIndex && node.pageIndex < cleanedPages.length)
         ));

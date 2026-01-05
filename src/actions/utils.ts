@@ -27,6 +27,7 @@ import {
 } from '../lib/fumen/tree_utils';
 import { initialTreeState, SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
 import { getURLQuery } from '../params';
+import { Screens } from '../lib/enums';
 
 declare const M: any;
 
@@ -41,6 +42,7 @@ export interface UtilsActions {
         loadedFumen: string,
         treeEnabledParam?: boolean,
         treeViewModeParam?: TreeViewMode,
+        screenParam?: Screens,
     }) => action;
     appendPages: (data: { pages: Page[], pageIndex: number }) => action;
     refresh: () => action;
@@ -73,6 +75,23 @@ const parseTreeViewModeParam = (value: string | undefined): TreeViewMode | undef
     }
     if (normalized === 'list') {
         return TreeViewMode.List;
+    }
+    return undefined;
+};
+
+const parseScreenParam = (value: string | undefined): Screens | undefined => {
+    if (!value) {
+        return undefined;
+    }
+    const normalized = value.toLowerCase();
+    if (normalized === 'list') {
+        return Screens.ListView;
+    }
+    if (normalized === 'edit' || normalized === 'editor') {
+        return Screens.Editor;
+    }
+    if (normalized === 'read' || normalized === 'reader') {
+        return Screens.Reader;
     }
     return undefined;
 };
@@ -137,7 +156,7 @@ export const utilsActions: Readonly<UtilsActions> = {
     loadNewFumen: () => (state): NextState => {
         return utilsActions.loadFumen({ fumen: 'v115@vhAAgH' })(state);
     },
-    loadPages: ({ pages, loadedFumen, treeEnabledParam, treeViewModeParam }) => (state): NextState => {
+    loadPages: ({ pages, loadedFumen, treeEnabledParam, treeViewModeParam, screenParam }) => (state): NextState => {
         const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
         const prevTree: SerializedTree | null = hasTreeData ? {
             nodes: state.tree.nodes,
@@ -160,8 +179,10 @@ export const utilsActions: Readonly<UtilsActions> = {
         const urlQuery = getURLQuery();
         const urlTreeEnabledParam = parseBooleanParam(urlQuery.get('tree'));
         const urlTreeViewModeParam = parseTreeViewModeParam(urlQuery.get('treeView'));
+        const urlScreenParam = parseScreenParam(urlQuery.get('screen'));
         const finalTreeEnabledParam = treeEnabledParam ?? urlTreeEnabledParam;
         const finalTreeViewModeParam = treeViewModeParam ?? urlTreeViewModeParam;
+        const finalScreenParam = screenParam ?? urlScreenParam;
 
         // Set up tree state
         let treeState = normalizedTree ? {
@@ -216,10 +237,16 @@ export const utilsActions: Readonly<UtilsActions> = {
             };
         }
 
+        // Build screen state update if screen param is provided
+        const screenUpdate = finalScreenParam !== undefined
+            ? () => ({ mode: { ...state.mode, screen: finalScreenParam } })
+            : undefined;
+
         return sequence(state, [
             actions.setPages({ pages: cleanedPages }),
             () => ({ tree: treeState }),
             actions.registerHistoryTask({ task: toFumenTask(prevPages, loadedFumen, currentIndex) }),
+            screenUpdate,
         ]);
     },
     commitAppendFumenData: ({ position }) => (state): NextState => {

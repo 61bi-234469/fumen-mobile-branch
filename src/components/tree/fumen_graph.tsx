@@ -622,7 +622,6 @@ export const FumenGraph: Component<Props> = ({
         height: px(scaledHeight),
     });
 
-
     // Create Pages object for comment extraction
     const pagesObj = new Pages(pages);
     const renderableNodes = tree.nodes.filter(node => !isVirtualNode(node));

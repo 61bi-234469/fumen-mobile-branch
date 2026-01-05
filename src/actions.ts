@@ -24,6 +24,7 @@ import { treeOperationActions, TreeOperationActions } from './actions/tree_opera
 import { i18n } from './locales/keys';
 import { getURLQuery, Query } from './params';
 import { localStorageWrapper } from './memento';
+import { TreeViewMode } from './lib/fumen/tree_types';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -66,6 +67,81 @@ const mount = (isDebug: boolean = false): Actions => {
 };
 export const main = mount(PageEnv.Debug);
 
+// Track last loaded URL parameters to avoid duplicate loads
+let lastUrlParams: {
+    d: string | undefined;
+    tree: string | undefined;
+    treeView: string | undefined;
+    screen: string | undefined;
+} | null = null;
+
+const handleUrlChange = () => {
+    const urlQuery = getURLQuery();
+    const currentParams = {
+        d: urlQuery.get('d'),
+        tree: urlQuery.get('tree'),
+        treeView: urlQuery.get('treeView'),
+        screen: urlQuery.get('screen'),
+    };
+
+    // Initialize on first call (initial page load handles this separately)
+    if (lastUrlParams === null) {
+        lastUrlParams = currentParams;
+        return;
+    }
+
+    const dChanged = currentParams.d !== lastUrlParams.d;
+    const treeChanged = currentParams.tree !== lastUrlParams.tree;
+    const treeViewChanged = currentParams.treeView !== lastUrlParams.treeView;
+    const screenChanged = currentParams.screen !== lastUrlParams.screen;
+
+    // Update tracking
+    lastUrlParams = currentParams;
+
+    // Case 1: fumen data changed - reload via loadFumen
+    // loadPages now handles screen param internally
+    if (dChanged && currentParams.d !== undefined) {
+        main.loadFumen({ fumen: currentParams.d });
+        return;
+    }
+
+    // Case 2: Only tree/treeView/screen changed (d unchanged or absent)
+    if (treeChanged || treeViewChanged || screenChanged) {
+        applyParamsWithoutReload(currentParams);
+    }
+};
+
+const applyParamsWithoutReload = (params: {
+    tree: string | undefined;
+    treeView: string | undefined;
+    screen: string | undefined;
+}) => {
+    const treeEnabled = params.tree === '1' || params.tree === 'true';
+    const isTreeView = params.treeView === 'tree';
+
+    // Handle screen change with appropriate tree state
+    if (params.screen === 'list') {
+        if (treeEnabled && isTreeView) {
+            main.changeToTreeViewScreen();
+        } else {
+            main.changeToListViewScreen();
+        }
+    } else if (params.screen === 'edit' || params.screen === 'editor') {
+        main.changeToDrawerScreen({});
+    } else if (params.screen === 'read' || params.screen === 'reader') {
+        main.changeToReaderScreen();
+    } else if (params.tree !== undefined || params.treeView !== undefined) {
+        // No screen change but tree params changed
+        main.setTreeState({
+            enabled: params.tree !== undefined ? treeEnabled : undefined,
+            viewMode: isTreeView ? TreeViewMode.Tree : TreeViewMode.List,
+        });
+    }
+};
+
+window.addEventListener('hashchange', handleUrlChange);
+window.addEventListener('popstate', handleUrlChange);
+
 window.onresize = () => {
     main.resize({
         width: window.document.body.clientWidth,
@@ -77,6 +153,15 @@ declare const M: any;
 
 window.addEventListener('load', () => {
     const urlQuery = getURLQuery();
+
+    // Initialize URL tracking
+    lastUrlParams = {
+        d: urlQuery.get('d'),
+        tree: urlQuery.get('tree'),
+        treeView: urlQuery.get('treeView'),
+        screen: urlQuery.get('screen'),
+    };
+
     setupI18n(urlQuery);
     loadFumen(urlQuery);
     loadUserSettings();
