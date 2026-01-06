@@ -31,6 +31,7 @@ export const toolMode = ({ layout, currentIndex, grayAfterLineClear, touchType, 
         changeToMovePieceMode: () => void;
         spawnPiece: (data: { piece: Piece, guideline: boolean }) => void;
         clearFieldAndPiece: () => void;
+        convertToGray: () => void;
         copyCurrentPageToClipboard: () => void;
         insertPageFromClipboard: () => void;
         copyAllPagesToClipboard: () => void;
@@ -184,10 +185,12 @@ export const toolMode = ({ layout, currentIndex, grayAfterLineClear, touchType, 
             highlight: modePiece === piece,
             onlongpress: piece === Piece.Empty ? () => {
                 actions.clearFieldAndPiece();
-            } : piece !== Piece.Gray ? (data) => {
+            } : piece === Piece.Gray ? () => {
+                actions.convertToGray();
+            } : (data) => {
                 actions.spawnPiece(data);
                 actions.changeToMovePieceMode();
-            } : undefined,
+            },
         })
     ))).concat([
         inferenceButton({
