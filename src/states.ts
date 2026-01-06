@@ -8,6 +8,15 @@ import {
     Screens,
     TouchTypes,
 } from './lib/enums';
+
+export type PaletteShortcuts = {
+    [key in 'I' | 'L' | 'O' | 'Z' | 'T' | 'J' | 'S' | 'Empty' | 'Gray' | 'Comp']: string;
+};
+
+export const defaultPaletteShortcuts: PaletteShortcuts = {
+    I: '', L: '', O: '', Z: '', T: '', J: '', S: '',
+    Empty: '', Gray: '', Comp: '',
+};
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
 import { HyperStage } from './lib/hyper';
 import { Box } from './components/box';
@@ -83,6 +92,7 @@ export interface State {
             ghostVisible: boolean;
             loop: boolean;
             gradient: string;
+            paletteShortcuts: PaletteShortcuts;
         };
     };
     handlers: {
@@ -106,6 +116,7 @@ export interface State {
         gradient: {
             [piece in Piece]?: GradientPattern;
         };
+        paletteShortcuts: PaletteShortcuts;
     };
     history: {
         undoCount: number;
@@ -188,6 +199,7 @@ export const initState: Readonly<State> = {
             ghostVisible: true,
             loop: false,
             gradient: '0000000',
+            paletteShortcuts: { ...defaultPaletteShortcuts },
         },
     },
     handlers: {
@@ -209,6 +221,7 @@ export const initState: Readonly<State> = {
         ghostVisible: true,
         loop: false,
         gradient: {},
+        paletteShortcuts: { ...defaultPaletteShortcuts },
     },
     history: {
         undoCount: 0,

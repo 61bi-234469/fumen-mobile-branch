@@ -37,6 +37,11 @@ export const resources = {
         Gradient: {
             Title: 'ブロックの表面のマーク',
         },
+        PaletteShortcuts: {
+            Title: 'パレットショートカット',
+            Description: 'キーを押して割り当て。Backspaceでクリア。',
+            NotSet: '未設定',
+        },
         Buttons: {
             Save: '保存',
             Cancel: 'キャンセル',

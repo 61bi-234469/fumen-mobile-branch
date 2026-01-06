@@ -10,14 +10,19 @@ import {
     toolSpace,
 } from '../editor_buttons';
 import { EditorLayout, toolStyle } from './editor';
+import { PaletteShortcuts } from '../../states';
+import { displayShortcut } from '../../lib/shortcuts';
 
-export const toolMode = ({ layout, currentIndex, grayAfterLineClear, touchType, modePiece, colorize, actions }: {
+export const toolMode = ({
+    layout, currentIndex, grayAfterLineClear, touchType, modePiece, colorize, paletteShortcuts, actions,
+}: {
     layout: EditorLayout;
     currentIndex: number;
     grayAfterLineClear: boolean;
     touchType: TouchTypes;
     modePiece: Piece | undefined;
     colorize: boolean;
+    paletteShortcuts: PaletteShortcuts;
     actions: {
         cutCurrentPage: () => void;
         insertNewPage: (data: { index: number }) => void;
@@ -39,6 +44,13 @@ export const toolMode = ({ layout, currentIndex, grayAfterLineClear, touchType, 
         replaceAllFromClipboard: () => void;
     };
 }) => {
+    const getShortcutLabel = (piece: Piece): string | undefined => {
+        const key = piece === Piece.Empty
+            ? 'Empty'
+            : piece === Piece.Gray ? 'Gray' : Piece[piece] as keyof PaletteShortcuts;
+        const code = paletteShortcuts[key];
+        return code ? displayShortcut(code) : undefined;
+    };
     const toolButtonMargin = 3;
     const pieces = [Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray];
 
@@ -191,12 +203,14 @@ export const toolMode = ({ layout, currentIndex, grayAfterLineClear, touchType, 
                 actions.spawnPiece(data);
                 actions.changeToMovePieceMode();
             },
+            shortcutLabel: getShortcutLabel(piece),
         })
     ))).concat([
         inferenceButton({
             layout,
             actions,
             highlight: modePiece === undefined,
+            shortcutLabel: paletteShortcuts.Comp ? displayShortcut(paletteShortcuts.Comp) : undefined,
         }),
     ]));
 };

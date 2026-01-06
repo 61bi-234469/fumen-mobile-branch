@@ -1,10 +1,11 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
-import { resources } from '../../states';
+import { PaletteShortcuts, resources } from '../../states';
 import { i18n } from '../../locales/keys';
 import { div } from '@hyperapp/html';
 import { gradientPieces } from '../../actions/user_settings';
 import { GradientPattern, parsePieceName } from '../../lib/enums';
+import { displayShortcut, isModifierKey } from '../../lib/shortcuts';
 
 declare const M: any;
 
@@ -12,6 +13,7 @@ interface UserSettingsModalProps {
     ghostVisible: boolean;
     loop: boolean;
     gradient: string;
+    paletteShortcuts: PaletteShortcuts;
     actions: {
         closeUserSettingsModal: () => void;
         commitUserSettings: () => void;
@@ -19,11 +21,14 @@ interface UserSettingsModalProps {
         keepGhostVisible: (data: { visible: boolean }) => void;
         keepLoop: (data: { enable: boolean }) => void;
         keepGradient: (data: { gradient: string }) => void;
+        keepPaletteShortcut: (data: { palette: keyof PaletteShortcuts, code: string }) => void;
     };
 }
 
+const paletteKeys: (keyof PaletteShortcuts)[] = ['I', 'L', 'O', 'Z', 'T', 'J', 'S', 'Empty', 'Gray', 'Comp'];
+
 export const UserSettingsModal: Component<UserSettingsModalProps> = (
-    { ghostVisible, loop, gradient, actions },
+    { ghostVisible, loop, gradient, paletteShortcuts, actions },
 ) => {
     const oncreate = (element: HTMLDivElement) => {
         const instance = M.Modal.init(element, {
@@ -91,6 +96,29 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         actions.keepGradient({ gradient: replaced });
     };
 
+    const onkeydownShortcut = (palette: keyof PaletteShortcuts, e: KeyboardEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // 修飾キーは無視
+        if (isModifierKey(e.code)) {
+            return;
+        }
+
+        // 修飾キー押下中は無視
+        if (e.ctrlKey || e.altKey || e.metaKey) {
+            return;
+        }
+
+        // Backspace/Delete でクリア
+        if (e.code === 'Backspace' || e.code === 'Delete') {
+            actions.keepPaletteShortcut({ palette, code: '' });
+            return;
+        }
+
+        actions.keepPaletteShortcut({ palette, code: e.code });
+    };
+
     return (
         <div key="user-settings-modal-top">
             <div key="mdl-user-settings" datatest="mdl-user-settings"
@@ -154,6 +182,42 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                     ...labels,
                                 ]);
                             })}
+                        </div>
+
+                        <div>
+                            <h6>{i18n.UserSettings.PaletteShortcuts.Title()}</h6>
+                            <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
+                                {i18n.UserSettings.PaletteShortcuts.Description()}
+                            </div>
+
+                            <div style={style({
+                                display: 'grid',
+                                gridTemplateColumns: 'auto 1fr',
+                                gap: px(8),
+                                alignItems: 'center',
+                            })}>
+                                {paletteKeys.map((palette) => {
+                                    const code = paletteShortcuts[palette];
+                                    const notSetText = i18n.UserSettings.PaletteShortcuts.NotSet();
+                                    const display = code ? displayShortcut(code) : notSetText;
+                                    return [
+                                        <div style={style({ fontWeight: 'bold', minWidth: px(50) })}>{palette}</div>,
+                                        <input
+                                            type="text"
+                                            readonly
+                                            value={display}
+                                            onkeydown={(e: KeyboardEvent) => onkeydownShortcut(palette, e)}
+                                            style={style({
+                                                cursor: 'pointer',
+                                                textAlign: 'center',
+                                                color: code ? '#333' : '#999',
+                                                marginBottom: px(0),
+                                                height: px(32),
+                                            })}
+                                        />,
+                                    ];
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>

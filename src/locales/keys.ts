@@ -46,6 +46,11 @@ export const i18n = {
         Gradient: {
             Title: () => t('UserSettings.Gradient.Title'),
         },
+        PaletteShortcuts: {
+            Title: () => t('UserSettings.PaletteShortcuts.Title'),
+            Description: () => t('UserSettings.PaletteShortcuts.Description'),
+            NotSet: () => t('UserSettings.PaletteShortcuts.NotSet'),
+        },
         Buttons: {
             Save: () => t('UserSettings.Buttons.Save'),
             Cancel: () => t('UserSettings.Buttons.Cancel'),

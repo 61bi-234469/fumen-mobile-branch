@@ -1,4 +1,4 @@
-import { initState, State } from './states';
+import { defaultPaletteShortcuts, initState, PaletteShortcuts, State } from './states';
 import { view } from './view';
 import { app } from 'hyperapp';
 import { withLogger } from '@hyperapp/logger';
@@ -25,6 +25,7 @@ import { i18n } from './locales/keys';
 import { getURLQuery, Query } from './params';
 import { localStorageWrapper } from './memento';
 import { TreeViewMode } from './lib/fumen/tree_types';
+import { initShortcutHandlers } from './actions/shortcuts';
 
 export type action = (state: Readonly<State>) => NextState;
 
@@ -58,14 +59,28 @@ export const actions: Readonly<Actions> = {
     ...treeOperationActions,
 };
 
+// Current state getter for shortcut handlers
+let currentState: State = initState;
+
 // Mounting
 const mount = (isDebug: boolean = false): Actions => {
+    // Wrap view to track state changes
+    const wrappedView = (state: State, actions: Actions) => {
+        currentState = state;
+        return view(state, actions);
+    };
     if (isDebug) {
-        return withLogger(app)(initState, actions, view, document.body);
+        return withLogger(app)(initState, actions, wrappedView, document.body);
     }
-    return app<State, Actions>(initState, actions, view, document.body);
+    return app<State, Actions>(initState, actions, wrappedView, document.body);
 };
 export const main = mount(PageEnv.Debug);
+
+// Initialize shortcut handlers
+initShortcutHandlers(
+    () => currentState,
+    () => main,
+);
 
 // Track last loaded URL parameters to avoid duplicate loads
 let lastUrlParams: {
@@ -238,6 +253,22 @@ const loadUserSettings = () => {
     if (settings.gradient !== undefined) {
         main.changeGradient({ gradientStr: settings.gradient });
         updated = true;
+    }
+
+    if (settings.paletteShortcuts !== undefined) {
+        try {
+            const parsed = JSON.parse(settings.paletteShortcuts) as Partial<PaletteShortcuts>;
+            const shortcuts: PaletteShortcuts = { ...defaultPaletteShortcuts };
+            for (const key of Object.keys(shortcuts) as (keyof PaletteShortcuts)[]) {
+                if (parsed[key] !== undefined) {
+                    shortcuts[key] = parsed[key]!;
+                }
+            }
+            main.changePaletteShortcuts({ paletteShortcuts: shortcuts });
+            updated = true;
+        } catch (e) {
+            console.error('Failed to parse palette shortcuts:', e);
+        }
     }
 
     if (updated) {

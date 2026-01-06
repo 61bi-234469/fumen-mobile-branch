@@ -1,6 +1,6 @@
 import { action, actions } from '../actions';
 import { NextState, sequence } from './commons';
-import { State } from '../states';
+import { PaletteShortcuts, State } from '../states';
 import { localStorageWrapper } from '../memento';
 import { Piece } from '../lib/enums';
 
@@ -10,6 +10,7 @@ export interface UserSettingsActions {
     keepGhostVisible: (data: { visible: boolean }) => action;
     keepLoop: (data: { enable: boolean }) => action;
     keepGradient: (data: { gradient: string }) => action;
+    keepPaletteShortcut: (data: { palette: keyof PaletteShortcuts, code: string }) => action;
 }
 
 export const userSettingsActions: Readonly<UserSettingsActions> = {
@@ -21,6 +22,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     ghostVisible: state.mode.ghostVisible,
                     loop: state.mode.loop,
                     gradient: gradientToStr(state.mode.gradient),
+                    paletteShortcuts: { ...state.mode.paletteShortcuts },
                 },
             },
         };
@@ -30,6 +32,9 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             actions.changeGhostVisible({ visible: state.temporary.userSettings.ghostVisible }),
             actions.changeLoop({ enable: state.temporary.userSettings.loop }),
             actions.changeGradient({ gradientStr: state.temporary.userSettings.gradient }),
+            actions.changePaletteShortcuts({
+                paletteShortcuts: state.temporary.userSettings.paletteShortcuts,
+            }),
             saveToLocalStorage,
             actions.reopenCurrentPage(),
         ]);
@@ -79,6 +84,32 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             },
         };
     },
+    keepPaletteShortcut: ({ palette, code }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        // 重複チェック：同じcodeを持つ他パレットをクリア（後勝ち）
+        const newShortcuts = { ...state.temporary.userSettings.paletteShortcuts };
+        if (code) {
+            for (const key of Object.keys(newShortcuts) as (keyof PaletteShortcuts)[]) {
+                if (newShortcuts[key] === code && key !== palette) {
+                    newShortcuts[key] = '';
+                }
+            }
+        }
+        newShortcuts[palette] = code;
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    paletteShortcuts: newShortcuts,
+                },
+            },
+        };
+    },
 };
 
 const saveToLocalStorage = (state: Readonly<State>): NextState => {
@@ -86,6 +117,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         ghostVisible: state.mode.ghostVisible,
         loop: state.mode.loop,
         gradient: gradientToStr(state.mode.gradient),
+        paletteShortcuts: JSON.stringify(state.mode.paletteShortcuts),
     });
     return undefined;
 };

@@ -214,6 +214,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     currentIndex: state.fumen.currentIndex,
                     modePiece: state.mode.piece,
                     colorize: guideLineColor,
+                    paletteShortcuts: state.mode.paletteShortcuts,
                 });
             }
             case ModeTypes.Piece: {
@@ -264,6 +265,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     actions,
                     colorize: guideLineColor,
                     modePiece: state.mode.piece,
+                    paletteShortcuts: state.mode.paletteShortcuts,
                 });
             }
             case ModeTypes.FillRow: {
@@ -272,6 +274,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     actions,
                     colorize: guideLineColor,
                     modePiece: state.mode.piece,
+                    paletteShortcuts: state.mode.paletteShortcuts,
                 });
             }
             case ModeTypes.SelectPiece: {
@@ -280,6 +283,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     actions,
                     currentIndex: state.fumen.currentIndex,
                     colorize: guideLineColor,
+                    paletteShortcuts: state.mode.paletteShortcuts,
                 });
             }
             default: {
@@ -292,6 +296,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     currentIndex: state.fumen.currentIndex,
                     modePiece: state.mode.piece,
                     colorize: guideLineColor,
+                    paletteShortcuts: state.mode.paletteShortcuts,
                 });
             }
             }

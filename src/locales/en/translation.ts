@@ -41,6 +41,11 @@ export const resources = {
         Gradient: {
             Title: 'Adding a marker to the surface of the block',
         },
+        PaletteShortcuts: {
+            Title: 'Palette Shortcuts',
+            Description: 'Press a key to assign. Press Backspace to clear.',
+            NotSet: 'Not set',
+        },
         Buttons: {
             Save: 'Save',
             Cancel: 'Cancel',

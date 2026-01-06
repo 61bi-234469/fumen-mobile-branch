@@ -5,13 +5,14 @@ import { VNode } from 'hyperapp';
 import { parsePieceName, parseRotationName, Piece, Rotation } from '../lib/enums';
 import { BlockIcon } from '../components/atomics/icons';
 
-export const colorButton = ({ layout, piece, highlight, colorize, onclick, onlongpress }: {
+export const colorButton = ({ layout, piece, highlight, colorize, onclick, onlongpress, shortcutLabel }: {
     layout: EditorLayout,
     piece: Piece,
     highlight: boolean,
     colorize: boolean,
     onclick: (data: { piece: Piece }) => void,
     onlongpress?: (data: { piece: Piece, guideline: boolean }) => void,
+    shortcutLabel?: string,
 }) => {
     const borderWidth = highlight ? 3 : 1;
 
@@ -22,6 +23,7 @@ export const colorButton = ({ layout, piece, highlight, colorize, onclick, onlon
         layout,
         highlight,
         borderWidth,
+        shortcutLabel,
         height: 0.55 * layout.buttons.size.height,
         datatest: `btn-piece-${pieceName.toLowerCase()}`,
         key: `btn-piece-${pieceName.toLowerCase()}`,
@@ -48,7 +50,9 @@ export const rotationButton = ({ layout, rotation, highlight }: {
     });
 };
 
-export const svgButton = ({ src, datatest, key, layout, highlight, height, borderWidth, onclick, onlongpress }: {
+export const svgButton = ({
+    src, datatest, key, layout, highlight, height, borderWidth, onclick, onlongpress, shortcutLabel,
+}: {
     src: string;
     datatest: string;
     key: string;
@@ -58,8 +62,9 @@ export const svgButton = ({ src, datatest, key, layout, highlight, height, borde
     borderWidth: number;
     onclick?: (event: MouseEvent) => void;
     onlongpress?: () => void;
+    shortcutLabel?: string;
 }) => {
-    const contents = [
+    const contents: VNode<{}>[] = [
         img({
             src,
             height: `${height}`,
@@ -68,6 +73,18 @@ export const svgButton = ({ src, datatest, key, layout, highlight, height, borde
             }),
         }),
     ];
+    if (shortcutLabel) {
+        contents.push(span({
+            style: style({
+                position: 'absolute',
+                right: px(2),
+                bottom: px(0),
+                fontSize: px(9),
+                color: '#666',
+                lineHeight: '1',
+            }),
+        }, shortcutLabel));
+    }
 
     return toolButton({
         borderWidth,
@@ -80,21 +97,37 @@ export const svgButton = ({ src, datatest, key, layout, highlight, height, borde
         backgroundColorClass: 'white',
         textColor: '#333',
         borderColor: highlight ? '#ff5252' : '#333',
+        position: shortcutLabel ? 'relative' : undefined,
     }, contents);
 };
 
-export const inferenceButton = ({ layout, highlight, actions }: {
+export const inferenceButton = ({ layout, highlight, actions, shortcutLabel }: {
     layout: EditorLayout,
     highlight: boolean,
     actions: {
         selectInferencePieceColor: () => void;
     },
+    shortcutLabel?: string,
 }) => {
-    const contents = iconContents({
-        description: 'comp',
-        iconSize: 22,
-        iconName: 'image_aspect_ratio',
-    });
+    const contents: (string | VNode<{}>)[] = [
+        ...iconContents({
+            description: 'comp',
+            iconSize: 22,
+            iconName: 'image_aspect_ratio',
+        }),
+    ];
+    if (shortcutLabel) {
+        contents.push(span({
+            style: style({
+                position: 'absolute',
+                right: px(2),
+                bottom: px(0),
+                fontSize: px(9),
+                color: '#666',
+                lineHeight: '1',
+            }),
+        }, shortcutLabel));
+    }
     const borderWidth = highlight ? 3 : 1;
 
     return toolButton({
@@ -107,6 +140,7 @@ export const inferenceButton = ({ layout, highlight, actions }: {
         datatest: 'btn-piece-inference',
         key: 'btn-piece-inference',
         onclick: () => actions.selectInferencePieceColor(),
+        position: shortcutLabel ? 'relative' : undefined,
     }, contents);
 };
 
@@ -215,7 +249,7 @@ const longPressState: {
 export const toolButton = (
     {
         width, backgroundColorClass, textColor, borderColor, borderWidth = 1, borderType = 'solid',
-        datatest, key, onclick, onlongpress, flexGrow, margin, enable = true,
+        datatest, key, onclick, onlongpress, flexGrow, margin, enable = true, position,
     }: {
         flexGrow?: number;
         width: number;
@@ -230,6 +264,7 @@ export const toolButton = (
         enable?: boolean;
         onclick?: (event: MouseEvent) => void;
         onlongpress?: () => void;
+        position?: 'relative' | 'absolute';
     },
     contents: string | number | (string | number | VNode<{}>)[],
 ) => {
@@ -316,6 +351,7 @@ export const toolButton = (
             + `z-depth-0 btn ${backgroundColorClass} ${enable ? '' : 'disabled'}`,
         style: style({
             flexGrow,
+            position,
             color: enable ? textColor : '#9e9e9e',
             border: enable ? `${borderType} ${borderWidth}px ${borderColor}` : 'solid 1px #9e9e9e',
             margin: `${px(margin)} 0px`,

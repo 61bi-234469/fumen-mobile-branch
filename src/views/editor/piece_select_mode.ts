@@ -2,17 +2,26 @@ import { Piece } from '../../lib/enums';
 import { div } from '@hyperapp/html';
 import { colorButton, iconContents, toolButton, toolSpace } from '../editor_buttons';
 import { EditorLayout, toolStyle } from './editor';
+import { PaletteShortcuts } from '../../states';
+import { displayShortcut } from '../../lib/shortcuts';
 
-export const pieceSelectMode = ({ layout, currentIndex, colorize, actions }: {
+export const pieceSelectMode = ({ layout, currentIndex, colorize, paletteShortcuts, actions }: {
     layout: EditorLayout;
     currentIndex: number;
     colorize: boolean;
+    paletteShortcuts: PaletteShortcuts;
     actions: {
         spawnPiece: (data: { piece: Piece, guideline: boolean }) => void;
         changeToPieceMode: () => void;
         changeToMovePieceMode: () => void;
     };
 }) => {
+    const getShortcutLabel = (piece: Piece): string | undefined => {
+        const key = Piece[piece] as keyof PaletteShortcuts;
+        const code = paletteShortcuts[key];
+        return code ? displayShortcut(code) : undefined;
+    };
+
     const pieces = [Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S];
 
     const toolButtonMargin = 5;
@@ -35,6 +44,7 @@ export const pieceSelectMode = ({ layout, currentIndex, colorize, actions }: {
                 actions.changeToPieceMode();
             },
             highlight: false,
+            shortcutLabel: getShortcutLabel(piece),
         })
     ))).concat([
         toolButton({
