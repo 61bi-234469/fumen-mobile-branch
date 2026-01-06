@@ -21,9 +21,11 @@ import {
     findNodeByPageIndex,
     flattenTreeToPageIndices,
     getPathToNode,
+    getDescendants,
     addBranchNode,
     insertNode,
     removeNode,
+    removePageFromTree,
     moveNodeToParent,
     moveNodeToInsertPosition,
     moveSubtreeToInsertPosition,
@@ -34,6 +36,7 @@ import {
     validateTree,
     embedTreeInPages,
     ensureVirtualRoot,
+    getDefaultActiveNodeId,
     isVirtualNode,
     updateTreePageIndices,
 } from '../lib/fumen/tree_utils';
@@ -369,6 +372,53 @@ const getCurrentNode = (state: State, overrideNodeId?: TreeNodeId): TreeNode | u
 
     // Fall back to current page index
     return findNodeByPageIndex(tree, state.fumen.currentIndex);
+};
+
+const collectRemovedPageIndices = (
+    tree: SerializedTree,
+    nodeIds: TreeNodeId[],
+    pagesLength: number,
+): number[] => {
+    const indices = new Set<number>();
+    nodeIds.forEach((nodeId) => {
+        const node = findNode(tree, nodeId);
+        if (node && node.pageIndex >= 0 && node.pageIndex < pagesLength) {
+            indices.add(node.pageIndex);
+        }
+    });
+    return Array.from(indices).sort((a, b) => b - a);
+};
+
+const removePagesByIndices = (pages: Page[], removedIndices: number[]): Page[] => {
+    if (removedIndices.length === 0) return pages;
+    const pagesObj = new Pages([...pages]);
+    const sortedIndices = [...removedIndices].sort((a, b) => b - a);
+    sortedIndices.forEach((index) => {
+        if (index >= 0 && index < pagesObj.pages.length) {
+            pagesObj.deletePage(index, index + 1);
+        }
+    });
+    return pagesObj.pages;
+};
+
+const shiftTreeForRemovedPages = (tree: SerializedTree, removedIndices: number[]): SerializedTree => {
+    let updatedTree = tree;
+    const sortedIndices = [...removedIndices].sort((a, b) => b - a);
+    sortedIndices.forEach((index) => {
+        updatedTree = removePageFromTree(updatedTree, index);
+    });
+    return updatedTree;
+};
+
+const resolveActiveNodeId = (
+    tree: SerializedTree,
+    preferredNodeId: TreeNodeId | null,
+): TreeNodeId | null => {
+    const preferredNode = preferredNodeId ? findNode(tree, preferredNodeId) : undefined;
+    if (preferredNode && !isVirtualNode(preferredNode)) {
+        return preferredNode.id;
+    }
+    return getDefaultActiveNodeId(tree);
 };
 
 /**
@@ -927,26 +977,38 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             return undefined;
         }
 
+        const removeDescendants = data.removeDescendants ?? true;
+        const nodeIdsToRemove = removeDescendants
+            ? getDescendants(tree, currentNode.id)
+            : [currentNode.id];
+        const removedPageIndices = collectRemovedPageIndices(
+            tree,
+            nodeIdsToRemove,
+            state.fumen.pages.length,
+        );
+        if (removedPageIndices.length === 0) return undefined;
+        if (removedPageIndices.length >= state.fumen.pages.length) return undefined;
+
         // Create previous snapshot for history
         const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
 
-        // Remove node from tree
-        const newTree = removeNode(tree, currentNode.id, data.removeDescendants ?? true);
+        // Remove node from tree and delete matching pages
+        const prunedTree = removeNode(tree, currentNode.id, removeDescendants);
+        const newPages = removePagesByIndices(state.fumen.pages, removedPageIndices);
+        const shiftedTree = shiftTreeForRemovedPages(prunedTree, removedPageIndices);
 
-        // Determine new active node (parent or first remaining node)
-        let newActiveNodeId = currentNode.parentId;
-        if (!newActiveNodeId && newTree.nodes.length > 0) {
-            newActiveNodeId = newTree.rootId;
-        }
-
-        const newActiveNode = newActiveNodeId ? findNode(newTree, newActiveNodeId) : undefined;
-        const newCurrentIndex = newActiveNode?.pageIndex ?? 0;
-
-        // Note: We don't remove pages from the array to keep indices stable
-        // Pages can be cleaned up during export/flatten
+        const preferredActiveNodeId = currentNode.parentId ?? shiftedTree.rootId;
+        const nextActiveNodeId = resolveActiveNodeId(shiftedTree, preferredActiveNodeId);
+        const nextActiveNode = nextActiveNodeId ? findNode(shiftedTree, nextActiveNodeId) : undefined;
+        const nextCurrentIndex = nextActiveNode?.pageIndex ?? 0;
 
         // Create next snapshot for history
-        const normalized = normalizeTreeAndPages(newTree, state.fumen.pages, newCurrentIndex, newActiveNodeId);
+        const normalized = normalizeTreeAndPages(
+            shiftedTree,
+            newPages,
+            nextCurrentIndex,
+            nextActiveNodeId,
+        );
         const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
 
         // Create history task
@@ -967,7 +1029,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     ...state.tree,
                     nodes: normalized.tree.nodes,
                     rootId: normalized.tree.rootId,
-                    activeNodeId: newActiveNodeId,
+                    activeNodeId: nextActiveNodeId,
                 },
             }),
         ]);
@@ -1251,20 +1313,31 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             if (targetButtonType === 'insert' && targetNode && !moveSubtreeOnButtonDrop) {
                 const sourceNode = findNode(tree, sourceNodeId);
                 if (sourceNode && sourceNode.parentId === targetButtonParentId) {
+                    const removedPageIndices = collectRemovedPageIndices(
+                        tree,
+                        [sourceNodeId],
+                        state.fumen.pages.length,
+                    );
+                    if (removedPageIndices.length === 0
+                        || removedPageIndices.length >= state.fumen.pages.length) {
+                        return treeOperationActions.endTreeDrag()(state);
+                    }
+
                     const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
-                    const newTree = removeNode(tree, sourceNodeId, false);
+                    const prunedTree = removeNode(tree, sourceNodeId, false);
+                    const newPages = removePagesByIndices(state.fumen.pages, removedPageIndices);
+                    const shiftedTree = shiftTreeForRemovedPages(prunedTree, removedPageIndices);
 
                     const activeNodeId = state.tree.activeNodeId;
                     const activeRemoved = activeNodeId !== null && activeNodeId === sourceNodeId;
-                    const nextActiveNodeId = activeRemoved ? sourceNode.parentId : activeNodeId;
-                    const nextActiveNode = nextActiveNodeId ? findNode(newTree, nextActiveNodeId) : undefined;
-                    const nextCurrentIndex = activeRemoved
-                        ? (nextActiveNode?.pageIndex ?? state.fumen.currentIndex)
-                        : state.fumen.currentIndex;
+                    const preferredActiveNodeId = activeRemoved ? sourceNode.parentId : activeNodeId;
+                    const nextActiveNodeId = resolveActiveNodeId(shiftedTree, preferredActiveNodeId);
+                    const nextActiveNode = nextActiveNodeId ? findNode(shiftedTree, nextActiveNodeId) : undefined;
+                    const nextCurrentIndex = nextActiveNode?.pageIndex ?? 0;
 
                     const normalized = normalizeTreeAndPages(
-                        newTree,
-                        state.fumen.pages,
+                        shiftedTree,
+                        newPages,
                         nextCurrentIndex,
                         nextActiveNodeId,
                     );
@@ -1320,21 +1393,33 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     && sourceNode?.parentId === targetButtonParentId;
 
                 if (sourceNode && isDeleteOnParentButton) {
+                    const nodeIdsToRemove = getDescendants(tree, sourceNodeId);
+                    const removedPageIndices = collectRemovedPageIndices(
+                        tree,
+                        nodeIdsToRemove,
+                        state.fumen.pages.length,
+                    );
+                    if (removedPageIndices.length === 0
+                        || removedPageIndices.length >= state.fumen.pages.length) {
+                        return treeOperationActions.endTreeDrag()(state);
+                    }
+
                     const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
-                    const newTree = removeNode(tree, sourceNodeId, true);
+                    const prunedTree = removeNode(tree, sourceNodeId, true);
+                    const newPages = removePagesByIndices(state.fumen.pages, removedPageIndices);
+                    const shiftedTree = shiftTreeForRemovedPages(prunedTree, removedPageIndices);
 
                     const activeNodeId = state.tree.activeNodeId;
                     const activeRemoved = activeNodeId !== null
                         && (activeNodeId === sourceNodeId || isDescendant(tree, sourceNodeId, activeNodeId));
-                    const nextActiveNodeId = activeRemoved ? sourceNode.parentId : activeNodeId;
-                    const nextActiveNode = nextActiveNodeId ? findNode(newTree, nextActiveNodeId) : undefined;
-                    const nextCurrentIndex = activeRemoved
-                        ? (nextActiveNode?.pageIndex ?? state.fumen.currentIndex)
-                        : state.fumen.currentIndex;
+                    const preferredActiveNodeId = activeRemoved ? sourceNode.parentId : activeNodeId;
+                    const nextActiveNodeId = resolveActiveNodeId(shiftedTree, preferredActiveNodeId);
+                    const nextActiveNode = nextActiveNodeId ? findNode(shiftedTree, nextActiveNodeId) : undefined;
+                    const nextCurrentIndex = nextActiveNode?.pageIndex ?? 0;
 
                     const normalized = normalizeTreeAndPages(
-                        newTree,
-                        state.fumen.pages,
+                        shiftedTree,
+                        newPages,
                         nextCurrentIndex,
                         nextActiveNodeId,
                     );
