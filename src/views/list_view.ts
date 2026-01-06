@@ -746,6 +746,7 @@ export const view: View<State, Actions> = (state, actions) => {
                     dragTargetButtonParentId: state.tree.dragState.targetButtonParentId,
                     dragTargetButtonType: state.tree.dragState.targetButtonType,
                     buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+                    autoFocusPending: state.tree.autoFocusPending,
                     actions: {
                         onNodeClick: (nodeId) => {
                             // Only navigate if not dragging
@@ -820,6 +821,9 @@ export const view: View<State, Actions> = (state, actions) => {
                         },
                         onDragEnd: () => {
                             actions.endTreeDrag();
+                        },
+                        ackTreeAutoFocus: () => {
+                            actions.ackTreeAutoFocus();
                         },
                     },
                 })

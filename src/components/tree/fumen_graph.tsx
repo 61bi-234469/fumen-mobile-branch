@@ -51,6 +51,7 @@ interface Props {
     dragTargetButtonType: 'insert' | 'branch' | null;
     buttonDropMovesSubtree: boolean;
     trimTopBlank: boolean;
+    autoFocusPending?: boolean;
     actions: {
         onNodeClick: (nodeId: TreeNodeId) => void;
         onAddBranch: (parentNodeId: TreeNodeId) => void;
@@ -64,6 +65,7 @@ interface Props {
         onDragLeave: () => void;
         onDrop: () => void;
         onDragEnd: () => void;
+        ackTreeAutoFocus?: () => void;
     };
 }
 
@@ -572,6 +574,7 @@ export const FumenGraph: Component<Props> = ({
     dragTargetButtonType,
     buttonDropMovesSubtree,
     trimTopBlank,
+    autoFocusPending,
     actions,
 }) => {
     // Handle empty tree
@@ -784,6 +787,69 @@ export const FumenGraph: Component<Props> = ({
         }
     }
 
+    // Handle auto-focus to active node when entering tree view
+    const handleAutoFocus = (container: HTMLElement) => {
+        const ackFn = actions.ackTreeAutoFocus;
+        if (!autoFocusPending || !ackFn) return;
+
+        requestAnimationFrame(() => {
+            // Get active node's layout
+            let nodeLayout = activeNodeId ? treeViewLayout.nodeLayouts.get(activeNodeId) : null;
+
+            // Fallback: find node by current page index if activeNodeId not found
+            if (!nodeLayout && pages.length > 0) {
+                // Try to find any node that could be focused
+                const firstNode = renderableNodes[0];
+                if (firstNode) {
+                    nodeLayout = treeViewLayout.nodeLayouts.get(firstNode.id);
+                }
+            }
+
+            if (!nodeLayout) {
+                ackFn();
+                return;
+            }
+
+            // Calculate scaled node rectangle
+            const nodeX = nodeLayout.x * scale;
+            const nodeY = nodeLayout.y * scale;
+            const nodeW = nodeLayout.width * scale;
+            const nodeH = nodeLayout.height * scale;
+
+            // Get viewport bounds
+            const viewLeft = container.scrollLeft;
+            const viewTop = container.scrollTop;
+            const viewRight = viewLeft + container.clientWidth;
+            const viewBottom = viewTop + container.clientHeight;
+
+            // Check if node is fully visible
+            const isFullyVisible =
+                nodeX >= viewLeft &&
+                nodeY >= viewTop &&
+                (nodeX + nodeW) <= viewRight &&
+                (nodeY + nodeH) <= viewBottom;
+
+            if (isFullyVisible) {
+                ackFn();
+                return;
+            }
+
+            // Calculate scroll position to center node in viewport
+            const targetScrollLeft = nodeX + nodeW / 2 - container.clientWidth / 2;
+            const targetScrollTop = nodeY + nodeH / 2 - container.clientHeight / 2;
+
+            const maxScrollLeft = container.scrollWidth - container.clientWidth;
+            const maxScrollTop = container.scrollHeight - container.clientHeight;
+
+            container.scrollTo({
+                left: Math.max(0, Math.min(targetScrollLeft, maxScrollLeft)),
+                top: Math.max(0, Math.min(targetScrollTop, maxScrollTop)),
+            });
+
+            ackFn();
+        });
+    };
+
     // Handle global mouse up to end drag
     const handleMouseUp = () => {
         if (dragSourceNodeId !== null) {
@@ -893,6 +959,8 @@ export const FumenGraph: Component<Props> = ({
             style={containerStyle}
             onmouseup={handleMouseUp}
             onmouseleave={handleMouseUp}
+            oncreate={handleAutoFocus}
+            onupdate={handleAutoFocus}
         >
             <div
                 key="fumen-graph-canvas"

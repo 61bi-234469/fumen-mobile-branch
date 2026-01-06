@@ -60,10 +60,13 @@ export const modeActions: Readonly<ScreenActions> = {
             setTimeout(() => {
                 main.refresh();
             }, 500);
+            // Set autoFocusPending when entering tree view mode
+            const shouldAutoFocus = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
             return {
                 tree: {
                     ...state.tree,
                     treeViewNavLockUntil: lockUntil,
+                    autoFocusPending: shouldAutoFocus,
                 },
             };
         };

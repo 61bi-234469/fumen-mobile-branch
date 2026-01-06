@@ -261,6 +261,7 @@ export interface TreeOperationActions {
     setTreeViewMode: (data: { mode: TreeViewMode }) => action;
     setTreeViewScale: (data: { scale: number }) => action;
     normalizeTreePageOrder: () => action;
+    ackTreeAutoFocus: () => action;
 
     // Tree navigation
     selectTreeNode: (data: { nodeId: TreeNodeId }) => action;
@@ -569,6 +570,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                         ...state.tree,
                         viewMode: mode,
                         treeViewNavLockUntil: lockUntil,
+                        autoFocusPending: true,
                     },
                 }),
                 treeOperationActions.normalizeTreePageOrder(),
@@ -628,6 +630,16 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             }),
         ]);
     },
+
+    /**
+     * Acknowledge auto-focus completion for tree view
+     */
+    ackTreeAutoFocus: () => (state): NextState => ({
+        tree: {
+            ...state.tree,
+            autoFocusPending: false,
+        },
+    }),
 
     /**
      * Select a tree node and navigate to its page
@@ -1043,6 +1055,9 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 treeViewNavLockUntil: shouldLock
                     ? lockUntil
                     : (data.treeViewNavLockUntil ?? state.tree.treeViewNavLockUntil),
+                autoFocusPending: isEnteringTreeView
+                    ? true
+                    : (data.autoFocusPending ?? state.tree.autoFocusPending),
             },
         };
     },

@@ -119,6 +119,8 @@ export interface TreeState {
     treeViewNavLockUntil: number;
     /** Zoom scale for tree view (1.0 = 100%) */
     scale: number;
+    /** Pending auto-focus request for tree view */
+    autoFocusPending: boolean;
 }
 
 /** Initial drag state */
@@ -144,4 +146,5 @@ export const initialTreeState: TreeState = {
     grayAfterLineClear: false,
     treeViewNavLockUntil: 0,
     scale: 1.0,
+    autoFocusPending: false,
 };
