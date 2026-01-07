@@ -46,6 +46,17 @@ export const resources = {
             Description: 'Press a key to assign. Press Backspace to clear.',
             NotSet: 'Not set',
         },
+        EditShortcuts: {
+            Title: 'Edit Shortcuts',
+            Description: 'Press a key to assign. Press Backspace to clear.',
+            NotSet: 'Not set',
+            InsertPage: 'Add Page',
+            PrevPage: 'Prev Page',
+            NextPage: 'Next Page',
+            Menu: 'Menu',
+            ListView: 'List View',
+            TreeView: 'Tree View',
+        },
         Buttons: {
             Save: 'Save',
             Cancel: 'Cancel',

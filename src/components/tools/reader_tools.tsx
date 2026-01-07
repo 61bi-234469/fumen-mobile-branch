@@ -4,6 +4,8 @@ import { ToolButton } from './tool_button';
 import { ToolText } from './tool_text';
 import { AnimationState } from '../../lib/enums';
 import { ColorPalette } from '../../lib/colors';
+import { EditShortcuts } from '../../states';
+import { displayShortcut } from '../../lib/shortcuts';
 
 interface Props {
     currentPage: number;
@@ -13,6 +15,7 @@ interface Props {
     pages: string;
     palette: ColorPalette;
     loop: boolean;
+    editShortcuts: EditShortcuts;
     actions: {
         changeToDrawerScreen: (data: { refresh?: boolean }) => void;
         changeToListViewScreen: () => void;
@@ -28,8 +31,14 @@ interface Props {
 }
 
 export const ReaderTools: Component<Props> = (
-    { currentPage, maxPage, height, animationState, pages, palette, loop, actions },
+    { currentPage, maxPage, height, animationState, pages, palette, loop, editShortcuts, actions },
 ) => {
+    // ショートカットラベルを取得
+    const getLabel = (key: keyof EditShortcuts): string | undefined => {
+        const code = editShortcuts[key];
+        return code ? displayShortcut(code) : undefined;
+    };
+
     const navProperties = style({
         width: '100%',
         height: px(height),
@@ -57,6 +66,7 @@ export const ReaderTools: Component<Props> = (
                 <ToolButton iconName="view_list" datatest="btn-list-view" stickyLeft={true}
                             width={40} height={height - 10}
                             key="btn-list-view" fontSize={30} colors={palette}
+                            shortcutLabel={getLabel('ListView')}
                             actions={{
                                 onclick: () => actions.changeToListViewScreen(),
                                 onlongpress: () => actions.changeToTreeViewScreen(),
@@ -80,6 +90,7 @@ export const ReaderTools: Component<Props> = (
 
                 <ToolButton iconName="navigate_before" datatest="btn-back-page" width={35} height={height - 10}
                             key="btn-back-page" fontSize={33.75} marginRight={5} colors={palette}
+                            shortcutLabel={getLabel('PrevPage')}
                             actions={{
                                 onclick: () => actions.backPage({ loop }),
                                 onlongpress: () => actions.firstPage(),
@@ -92,6 +103,7 @@ export const ReaderTools: Component<Props> = (
 
                 <ToolButton iconName="navigate_next" datatest="btn-next-page" width={35} height={height - 10}
                             key="btn-next-page" fontSize={33.75} marginRight={10} colors={palette}
+                            shortcutLabel={getLabel('NextPage')}
                             enable={loop || currentPage < maxPage}
                             actions={{
                                 onclick: () => actions.nextPage({ loop }),
@@ -108,6 +120,7 @@ export const ReaderTools: Component<Props> = (
 
                 <ToolButton iconName="menu" datatest="btn-open-menu" sticky={true}
                             key="btn-open-menu" width={40} height={height - 10} fontSize={32} colors={palette}
+                            shortcutLabel={getLabel('Menu')}
                             actions={{ onclick: () => actions.openMenuModal() }}/>
             </div>
         </nav>

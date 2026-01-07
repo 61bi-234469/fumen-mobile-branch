@@ -162,6 +162,7 @@ interface UserSettings {
     loop: boolean;
     gradient: string;  // Pieceの順に数字で保存する e.g., 112233001
     paletteShortcuts: string;  // JSON文字列で保存
+    editShortcuts: string;  // JSON文字列で保存
 }
 
 const safer = {
@@ -203,6 +204,7 @@ export const localStorageWrapper = {
             loop: safer.boolean(obj.loop),
             gradient: safer.string(obj.gradient),
             paletteShortcuts: safer.string(obj.paletteShortcuts),
+            editShortcuts: safer.string(obj.editShortcuts),
         };
     },
 };

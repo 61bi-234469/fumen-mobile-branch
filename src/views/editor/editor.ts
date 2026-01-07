@@ -354,6 +354,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
     return EditorTools({
         height,
         palette,
+        editShortcuts: state.mode.editShortcuts,
         actions: {
             openFumenModal: actions.openFumenModal,
             openMenuModal: actions.openMenuModal,

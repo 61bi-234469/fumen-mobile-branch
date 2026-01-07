@@ -12,6 +12,8 @@ interface Props {
     palette: ColorPalette;
     treeEnabled: boolean;
     treeViewMode: TreeViewMode;
+    listShortcutLabel?: string;
+    treeShortcutLabel?: string;
     actions: {
         changeToEditorFromListView: () => void;
         convertAllToMirror: () => void;
@@ -24,7 +26,7 @@ interface Props {
 }
 
 export const ListViewTools: Component<Props> = (
-    { height, maxPage, palette, treeEnabled, treeViewMode, actions },
+    { height, maxPage, palette, treeEnabled, treeViewMode, listShortcutLabel, treeShortcutLabel, actions },
 ) => {
     const navProperties = style({
         width: '100%',
@@ -83,6 +85,8 @@ export const ListViewTools: Component<Props> = (
                     treeEnabled={treeEnabled}
                     currentViewMode={treeViewMode}
                     height={height - 10}
+                    listShortcutLabel={listShortcutLabel}
+                    treeShortcutLabel={treeShortcutLabel}
                     actions={{
                         onTreeToggle: actions.toggleTreeMode,
                         onViewModeChange: actions.setTreeViewMode,

@@ -3,7 +3,7 @@ import { action, actions, main } from '../actions';
 import { CommentType, gradientPatternFrom, ModeTypes, Piece, Screens, TouchTypes } from '../lib/enums';
 import { TreeViewMode } from '../lib/fumen/tree_types';
 import { createTreeFromPages, findNodeByPageIndex } from '../lib/fumen/tree_utils';
-import { PaletteShortcuts, resources, State } from '../states';
+import { EditShortcuts, PaletteShortcuts, resources, State } from '../states';
 import { animationActions } from './animation';
 import { gradientPieces } from './user_settings';
 
@@ -30,6 +30,7 @@ export interface ScreenActions {
     changeLoop: (data: { enable: boolean }) => action;
     changeGradient: (data: { gradientStr: string }) => action;
     changePaletteShortcuts: (data: { paletteShortcuts: PaletteShortcuts }) => action;
+    changeEditShortcuts: (data: { editShortcuts: EditShortcuts }) => action;
 }
 
 export const modeActions: Readonly<ScreenActions> = {
@@ -256,6 +257,14 @@ export const modeActions: Readonly<ScreenActions> = {
             mode: {
                 ...state.mode,
                 paletteShortcuts,
+            },
+        };
+    },
+    changeEditShortcuts: ({ editShortcuts }) => (state): NextState => {
+        return {
+            mode: {
+                ...state.mode,
+                editShortcuts,
             },
         };
     },

@@ -1,7 +1,8 @@
 import { ModeTypes, Piece, Screens } from '../lib/enums';
 import { isModifierKey } from '../lib/shortcuts';
-import { PaletteShortcuts, State } from '../states';
+import { EditShortcuts, PaletteShortcuts, State } from '../states';
 import { Actions } from '../actions';
+import { TreeViewMode } from '../lib/fumen/tree_types';
 
 const LONG_PRESS_DURATION = 500;
 
@@ -10,8 +11,29 @@ let pressedKey: string | null = null;
 let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 let longPressExecuted = false;
 
+// アクティブなショートカット種別
+type ActiveShortcut = {
+    type: 'palette';
+    key: PaletteKey;
+} | {
+    type: 'edit';
+    key: EditShortcutKey;
+} | null;
+
+let activeShortcut: ActiveShortcut = null;
+
 // パレットキーの種類
 type PaletteKey = keyof PaletteShortcuts;
+
+// 編集用ショートカットキーの種類
+type EditShortcutKey = keyof EditShortcuts;
+
+// 画面ごとに許可される編集用ショートカット
+const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = {
+    [Screens.Editor]: ['InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView'],
+    [Screens.Reader]: ['Menu', 'ListView', 'TreeView', 'PrevPage', 'NextPage'],
+    [Screens.ListView]: ['ListView', 'TreeView'],
+};
 
 // モーダルが開いているかチェック
 const isAnyModalOpen = (state: State): boolean => {
@@ -44,6 +66,16 @@ const findPaletteByCode = (shortcuts: PaletteShortcuts, code: string): PaletteKe
     return null;
 };
 
+// codeから編集用ショートカットを検索
+const findEditShortcutByCode = (shortcuts: EditShortcuts, code: string): EditShortcutKey | null => {
+    for (const key of Object.keys(shortcuts) as EditShortcutKey[]) {
+        if (shortcuts[key] === code) {
+            return key;
+        }
+    }
+    return null;
+};
+
 // パレットキーからPiece enumに変換
 const paletteToPiece = (palette: PaletteKey): Piece | null => {
     switch (palette) {
@@ -65,8 +97,8 @@ const isMino = (palette: PaletteKey): boolean => {
     return ['I', 'L', 'O', 'Z', 'T', 'J', 'S'].includes(palette);
 };
 
-// 短押し動作を実行
-const executeShortPress = (palette: PaletteKey, state: State, actions: Actions) => {
+// パレット短押し動作を実行
+const executePaletteShortPress = (palette: PaletteKey, state: State, actions: Actions) => {
     const modeType = state.mode.type;
     const colorize = state.fumen.guideLineColor;
 
@@ -119,8 +151,8 @@ const executeShortPress = (palette: PaletteKey, state: State, actions: Actions) 
     }
 };
 
-// 長押し動作を実行
-const executeLongPress = (palette: PaletteKey, state: State, actions: Actions) => {
+// パレット長押し動作を実行
+const executePaletteLongPress = (palette: PaletteKey, state: State, actions: Actions) => {
     const colorize = state.fumen.guideLineColor;
 
     // Comp は長押し動作なし
@@ -150,6 +182,62 @@ const executeLongPress = (palette: PaletteKey, state: State, actions: Actions) =
     }
 };
 
+// 編集用ショートカット短押し動作を実行
+const executeEditShortPress = (key: EditShortcutKey, state: State, actions: Actions) => {
+    const screen = state.mode.screen;
+    const loop = state.mode.loop;
+
+    switch (key) {
+    case 'InsertPage':
+        actions.duplicatePageOnly({ index: state.fumen.currentIndex + 1 });
+        break;
+    case 'PrevPage':
+        // Editor は loop:false、Reader は loop設定に従う
+        actions.backPage({ loop: screen === Screens.Reader ? loop : false });
+        break;
+    case 'NextPage':
+        // Editor は loop:false、Reader は loop設定に従う
+        actions.nextPage({ loop: screen === Screens.Reader ? loop : false });
+        break;
+    case 'Menu':
+        actions.openMenuModal();
+        break;
+    case 'ListView':
+        if (screen === Screens.ListView) {
+            // ListView画面ではListモードに切り替え
+            actions.setTreeViewMode({ mode: TreeViewMode.List });
+        } else {
+            actions.changeToListViewScreen();
+        }
+        break;
+    case 'TreeView':
+        actions.changeToTreeViewScreen();
+        break;
+    }
+};
+
+// 編集用ショートカット長押し動作を実行
+const executeEditLongPress = (key: EditShortcutKey, state: State, actions: Actions) => {
+    switch (key) {
+    case 'PrevPage':
+        actions.firstPage();
+        break;
+    case 'NextPage':
+        actions.lastPage();
+        break;
+    case 'ListView':
+        // ListView長押し → TreeView
+        actions.changeToTreeViewScreen();
+        break;
+    // InsertPage, Menu, TreeView は長押し動作なし
+    }
+};
+
+// 長押し動作があるかどうか
+const hasEditLongPress = (key: EditShortcutKey): boolean => {
+    return key === 'PrevPage' || key === 'NextPage' || key === 'ListView';
+};
+
 // 現在の状態を取得するためのgetter (mainから呼び出し時に設定)
 let getState: (() => State) | null = null;
 let getActions: (() => Actions) | null = null;
@@ -171,9 +259,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
     const state = getState();
     const actions = getActions();
-
-    // エディタ画面以外は無効
-    if (state.mode.screen !== Screens.Editor) return;
+    const screen = state.mode.screen;
 
     // モーダル表示中は無効
     if (isAnyModalOpen(state)) return;
@@ -187,19 +273,45 @@ const handleKeyDown = (event: KeyboardEvent) => {
     // 修飾キー自体は無視
     if (isModifierKey(event.code)) return;
 
+    // リピート防止
+    if (pressedKey === event.code) return;
+
+    // 編集用ショートカットを優先して検索
+    const editShortcut = findEditShortcutByCode(state.mode.editShortcuts, event.code);
+    const allowedKeys = allowedEditShortcuts[screen];
+
+    if (editShortcut && allowedKeys.includes(editShortcut)) {
+        event.preventDefault();
+        pressedKey = event.code;
+        longPressExecuted = false;
+        activeShortcut = { type: 'edit', key: editShortcut };
+
+        // 長押しタイマー開始（長押し動作がある場合のみ）
+        if (hasEditLongPress(editShortcut)) {
+            longPressTimer = setTimeout(() => {
+                executeEditLongPress(editShortcut, getState!(), getActions!());
+                longPressExecuted = true;
+                longPressTimer = null;
+            }, LONG_PRESS_DURATION);
+        }
+        return;
+    }
+
+    // エディタ画面以外はパレットショートカット無効
+    if (screen !== Screens.Editor) return;
+
+    // パレットショートカットを検索
     const palette = findPaletteByCode(state.mode.paletteShortcuts, event.code);
     if (!palette) return;
 
     event.preventDefault();
-
-    // リピート防止
-    if (pressedKey === event.code) return;
     pressedKey = event.code;
     longPressExecuted = false;
+    activeShortcut = { type: 'palette', key: palette };
 
     // 長押しタイマー開始
     longPressTimer = setTimeout(() => {
-        executeLongPress(palette, getState!(), getActions!());
+        executePaletteLongPress(palette, getState!(), getActions!());
         longPressExecuted = true;
         longPressTimer = null;
     }, LONG_PRESS_DURATION);
@@ -210,23 +322,34 @@ const handleKeyUp = (event: KeyboardEvent) => {
 
     if (!getState || !getActions) {
         pressedKey = null;
+        activeShortcut = null;
         return;
     }
 
     const state = getState();
     const actions = getActions();
-    const palette = findPaletteByCode(state.mode.paletteShortcuts, event.code);
 
     // 長押しタイマーが残っていれば短押し
     if (longPressTimer) {
         clearTimeout(longPressTimer);
         longPressTimer = null;
-        if (palette) {
-            executeShortPress(palette, state, actions);
+
+        if (activeShortcut) {
+            if (activeShortcut.type === 'edit') {
+                executeEditShortPress(activeShortcut.key, state, actions);
+            } else if (activeShortcut.type === 'palette') {
+                executePaletteShortPress(activeShortcut.key, state, actions);
+            }
+        }
+    } else if (!longPressExecuted && activeShortcut) {
+        // 長押し動作がなかった場合（タイマー設定されない編集ショートカット）
+        if (activeShortcut.type === 'edit' && !hasEditLongPress(activeShortcut.key)) {
+            executeEditShortPress(activeShortcut.key, state, actions);
         }
     }
 
     pressedKey = null;
+    activeShortcut = null;
     longPressExecuted = false;
 };
 
@@ -236,5 +359,6 @@ const handleBlur = () => {
         longPressTimer = null;
     }
     pressedKey = null;
+    activeShortcut = null;
     longPressExecuted = false;
 };

@@ -14,6 +14,8 @@ interface Props {
     treeEnabled: boolean;
     currentViewMode: TreeViewMode;
     height: number;
+    listShortcutLabel?: string;
+    treeShortcutLabel?: string;
     actions: {
         onTreeToggle: () => void;
         onViewModeChange: (mode: TreeViewMode) => void;
@@ -28,6 +30,8 @@ export const TreeViewToggle: Component<Props> = ({
     treeEnabled,
     currentViewMode,
     height,
+    listShortcutLabel,
+    treeShortcutLabel,
     actions,
 }) => {
     const containerStyle = style({
@@ -86,6 +90,7 @@ export const TreeViewToggle: Component<Props> = ({
         cursor: 'pointer',
         transition: 'all 0.2s',
         outline: 'none',
+        position: 'relative' as const,
     };
 
     const activeButtonStyle = style({
@@ -98,6 +103,16 @@ export const TreeViewToggle: Component<Props> = ({
         ...buttonBaseStyle,
         backgroundColor: '#e0e0e0',
         color: '#666',
+    });
+
+    const shortcutLabelStyle = (isActive: boolean) => style({
+        position: 'absolute',
+        right: px(2),
+        bottom: px(0),
+        fontSize: px(8),
+        lineHeight: '1',
+        color: isActive ? '#fff' : '#666',
+        pointerEvents: 'none',
     });
 
     const disabledButtonStyle = style({
@@ -132,6 +147,11 @@ export const TreeViewToggle: Component<Props> = ({
                         title="Show pages in list view"
                     >
                         List
+                        {listShortcutLabel && (
+                            <span style={shortcutLabelStyle(currentViewMode === TreeViewMode.List)}>
+                                {listShortcutLabel}
+                            </span>
+                        )}
                     </button>
                     <button
                         key="btn-tree-view"
@@ -140,6 +160,11 @@ export const TreeViewToggle: Component<Props> = ({
                         title="Show pages in tree graph view"
                     >
                         Graph
+                        {treeShortcutLabel && (
+                            <span style={shortcutLabelStyle(currentViewMode === TreeViewMode.Tree)}>
+                                {treeShortcutLabel}
+                            </span>
+                        )}
                     </button>
                 </div>
             )}

@@ -23,6 +23,7 @@ interface Props {
     marginLeft?: number;
     datatest?: string;
     key: string;
+    shortcutLabel?: string;
     colors: {
         baseClass: string;
         baseCode: string;
@@ -38,19 +39,34 @@ export const ToolButton: Component<Props & SizedIconProps> = (
     {
         height, width, fontSize, key, iconName, sticky = false, stickyLeft = false,
         stickyOffset = 10, marginLeft = undefined, marginRight = 0,
-        datatest, colors, enable = true, actions,
+        datatest, shortcutLabel, colors, enable = true, actions,
     },
 ) => {
+    const hasAbsolutePosition = sticky || stickyLeft;
     const aProperties = style({
         height: px(height),
         lineHeight: px(height),
         width: px(width),
         marginLeft: sticky ? 'auto' : marginLeft,
-        position: sticky || stickyLeft ? 'absolute' : undefined,
+        position: hasAbsolutePosition ? 'absolute' : (shortcutLabel ? 'relative' : undefined),
         right: sticky ? px(stickyOffset) : undefined,
         left: stickyLeft ? px(stickyOffset) : undefined,
         marginRight: px(marginRight),
     });
+
+    const shortcutLabelElement = shortcutLabel ? (
+        <span style={style({
+            position: 'absolute',
+            right: px(2),
+            bottom: px(0),
+            fontSize: px(9),
+            lineHeight: '1',
+            color: '#fff',
+            pointerEvents: 'none',
+        })}>
+            {shortcutLabel}
+        </span>
+    ) : null;
 
     const onclick = actions.onclick;
     const onlongpress = actions.onlongpress;
@@ -133,6 +149,7 @@ export const ToolButton: Component<Props & SizedIconProps> = (
                 <SizedIcon height={height} fontSize={fontSize} colors={colors} enable={enable}>
                     {iconName}
                 </SizedIcon>
+                {shortcutLabelElement}
             </a>
         );
     }
@@ -150,6 +167,7 @@ export const ToolButton: Component<Props & SizedIconProps> = (
             <SizedIcon height={height} fontSize={fontSize} colors={colors} enable={enable}>
                 {iconName}
             </SizedIcon>
+            {shortcutLabelElement}
         </a>
     );
 };

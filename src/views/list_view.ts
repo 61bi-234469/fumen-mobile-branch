@@ -11,6 +11,7 @@ import { FumenGraph } from '../components/tree/fumen_graph';
 import { TreeViewMode, TreeDragMode } from '../lib/fumen/tree_types';
 import { style, px } from '../lib/types';
 import { canMoveNode, findNode } from '../lib/fumen/tree_utils';
+import { displayShortcut } from '../lib/shortcuts';
 import {
     TREE_ADD_BUTTON_SIZE,
     TREE_BUTTON_X,
@@ -658,6 +659,12 @@ export const view: View<State, Actions> = (state, actions) => {
             palette,
             treeEnabled: state.tree.enabled,
             treeViewMode: state.tree.viewMode,
+            listShortcutLabel: state.mode.editShortcuts.ListView
+                ? displayShortcut(state.mode.editShortcuts.ListView)
+                : undefined,
+            treeShortcutLabel: state.mode.editShortcuts.TreeView
+                ? displayShortcut(state.mode.editShortcuts.TreeView)
+                : undefined,
             actions: {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
                 convertAllToMirror: () => actions.convertAllToMirror(),

@@ -77,6 +77,7 @@ export const view: View<State, Actions> = (state, actions) => {
             loop: state.temporary.userSettings.loop,
             gradient: state.temporary.userSettings.gradient,
             paletteShortcuts: state.temporary.userSettings.paletteShortcuts,
+            editShortcuts: state.temporary.userSettings.editShortcuts,
         }) : undefined as any,
 
         state.modal.listViewReplace ? ListViewReplaceModal({

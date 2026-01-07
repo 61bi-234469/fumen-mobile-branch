@@ -51,6 +51,17 @@ export const i18n = {
             Description: () => t('UserSettings.PaletteShortcuts.Description'),
             NotSet: () => t('UserSettings.PaletteShortcuts.NotSet'),
         },
+        EditShortcuts: {
+            Title: () => t('UserSettings.EditShortcuts.Title'),
+            Description: () => t('UserSettings.EditShortcuts.Description'),
+            NotSet: () => t('UserSettings.EditShortcuts.NotSet'),
+            InsertPage: () => t('UserSettings.EditShortcuts.InsertPage'),
+            PrevPage: () => t('UserSettings.EditShortcuts.PrevPage'),
+            NextPage: () => t('UserSettings.EditShortcuts.NextPage'),
+            Menu: () => t('UserSettings.EditShortcuts.Menu'),
+            ListView: () => t('UserSettings.EditShortcuts.ListView'),
+            TreeView: () => t('UserSettings.EditShortcuts.TreeView'),
+        },
         Buttons: {
             Save: () => t('UserSettings.Buttons.Save'),
             Cancel: () => t('UserSettings.Buttons.Cancel'),

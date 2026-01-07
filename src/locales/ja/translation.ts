@@ -42,6 +42,17 @@ export const resources = {
             Description: 'キーを押して割り当て。Backspaceでクリア。',
             NotSet: '未設定',
         },
+        EditShortcuts: {
+            Title: '編集用ショートカット',
+            Description: 'キーを押して割り当て。Backspaceでクリア。',
+            NotSet: '未設定',
+            InsertPage: 'ページ追加',
+            PrevPage: '前ページ',
+            NextPage: '次ページ',
+            Menu: 'メニュー',
+            ListView: 'リストビュー',
+            TreeView: 'ツリービュー',
+        },
         Buttons: {
             Save: '保存',
             Cancel: 'キャンセル',

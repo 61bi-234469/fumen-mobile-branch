@@ -17,6 +17,14 @@ export const defaultPaletteShortcuts: PaletteShortcuts = {
     I: '', L: '', O: '', Z: '', T: '', J: '', S: '',
     Empty: '', Gray: '', Comp: '',
 };
+
+export type EditShortcuts = {
+    [key in 'InsertPage' | 'PrevPage' | 'NextPage' | 'Menu' | 'ListView' | 'TreeView']: string;
+};
+
+export const defaultEditShortcuts: EditShortcuts = {
+    InsertPage: '', PrevPage: '', NextPage: '', Menu: '', ListView: '', TreeView: '',
+};
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
 import { HyperStage } from './lib/hyper';
 import { Box } from './components/box';
@@ -93,6 +101,7 @@ export interface State {
             loop: boolean;
             gradient: string;
             paletteShortcuts: PaletteShortcuts;
+            editShortcuts: EditShortcuts;
         };
     };
     handlers: {
@@ -117,6 +126,7 @@ export interface State {
             [piece in Piece]?: GradientPattern;
         };
         paletteShortcuts: PaletteShortcuts;
+        editShortcuts: EditShortcuts;
     };
     history: {
         undoCount: number;
@@ -200,6 +210,7 @@ export const initState: Readonly<State> = {
             loop: false,
             gradient: '0000000',
             paletteShortcuts: { ...defaultPaletteShortcuts },
+            editShortcuts: { ...defaultEditShortcuts },
         },
     },
     handlers: {
@@ -222,6 +233,7 @@ export const initState: Readonly<State> = {
         loop: false,
         gradient: {},
         paletteShortcuts: { ...defaultPaletteShortcuts },
+        editShortcuts: { ...defaultEditShortcuts },
     },
     history: {
         undoCount: 0,

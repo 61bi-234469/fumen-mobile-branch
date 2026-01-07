@@ -272,6 +272,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
     return ReaderTools({
         height,
         palette,
+        editShortcuts: state.mode.editShortcuts,
         actions: {
             changeToDrawerScreen: actions.changeToDrawerScreen,
             changeToListViewScreen: actions.changeToListViewScreen,

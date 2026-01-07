@@ -1,4 +1,4 @@
-import { defaultPaletteShortcuts, initState, PaletteShortcuts, State } from './states';
+import { defaultEditShortcuts, defaultPaletteShortcuts, EditShortcuts, initState, PaletteShortcuts, State } from './states';
 import { view } from './view';
 import { app } from 'hyperapp';
 import { withLogger } from '@hyperapp/logger';
@@ -268,6 +268,22 @@ const loadUserSettings = () => {
             updated = true;
         } catch (e) {
             console.error('Failed to parse palette shortcuts:', e);
+        }
+    }
+
+    if (settings.editShortcuts !== undefined) {
+        try {
+            const parsed = JSON.parse(settings.editShortcuts) as Partial<EditShortcuts>;
+            const shortcuts: EditShortcuts = { ...defaultEditShortcuts };
+            for (const key of Object.keys(shortcuts) as (keyof EditShortcuts)[]) {
+                if (parsed[key] !== undefined) {
+                    shortcuts[key] = parsed[key]!;
+                }
+            }
+            main.changeEditShortcuts({ editShortcuts: shortcuts });
+            updated = true;
+        } catch (e) {
+            console.error('Failed to parse edit shortcuts:', e);
         }
     }
 
