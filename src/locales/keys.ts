@@ -61,6 +61,7 @@ export const i18n = {
             Menu: () => t('UserSettings.EditShortcuts.Menu'),
             ListView: () => t('UserSettings.EditShortcuts.ListView'),
             TreeView: () => t('UserSettings.EditShortcuts.TreeView'),
+            EditHome: () => t('UserSettings.EditShortcuts.EditHome'),
         },
         Buttons: {
             Save: () => t('UserSettings.Buttons.Save'),

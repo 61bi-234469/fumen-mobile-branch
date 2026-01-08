@@ -116,6 +116,7 @@ export const EditorTools: Component<Props> = (
 
                 <ToolButton iconName="home" datatest="btn-drawing-tool" width={40} height={height - 10}
                             key="btn-drawing-tool" fontSize={30} marginRight={4} colors={colors}
+                            shortcutLabel={getLabel('EditHome')} shortcutLabelColor="#666"
                             actions={{ onclick: () => actions.changeToDrawingToolMode() }}
                             enable={modeType !== ModeTypes.DrawingTool}/>
 

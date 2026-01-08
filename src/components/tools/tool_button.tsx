@@ -24,6 +24,7 @@ interface Props {
     datatest?: string;
     key: string;
     shortcutLabel?: string;
+    shortcutLabelColor?: string;
     colors: {
         baseClass: string;
         baseCode: string;
@@ -39,7 +40,7 @@ export const ToolButton: Component<Props & SizedIconProps> = (
     {
         height, width, fontSize, key, iconName, sticky = false, stickyLeft = false,
         stickyOffset = 10, marginLeft = undefined, marginRight = 0,
-        datatest, shortcutLabel, colors, enable = true, actions,
+        datatest, shortcutLabel, shortcutLabelColor, colors, enable = true, actions,
     },
 ) => {
     const hasAbsolutePosition = sticky || stickyLeft;
@@ -61,7 +62,7 @@ export const ToolButton: Component<Props & SizedIconProps> = (
             bottom: px(0),
             fontSize: px(9),
             lineHeight: '1',
-            color: '#fff',
+            color: shortcutLabelColor ?? '#fff',
             pointerEvents: 'none',
         })}>
             {shortcutLabel}

@@ -665,6 +665,9 @@ export const view: View<State, Actions> = (state, actions) => {
             treeShortcutLabel: state.mode.editShortcuts.TreeView
                 ? displayShortcut(state.mode.editShortcuts.TreeView)
                 : undefined,
+            homeShortcutLabel: state.mode.editShortcuts.EditHome
+                ? displayShortcut(state.mode.editShortcuts.EditHome)
+                : undefined,
             actions: {
                 changeToEditorFromListView: () => actions.changeToEditorFromListView(),
                 convertAllToMirror: () => actions.convertAllToMirror(),

@@ -14,6 +14,7 @@ interface Props {
     treeViewMode: TreeViewMode;
     listShortcutLabel?: string;
     treeShortcutLabel?: string;
+    homeShortcutLabel?: string;
     actions: {
         changeToEditorFromListView: () => void;
         convertAllToMirror: () => void;
@@ -26,7 +27,10 @@ interface Props {
 }
 
 export const ListViewTools: Component<Props> = (
-    { height, maxPage, palette, treeEnabled, treeViewMode, listShortcutLabel, treeShortcutLabel, actions },
+    {
+        height, maxPage, palette, treeEnabled, treeViewMode,
+        listShortcutLabel, treeShortcutLabel, homeShortcutLabel, actions,
+    },
 ) => {
     const navProperties = style({
         width: '100%',
@@ -65,6 +69,8 @@ export const ListViewTools: Component<Props> = (
                     marginLeft={3}
                     marginRight={4}
                     colors={palette}
+                    shortcutLabel={homeShortcutLabel}
+                    shortcutLabelColor="#666"
                     actions={{
                         onclick: () => actions.changeToEditorFromListView(),
                     }}

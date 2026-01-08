@@ -52,6 +52,7 @@ export const resources = {
             Menu: 'メニュー',
             ListView: 'リストビュー',
             TreeView: 'ツリービュー',
+            EditHome: 'ホーム',
         },
         Buttons: {
             Save: '保存',

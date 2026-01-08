@@ -19,11 +19,11 @@ export const defaultPaletteShortcuts: PaletteShortcuts = {
 };
 
 export type EditShortcuts = {
-    [key in 'InsertPage' | 'PrevPage' | 'NextPage' | 'Menu' | 'ListView' | 'TreeView']: string;
+    [key in 'InsertPage' | 'PrevPage' | 'NextPage' | 'Menu' | 'ListView' | 'TreeView' | 'EditHome']: string;
 };
 
 export const defaultEditShortcuts: EditShortcuts = {
-    InsertPage: '', PrevPage: '', NextPage: '', Menu: '', ListView: '', TreeView: '',
+    InsertPage: '', PrevPage: '', NextPage: '', Menu: '', ListView: '', TreeView: '', EditHome: '',
 };
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
 import { HyperStage } from './lib/hyper';

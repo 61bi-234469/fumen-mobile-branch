@@ -56,6 +56,7 @@ export const resources = {
             Menu: 'Menu',
             ListView: 'List View',
             TreeView: 'Tree View',
+            EditHome: 'Home',
         },
         Buttons: {
             Save: 'Save',

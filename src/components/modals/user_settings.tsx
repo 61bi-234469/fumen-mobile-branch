@@ -29,7 +29,7 @@ interface UserSettingsModalProps {
 
 const paletteKeys: (keyof PaletteShortcuts)[] = ['I', 'L', 'O', 'Z', 'T', 'J', 'S', 'Empty', 'Gray', 'Comp'];
 const editShortcutKeys: (keyof EditShortcuts)[] = [
-    'InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView',
+    'InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView', 'EditHome',
 ];
 
 const editShortcutLabels: Record<keyof EditShortcuts, () => string> = {
@@ -39,6 +39,7 @@ const editShortcutLabels: Record<keyof EditShortcuts, () => string> = {
     Menu: i18n.UserSettings.EditShortcuts.Menu,
     ListView: i18n.UserSettings.EditShortcuts.ListView,
     TreeView: i18n.UserSettings.EditShortcuts.TreeView,
+    EditHome: i18n.UserSettings.EditShortcuts.EditHome,
 };
 
 export const UserSettingsModal: Component<UserSettingsModalProps> = (

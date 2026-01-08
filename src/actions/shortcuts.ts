@@ -30,9 +30,9 @@ type EditShortcutKey = keyof EditShortcuts;
 
 // 画面ごとに許可される編集用ショートカット
 const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = {
-    [Screens.Editor]: ['InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView'],
-    [Screens.Reader]: ['Menu', 'ListView', 'TreeView', 'PrevPage', 'NextPage'],
-    [Screens.ListView]: ['ListView', 'TreeView'],
+    [Screens.Editor]: ['InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView', 'EditHome'],
+    [Screens.Reader]: ['Menu', 'ListView', 'TreeView', 'PrevPage', 'NextPage', 'EditHome'],
+    [Screens.ListView]: ['ListView', 'TreeView', 'EditHome'],
 };
 
 // モーダルが開いているかチェック
@@ -212,6 +212,15 @@ const executeEditShortPress = (key: EditShortcutKey, state: State, actions: Acti
         break;
     case 'TreeView':
         actions.changeToTreeViewScreen();
+        break;
+    case 'EditHome':
+        if (screen === Screens.Editor) {
+            actions.changeToDrawingToolMode();
+        } else if (screen === Screens.Reader) {
+            actions.changeToDrawerScreen({ refresh: true });
+        } else if (screen === Screens.ListView) {
+            actions.changeToEditorFromListView();
+        }
         break;
     }
 };
