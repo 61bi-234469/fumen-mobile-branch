@@ -14,8 +14,8 @@ export type PaletteShortcuts = {
 };
 
 export const defaultPaletteShortcuts: PaletteShortcuts = {
-    I: 'KeyQ', L: 'KeyW', O: 'KeyE', Z: 'KeyR', T: 'KeyA', J: 'KeyS', S: 'KeyD',
-    Empty: 'KeyF', Gray: 'KeyG', Comp: 'KeyC',
+    I: 'KeyQ', L: 'KeyW', O: 'KeyE', Z: 'KeyR', T: 'KeyA', J: 'KeyF', S: 'KeyS',
+    Empty: 'KeyD', Gray: 'KeyG', Comp: 'KeyC',
 };
 
 export type EditShortcuts = {
