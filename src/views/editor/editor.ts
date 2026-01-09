@@ -216,6 +216,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     colorize: guideLineColor,
                     paletteShortcuts: state.mode.paletteShortcuts,
                     editShortcuts: state.mode.editShortcuts,
+                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
                 });
             }
             case ModeTypes.Piece: {
@@ -230,6 +231,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     touchType: state.mode.touch,
                     currentIndex: state.fumen.currentIndex,
                     pieceShortcuts: state.mode.pieceShortcuts,
+                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
                     pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
                 });
             }
@@ -269,6 +271,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     colorize: guideLineColor,
                     modePiece: state.mode.piece,
                     paletteShortcuts: state.mode.paletteShortcuts,
+                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
                 });
             }
             case ModeTypes.FillRow: {
@@ -278,6 +281,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     colorize: guideLineColor,
                     modePiece: state.mode.piece,
                     paletteShortcuts: state.mode.paletteShortcuts,
+                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
                 });
             }
             case ModeTypes.SelectPiece: {
@@ -287,6 +291,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     currentIndex: state.fumen.currentIndex,
                     colorize: guideLineColor,
                     paletteShortcuts: state.mode.paletteShortcuts,
+                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
                 });
             }
             default: {
@@ -301,6 +306,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     colorize: guideLineColor,
                     paletteShortcuts: state.mode.paletteShortcuts,
                     editShortcuts: state.mode.editShortcuts,
+                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
                 });
             }
             }
@@ -375,6 +381,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
         height,
         palette,
         editShortcuts: state.mode.editShortcuts,
+        shortcutLabelVisible: state.mode.shortcutLabelVisible,
         actions: {
             openFumenModal: actions.openFumenModal,
             openMenuModal: actions.openMenuModal,

@@ -5,11 +5,19 @@ import { EditorLayout, toolStyle } from './editor';
 import { PaletteShortcuts } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
 
-export const pieceSelectMode = ({ layout, currentIndex, colorize, paletteShortcuts, actions }: {
+export const pieceSelectMode = ({
+    layout,
+    currentIndex,
+    colorize,
+    paletteShortcuts,
+    shortcutLabelVisible,
+    actions,
+}: {
     layout: EditorLayout;
     currentIndex: number;
     colorize: boolean;
     paletteShortcuts: PaletteShortcuts;
+    shortcutLabelVisible: boolean;
     actions: {
         spawnPiece: (data: { piece: Piece, guideline: boolean }) => void;
         changeToPieceMode: () => void;
@@ -17,6 +25,9 @@ export const pieceSelectMode = ({ layout, currentIndex, colorize, paletteShortcu
     };
 }) => {
     const getShortcutLabel = (piece: Piece): string | undefined => {
+        if (!shortcutLabelVisible) {
+            return undefined;
+        }
         const key = Piece[piece] as keyof PaletteShortcuts;
         const code = paletteShortcuts[key];
         return code ? displayShortcut(code) : undefined;

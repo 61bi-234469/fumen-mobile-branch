@@ -117,6 +117,7 @@ export interface State {
         userSettings: {
             ghostVisible: boolean;
             loop: boolean;
+            shortcutLabelVisible: boolean;
             gradient: string;
             paletteShortcuts: PaletteShortcuts;
             editShortcuts: EditShortcuts;
@@ -142,6 +143,7 @@ export interface State {
         comment: CommentType;
         ghostVisible: boolean;
         loop: boolean;
+        shortcutLabelVisible: boolean;
         gradient: {
             [piece in Piece]?: GradientPattern;
         };
@@ -230,6 +232,7 @@ export const initState: Readonly<State> = {
         userSettings: {
             ghostVisible: true,
             loop: false,
+            shortcutLabelVisible: false,
             gradient: '0000000',
             paletteShortcuts: { ...defaultPaletteShortcuts },
             editShortcuts: { ...defaultEditShortcuts },
@@ -255,6 +258,7 @@ export const initState: Readonly<State> = {
         comment: CommentType.Writable,
         ghostVisible: true,
         loop: false,
+        shortcutLabelVisible: false,
         gradient: {},
         paletteShortcuts: { ...defaultPaletteShortcuts },
         editShortcuts: { ...defaultEditShortcuts },

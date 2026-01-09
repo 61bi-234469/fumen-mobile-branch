@@ -17,6 +17,7 @@ interface Props {
     redoCount: number;
     inferenceCount: number;
     editShortcuts: EditShortcuts;
+    shortcutLabelVisible: boolean;
     actions: {
         openFumenModal: () => void;
         openMenuModal: () => void;
@@ -37,10 +38,25 @@ interface Props {
 }
 
 export const EditorTools: Component<Props> = (
-    { currentPage, maxPage, height, palette, modeType, undoCount, redoCount, inferenceCount, editShortcuts, actions },
+    {
+        currentPage,
+        maxPage,
+        height,
+        palette,
+        modeType,
+        undoCount,
+        redoCount,
+        inferenceCount,
+        editShortcuts,
+        shortcutLabelVisible,
+        actions,
+    },
 ) => {
     // ショートカットラベルを取得
     const getLabel = (key: keyof EditShortcuts): string | undefined => {
+        if (!shortcutLabelVisible) {
+            return undefined;
+        }
         const code = editShortcuts[key];
         return code ? displayShortcut(code) : undefined;
     };

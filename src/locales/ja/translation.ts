@@ -34,6 +34,11 @@ export const resources = {
             Off: () => '無効',
             On: () => '有効',
         },
+        ShortcutLabel: {
+            Title: 'ショートカットラベルの表示',
+            Off: () => 'しない',
+            On: () => 'する',
+        },
         Gradient: {
             Title: 'ブロックの表面のマーク',
         },

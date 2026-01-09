@@ -17,7 +17,19 @@ import { PieceShortcuts } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
 import { px, style } from '../../lib/types';
 
-export const pieceMode = ({ layout, currentIndex, touchType, move, pages, existInferences, flags, pieceShortcuts, pieceShortcutDasMs, actions }: {
+export const pieceMode = ({
+    layout,
+    currentIndex,
+    touchType,
+    move,
+    pages,
+    existInferences,
+    flags,
+    pieceShortcuts,
+    shortcutLabelVisible,
+    pieceShortcutDasMs,
+    actions,
+}: {
     layout: EditorLayout;
     currentIndex: number;
     touchType: TouchTypes;
@@ -28,6 +40,7 @@ export const pieceMode = ({ layout, currentIndex, touchType, move, pages, existI
         lock: boolean;
     },
     pieceShortcuts: PieceShortcuts;
+    shortcutLabelVisible: boolean;
     pieceShortcutDasMs: number;
     actions: {
         changeToDrawPieceMode: () => void;
@@ -52,6 +65,9 @@ export const pieceMode = ({ layout, currentIndex, touchType, move, pages, existI
 
     // ショートカットラベルを取得（設定されていれば表示、なければundefined）
     const getShortcutLabel = (key: keyof PieceShortcuts): string | undefined => {
+        if (!shortcutLabelVisible) {
+            return undefined;
+        }
         const code = pieceShortcuts[key];
         return code ? displayShortcut(code) : undefined;
     };

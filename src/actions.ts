@@ -259,6 +259,11 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    if (settings.shortcutLabelVisible !== undefined) {
+        main.changeShortcutLabelVisible({ visible: settings.shortcutLabelVisible });
+        updated = true;
+    }
+
     if (settings.gradient !== undefined) {
         main.changeGradient({ gradientStr: settings.gradient });
         updated = true;

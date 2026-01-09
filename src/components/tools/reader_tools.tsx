@@ -16,6 +16,7 @@ interface Props {
     palette: ColorPalette;
     loop: boolean;
     editShortcuts: EditShortcuts;
+    shortcutLabelVisible: boolean;
     actions: {
         changeToDrawerScreen: (data: { refresh?: boolean }) => void;
         changeToListViewScreen: () => void;
@@ -31,10 +32,24 @@ interface Props {
 }
 
 export const ReaderTools: Component<Props> = (
-    { currentPage, maxPage, height, animationState, pages, palette, loop, editShortcuts, actions },
+    {
+        currentPage,
+        maxPage,
+        height,
+        animationState,
+        pages,
+        palette,
+        loop,
+        editShortcuts,
+        shortcutLabelVisible,
+        actions,
+    },
 ) => {
     // ショートカットラベルを取得
     const getLabel = (key: keyof EditShortcuts): string | undefined => {
+        if (!shortcutLabelVisible) {
+            return undefined;
+        }
         const code = editShortcuts[key];
         return code ? displayShortcut(code) : undefined;
     };

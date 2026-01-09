@@ -75,6 +75,7 @@ export const view: View<State, Actions> = (state, actions) => {
             actions,
             ghostVisible: state.temporary.userSettings.ghostVisible,
             loop: state.temporary.userSettings.loop,
+            shortcutLabelVisible: state.temporary.userSettings.shortcutLabelVisible,
             gradient: state.temporary.userSettings.gradient,
             paletteShortcuts: state.temporary.userSettings.paletteShortcuts,
             editShortcuts: state.temporary.userSettings.editShortcuts,

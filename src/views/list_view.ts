@@ -68,6 +68,7 @@ export const view: View<State, Actions> = (state, actions) => {
     const redoEnabled = state.history.redoCount > 0 && !listViewNavLocked;
     const trimTopBlank = state.listView.trimTopBlank;
     const gridContainerHeight = state.display.height - TOOLS_HEIGHT;
+    const showShortcutLabel = state.mode.shortcutLabelVisible;
 
     // Returns slot index (0 = before first page, N = after last page)
     const getDropSlotFromTouch = (touchX: number, touchY: number, gridElement: HTMLElement): number | null => {
@@ -659,13 +660,13 @@ export const view: View<State, Actions> = (state, actions) => {
             palette,
             treeEnabled: state.tree.enabled,
             treeViewMode: state.tree.viewMode,
-            listShortcutLabel: state.mode.editShortcuts.ListView
+            listShortcutLabel: showShortcutLabel && state.mode.editShortcuts.ListView
                 ? displayShortcut(state.mode.editShortcuts.ListView)
                 : undefined,
-            treeShortcutLabel: state.mode.editShortcuts.TreeView
+            treeShortcutLabel: showShortcutLabel && state.mode.editShortcuts.TreeView
                 ? displayShortcut(state.mode.editShortcuts.TreeView)
                 : undefined,
-            homeShortcutLabel: state.mode.editShortcuts.EditHome
+            homeShortcutLabel: showShortcutLabel && state.mode.editShortcuts.EditHome
                 ? displayShortcut(state.mode.editShortcuts.EditHome)
                 : undefined,
             actions: {

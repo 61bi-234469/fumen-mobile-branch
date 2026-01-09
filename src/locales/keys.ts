@@ -43,6 +43,11 @@ export const i18n = {
             Off: () => t('UserSettings.Loop.Off'),
             On: () => t('UserSettings.Loop.On'),
         },
+        ShortcutLabel: {
+            Title: () => t('UserSettings.ShortcutLabel.Title'),
+            Off: () => t('UserSettings.ShortcutLabel.Off'),
+            On: () => t('UserSettings.ShortcutLabel.On'),
+        },
         Gradient: {
             Title: () => t('UserSettings.Gradient.Title'),
         },

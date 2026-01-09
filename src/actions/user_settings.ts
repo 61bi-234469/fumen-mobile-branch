@@ -9,6 +9,7 @@ export interface UserSettingsActions {
     commitUserSettings: () => action;
     keepGhostVisible: (data: { visible: boolean }) => action;
     keepLoop: (data: { enable: boolean }) => action;
+    keepShortcutLabelVisible: (data: { visible: boolean }) => action;
     keepGradient: (data: { gradient: string }) => action;
     keepPaletteShortcut: (data: { palette: keyof PaletteShortcuts, code: string }) => action;
     keepEditShortcut: (data: { shortcut: keyof EditShortcuts, code: string }) => action;
@@ -24,6 +25,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 userSettings: {
                     ghostVisible: state.mode.ghostVisible,
                     loop: state.mode.loop,
+                    shortcutLabelVisible: state.mode.shortcutLabelVisible,
                     gradient: gradientToStr(state.mode.gradient),
                     paletteShortcuts: { ...state.mode.paletteShortcuts },
                     editShortcuts: { ...state.mode.editShortcuts },
@@ -37,6 +39,7 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
         return sequence(state, [
             actions.changeGhostVisible({ visible: state.temporary.userSettings.ghostVisible }),
             actions.changeLoop({ enable: state.temporary.userSettings.loop }),
+            actions.changeShortcutLabelVisible({ visible: state.temporary.userSettings.shortcutLabelVisible }),
             actions.changeGradient({ gradientStr: state.temporary.userSettings.gradient }),
             actions.changePaletteShortcuts({
                 paletteShortcuts: state.temporary.userSettings.paletteShortcuts,
@@ -80,6 +83,21 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                 userSettings: {
                     ...state.temporary.userSettings,
                     loop: enable,
+                },
+            },
+        };
+    },
+    keepShortcutLabelVisible: ({ visible }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    shortcutLabelVisible: visible,
                 },
             },
         };
@@ -252,6 +270,7 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
     localStorageWrapper.saveUserSettings({
         ghostVisible: state.mode.ghostVisible,
         loop: state.mode.loop,
+        shortcutLabelVisible: state.mode.shortcutLabelVisible,
         gradient: gradientToStr(state.mode.gradient),
         paletteShortcuts: JSON.stringify(state.mode.paletteShortcuts),
         editShortcuts: JSON.stringify(state.mode.editShortcuts),

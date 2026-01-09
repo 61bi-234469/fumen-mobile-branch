@@ -160,6 +160,7 @@ export const memento = (() => {
 interface UserSettings {
     ghostVisible: boolean;
     loop: boolean;
+    shortcutLabelVisible: boolean;
     gradient: string;  // Pieceの順に数字で保存する e.g., 112233001
     paletteShortcuts: string;  // JSON文字列で保存
     editShortcuts: string;  // JSON文字列で保存
@@ -207,6 +208,7 @@ export const localStorageWrapper = {
         return {
             ghostVisible: safer.boolean(obj.ghostVisible),
             loop: safer.boolean(obj.loop),
+            shortcutLabelVisible: safer.boolean(obj.shortcutLabelVisible),
             gradient: safer.string(obj.gradient),
             paletteShortcuts: safer.string(obj.paletteShortcuts),
             editShortcuts: safer.string(obj.editShortcuts),

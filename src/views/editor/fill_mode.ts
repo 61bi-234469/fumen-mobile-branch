@@ -5,16 +5,27 @@ import { EditorLayout, toolStyle } from './editor';
 import { PaletteShortcuts } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
 
-export const fillMode = ({ layout, modePiece, colorize, paletteShortcuts, actions }: {
+export const fillMode = ({
+    layout,
+    modePiece,
+    colorize,
+    paletteShortcuts,
+    shortcutLabelVisible,
+    actions,
+}: {
     layout: EditorLayout;
     modePiece: Piece | undefined;
     colorize: boolean;
     paletteShortcuts: PaletteShortcuts;
+    shortcutLabelVisible: boolean;
     actions: {
         selectFillPieceColor: (data: { piece: Piece }) => void;
     };
 }) => {
     const getShortcutLabel = (piece: Piece): string | undefined => {
+        if (!shortcutLabelVisible) {
+            return undefined;
+        }
         const key = piece === Piece.Empty
             ? 'Empty'
             : piece === Piece.Gray ? 'Gray' : Piece[piece] as keyof PaletteShortcuts;

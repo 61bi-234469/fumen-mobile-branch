@@ -28,6 +28,7 @@ export interface ScreenActions {
     changeCommentMode: (data: { type: CommentType }) => action;
     changeGhostVisible: (data: { visible: boolean }) => action;
     changeLoop: (data: { enable: boolean }) => action;
+    changeShortcutLabelVisible: (data: { visible: boolean }) => action;
     changeGradient: (data: { gradientStr: string }) => action;
     changePaletteShortcuts: (data: { paletteShortcuts: PaletteShortcuts }) => action;
     changeEditShortcuts: (data: { editShortcuts: EditShortcuts }) => action;
@@ -234,6 +235,17 @@ export const modeActions: Readonly<ScreenActions> = {
                 };
             },
         ]);
+    },
+    changeShortcutLabelVisible: ({ visible }) => (state): NextState => {
+        if (state.mode.shortcutLabelVisible === visible) {
+            return undefined;
+        }
+        return {
+            mode: {
+                ...state.mode,
+                shortcutLabelVisible: visible,
+            },
+        };
     },
     changeGradient: ({ gradientStr }) => (state): NextState => {
         let str = gradientStr;

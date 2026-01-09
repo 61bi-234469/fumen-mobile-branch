@@ -14,7 +14,16 @@ import { EditShortcuts, PaletteShortcuts } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
 
 export const toolMode = ({
-    layout, currentIndex, grayAfterLineClear, touchType, modePiece, colorize, paletteShortcuts, editShortcuts, actions,
+    layout,
+    currentIndex,
+    grayAfterLineClear,
+    touchType,
+    modePiece,
+    colorize,
+    paletteShortcuts,
+    editShortcuts,
+    shortcutLabelVisible,
+    actions,
 }: {
     layout: EditorLayout;
     currentIndex: number;
@@ -24,6 +33,7 @@ export const toolMode = ({
     colorize: boolean;
     paletteShortcuts: PaletteShortcuts;
     editShortcuts: EditShortcuts;
+    shortcutLabelVisible: boolean;
     actions: {
         cutCurrentPage: () => void;
         insertNewPage: (data: { index: number }) => void;
@@ -46,6 +56,9 @@ export const toolMode = ({
     };
 }) => {
     const getShortcutLabel = (piece: Piece): string | undefined => {
+        if (!shortcutLabelVisible) {
+            return undefined;
+        }
         const key = piece === Piece.Empty
             ? 'Empty'
             : piece === Piece.Gray ? 'Gray' : Piece[piece] as keyof PaletteShortcuts;
@@ -53,6 +66,9 @@ export const toolMode = ({
         return code ? displayShortcut(code) : undefined;
     };
     const getEditShortcutLabel = (key: keyof EditShortcuts): string | undefined => {
+        if (!shortcutLabelVisible) {
+            return undefined;
+        }
         const code = editShortcuts[key];
         return code ? displayShortcut(code) : undefined;
     };
@@ -219,7 +235,9 @@ export const toolMode = ({
             layout,
             actions,
             highlight: modePiece === undefined,
-            shortcutLabel: paletteShortcuts.Comp ? displayShortcut(paletteShortcuts.Comp) : undefined,
+            shortcutLabel: shortcutLabelVisible && paletteShortcuts.Comp
+                ? displayShortcut(paletteShortcuts.Comp)
+                : undefined,
         }),
     ]));
 };

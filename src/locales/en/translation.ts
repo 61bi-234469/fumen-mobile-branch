@@ -38,6 +38,11 @@ export const resources = {
             Off: () => 'Off',
             On: () => 'On',
         },
+        ShortcutLabel: {
+            Title: 'Show shortcut labels',
+            Off: () => 'Off',
+            On: () => 'On',
+        },
         Gradient: {
             Title: 'Adding a marker to the surface of the block',
         },

@@ -12,6 +12,7 @@ declare const M: any;
 interface UserSettingsModalProps {
     ghostVisible: boolean;
     loop: boolean;
+    shortcutLabelVisible: boolean;
     gradient: string;
     paletteShortcuts: PaletteShortcuts;
     editShortcuts: EditShortcuts;
@@ -23,6 +24,7 @@ interface UserSettingsModalProps {
         copyUserSettingsToTemporary: () => void;
         keepGhostVisible: (data: { visible: boolean }) => void;
         keepLoop: (data: { enable: boolean }) => void;
+        keepShortcutLabelVisible: (data: { visible: boolean }) => void;
         keepGradient: (data: { gradient: string }) => void;
         keepPaletteShortcut: (data: { palette: keyof PaletteShortcuts, code: string }) => void;
         keepEditShortcut: (data: { shortcut: keyof EditShortcuts, code: string }) => void;
@@ -67,7 +69,17 @@ const pieceShortcutLabels: Record<keyof PieceShortcuts, () => string> = {
 };
 
 export const UserSettingsModal: Component<UserSettingsModalProps> = (
-    { ghostVisible, loop, gradient, paletteShortcuts, editShortcuts, pieceShortcuts, pieceShortcutDasMs, actions },
+    {
+        ghostVisible,
+        loop,
+        shortcutLabelVisible,
+        gradient,
+        paletteShortcuts,
+        editShortcuts,
+        pieceShortcuts,
+        pieceShortcutDasMs,
+        actions,
+    },
 ) => {
     const oncreate = (element: HTMLDivElement) => {
         const instance = M.Modal.init(element, {
@@ -128,6 +140,20 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         }
         const target = e.target as HTMLInputElement;
         actions.keepLoop({ enable: target.checked });
+    };
+
+    const onupdateShortcutLabelVisible = (e: HTMLInputElement) => {
+        if (e.checked !== shortcutLabelVisible) {
+            e.checked = shortcutLabelVisible;
+        }
+    };
+
+    const onchangeShortcutLabelVisible = (e: Event) => {
+        if (!e || !e.target) {
+            return;
+        }
+        const target = e.target as HTMLInputElement;
+        actions.keepShortcutLabelVisible({ visible: target.checked });
     };
 
     const onchangeGradient = (index: number, value: string) => {
@@ -243,6 +269,19 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                        onupdate={onupdateLoop} onchange={onchangeLoop}/>
                                 <span class="lever"/>
                                 {i18n.UserSettings.Loop.On()}
+                            </label>
+                        </div>
+
+                        <div class="switch">
+                            <h6>{i18n.UserSettings.ShortcutLabel.Title()}</h6>
+
+                            <label>
+                                {i18n.UserSettings.ShortcutLabel.Off()}
+                                <input type="checkbox" dataTest="switch-shortcut-label"
+                                       onupdate={onupdateShortcutLabelVisible}
+                                       onchange={onchangeShortcutLabelVisible}/>
+                                <span class="lever"/>
+                                {i18n.UserSettings.ShortcutLabel.On()}
                             </label>
                         </div>
 

@@ -273,6 +273,7 @@ const Tools = (state: State, actions: Actions, height: number, palette: ColorPal
         height,
         palette,
         editShortcuts: state.mode.editShortcuts,
+        shortcutLabelVisible: state.mode.shortcutLabelVisible,
         actions: {
             changeToDrawerScreen: actions.changeToDrawerScreen,
             changeToListViewScreen: actions.changeToListViewScreen,
