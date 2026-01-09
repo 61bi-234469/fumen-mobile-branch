@@ -86,10 +86,12 @@ export const EditorTools: Component<Props> = (
 
                 <ToolButton iconName="undo" datatest="btn-undo" width={35} height={height - 10}
                             key="btn-undo" fontSize={33.75} marginRight={2} colors={colors}
+                            shortcutLabel={getLabel('Undo')} shortcutLabelColor="#fff"
                             actions={{ onclick: () => actions.undo() }} enable={0 < undoCount || 0 < inferenceCount}/>
 
                 <ToolButton iconName="redo" datatest="btn-redo" width={35} height={height - 10}
                             key="btn-redo" fontSize={33.75} marginRight={4} colors={colors}
+                            shortcutLabel={getLabel('Redo')} shortcutLabelColor="#fff"
                             actions={{ onclick: () => actions.redo() }} enable={0 < redoCount}/>
 
                 <ToolButton iconName="navigate_before" datatest="btn-back-page" width={35} height={height - 10}
@@ -116,7 +118,7 @@ export const EditorTools: Component<Props> = (
 
                 <ToolButton iconName="home" datatest="btn-drawing-tool" width={40} height={height - 10}
                             key="btn-drawing-tool" fontSize={30} marginRight={4} colors={colors}
-                            shortcutLabel={getLabel('EditHome')} shortcutLabelColor="#666"
+                            shortcutLabel={getLabel('EditHome')}
                             actions={{ onclick: () => actions.changeToDrawingToolMode() }}
                             enable={modeType !== ModeTypes.DrawingTool}/>
 

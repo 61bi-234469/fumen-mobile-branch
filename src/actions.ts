@@ -1,4 +1,13 @@
-import { defaultEditShortcuts, defaultPaletteShortcuts, EditShortcuts, initState, PaletteShortcuts, State } from './states';
+import {
+    defaultEditShortcuts,
+    defaultPaletteShortcuts,
+    defaultPieceShortcuts,
+    EditShortcuts,
+    initState,
+    PaletteShortcuts,
+    PieceShortcuts,
+    State,
+} from './states';
 import { view } from './view';
 import { app } from 'hyperapp';
 import { withLogger } from '@hyperapp/logger';
@@ -285,6 +294,63 @@ const loadUserSettings = () => {
         } catch (e) {
             console.error('Failed to parse edit shortcuts:', e);
         }
+    }
+
+    // Load piece shortcuts with normalization (Edit/Palette take priority over PIECE defaults)
+    if (settings.pieceShortcuts !== undefined) {
+        try {
+            const parsed = JSON.parse(settings.pieceShortcuts) as Partial<PieceShortcuts>;
+            const shortcuts: PieceShortcuts = { ...defaultPieceShortcuts };
+            for (const key of Object.keys(shortcuts) as (keyof PieceShortcuts)[]) {
+                if (parsed[key] !== undefined) {
+                    shortcuts[key] = parsed[key]!;
+                }
+            }
+
+            // Normalize: clear PIECE shortcuts that conflict with existing Palette/Edit shortcuts
+            const usedCodes = new Set<string>();
+
+            // Collect codes from Palette shortcuts
+            if (settings.paletteShortcuts !== undefined) {
+                try {
+                    const paletteShortcuts = JSON.parse(settings.paletteShortcuts) as Partial<PaletteShortcuts>;
+                    for (const code of Object.values(paletteShortcuts)) {
+                        if (code) usedCodes.add(code);
+                    }
+                } catch {
+                    // Ignore parse errors
+                }
+            }
+
+            // Collect codes from Edit shortcuts
+            if (settings.editShortcuts !== undefined) {
+                try {
+                    const editShortcuts = JSON.parse(settings.editShortcuts) as Partial<EditShortcuts>;
+                    for (const code of Object.values(editShortcuts)) {
+                        if (code) usedCodes.add(code);
+                    }
+                } catch {
+                    // Ignore parse errors
+                }
+            }
+
+            // Clear conflicts from PIECE shortcuts
+            for (const key of Object.keys(shortcuts) as (keyof PieceShortcuts)[]) {
+                if (shortcuts[key] && usedCodes.has(shortcuts[key])) {
+                    shortcuts[key] = '';
+                }
+            }
+
+            main.changePieceShortcuts({ pieceShortcuts: shortcuts });
+            updated = true;
+        } catch (e) {
+            console.error('Failed to parse piece shortcuts:', e);
+        }
+    }
+
+    if (settings.pieceShortcutDasMs !== undefined) {
+        main.changePieceShortcutDas({ dasMs: settings.pieceShortcutDasMs });
+        updated = true;
     }
 
     if (updated) {

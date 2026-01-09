@@ -70,7 +70,6 @@ export const ListViewTools: Component<Props> = (
                     marginRight={4}
                     colors={palette}
                     shortcutLabel={homeShortcutLabel}
-                    shortcutLabelColor="#666"
                     actions={{
                         onclick: () => actions.changeToEditorFromListView(),
                     }}

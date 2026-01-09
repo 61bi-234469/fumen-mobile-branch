@@ -13,8 +13,11 @@ import {
 import { EditorLayout, toolStyle } from './editor';
 import { Move, Page } from '../../lib/fumen/types';
 import { PageFieldOperation, Pages } from '../../lib/pages';
+import { PieceShortcuts } from '../../states';
+import { displayShortcut } from '../../lib/shortcuts';
+import { px, style } from '../../lib/types';
 
-export const pieceMode = ({ layout, currentIndex, touchType, move, pages, existInferences, flags, actions }: {
+export const pieceMode = ({ layout, currentIndex, touchType, move, pages, existInferences, flags, pieceShortcuts, pieceShortcutDasMs, actions }: {
     layout: EditorLayout;
     currentIndex: number;
     touchType: TouchTypes;
@@ -24,6 +27,8 @@ export const pieceMode = ({ layout, currentIndex, touchType, move, pages, existI
     flags: {
         lock: boolean;
     },
+    pieceShortcuts: PieceShortcuts;
+    pieceShortcutDasMs: number;
     actions: {
         changeToDrawPieceMode: () => void;
         changeToMovePieceMode: () => void;
@@ -44,6 +49,12 @@ export const pieceMode = ({ layout, currentIndex, touchType, move, pages, existI
     const toolButtonMargin = 5;
     const operate = move !== undefined;
     const operateRotation = move !== undefined ? move.rotation : undefined;
+
+    // ショートカットラベルを取得（設定されていれば表示、なければundefined）
+    const getShortcutLabel = (key: keyof PieceShortcuts): string | undefined => {
+        const code = pieceShortcuts[key];
+        return code ? displayShortcut(code) : undefined;
+    };
 
     return div({ style: toolStyle(layout) }, [
         toolSpace({
@@ -101,62 +112,102 @@ export const pieceMode = ({ layout, currentIndex, touchType, move, pages, existI
                 iconName: 'skip_next',
             }),
         }),
-        dualButton({
-            borderWidth: 1,
-            width: layout.buttons.size.width,
-            margin: toolButtonMargin,
-            backgroundColorClass: 'white',
-            textColor: '#333',
-            borderColor: '#333',
-        }, {
-            datatest: 'btn-move-to-left',
-            key: 'btn-move-to-left',
-            enable: operate,
-            onclick: () => actions.moveToLeft(),
-            contents: iconContents({
+        div({
+            key: 'btn-move-row',
+            style: style({
+                display: 'flex',
+                flexDirection: 'row',
+                width: px(layout.buttons.size.width),
+                margin: `${px(toolButtonMargin)} 0px`,
+            }),
+        }, [
+            toolButton({
+                borderWidth: 1,
+                width: layout.buttons.size.width / 2 - 2,
+                margin: '0px 2px 0px 0px',
+                backgroundColorClass: 'white',
+                textColor: '#333',
+                borderColor: '#333',
+                datatest: 'btn-move-to-left',
+                key: 'btn-move-to-left',
+                enable: operate,
+                onclick: () => actions.moveToLeft(),
+                onlongpress: () => actions.moveToLeftEnd(),
+                longPressDurationMs: pieceShortcutDasMs,
+                shortcutLabel: getShortcutLabel('MoveLeft'),
+                shortcutLabelColor: '#666',
+            }, iconContents({
                 description: '',
                 iconSize: 24,
                 iconName: 'keyboard_arrow_left',
-            }),
-        }, {
-            datatest: 'btn-move-to-right',
-            key: 'btn-move-to-right',
-            enable: operate,
-            onclick: () => actions.moveToRight(),
-            contents: iconContents({
+            })),
+            toolButton({
+                borderWidth: 1,
+                width: layout.buttons.size.width / 2 - 2,
+                margin: '0px 0px 0px 2px',
+                backgroundColorClass: 'white',
+                textColor: '#333',
+                borderColor: '#333',
+                datatest: 'btn-move-to-right',
+                key: 'btn-move-to-right',
+                enable: operate,
+                onclick: () => actions.moveToRight(),
+                onlongpress: () => actions.moveToRightEnd(),
+                longPressDurationMs: pieceShortcutDasMs,
+                shortcutLabel: getShortcutLabel('MoveRight'),
+                shortcutLabelColor: '#666',
+            }, iconContents({
                 description: '',
                 iconSize: 24,
                 iconName: 'keyboard_arrow_right',
+            })),
+        ]),
+        div({
+            key: 'btn-rotate-row',
+            style: style({
+                display: 'flex',
+                flexDirection: 'row',
+                width: px(layout.buttons.size.width),
+                margin: `${px(toolButtonMargin)} 0px`,
             }),
-        }),
-        dualButton({
-            borderWidth: 1,
-            width: layout.buttons.size.width,
-            margin: toolButtonMargin,
-            backgroundColorClass: 'white',
-            textColor: '#333',
-            borderColor: '#333',
-        }, {
-            datatest: 'btn-rotate-to-left',
-            key: 'btn-rotate-to-left',
-            enable: operate,
-            onclick: () => actions.rotateToLeft(),
-            contents: iconContents({
+        }, [
+            toolButton({
+                borderWidth: 1,
+                width: layout.buttons.size.width / 2 - 2,
+                margin: '0px 2px 0px 0px',
+                backgroundColorClass: 'white',
+                textColor: '#333',
+                borderColor: '#333',
+                datatest: 'btn-rotate-to-left',
+                key: 'btn-rotate-to-left',
+                enable: operate,
+                onclick: () => actions.rotateToLeft(),
+                shortcutLabel: getShortcutLabel('RotateLeft'),
+                shortcutLabelColor: '#666',
+            }, iconContents({
                 description: '',
                 iconSize: 23,
                 iconName: 'rotate_left',
-            }),
-        }, {
-            datatest: 'btn-rotate-to-right',
-            key: 'btn-rotate-to-right',
-            enable: operate,
-            onclick: () => actions.rotateToRight(),
-            contents: iconContents({
+            })),
+            toolButton({
+                borderWidth: 1,
+                width: layout.buttons.size.width / 2 - 2,
+                margin: '0px 0px 0px 2px',
+                backgroundColorClass: 'white',
+                textColor: '#333',
+                borderColor: '#333',
+                datatest: 'btn-rotate-to-right',
+                key: 'btn-rotate-to-right',
+                enable: operate,
+                onclick: () => actions.rotateToRight(),
+                shortcutLabel: getShortcutLabel('RotateRight'),
+                shortcutLabelColor: '#666',
+            }, iconContents({
                 description: '',
                 iconSize: 23,
                 iconName: 'rotate_right',
-            }),
-        }),
+            })),
+        ]),
         toolButton({
             borderWidth: 1,
             width: layout.buttons.size.width,
@@ -168,6 +219,8 @@ export const pieceMode = ({ layout, currentIndex, touchType, move, pages, existI
             key: 'btn-harddrop',
             enable: operate,
             onclick: () => actions.harddrop(),
+            shortcutLabel: getShortcutLabel('Drop'),
+            shortcutLabelColor: '#666',
         }, iconContents({
             description: 'drop',
             iconSize: 22,
@@ -186,6 +239,8 @@ export const pieceMode = ({ layout, currentIndex, touchType, move, pages, existI
             onclick: () => {
                 actions.clearPiece();
             },
+            shortcutLabel: getShortcutLabel('Reset'),
+            shortcutLabelColor: '#666',
         }, iconContents({
             description: 'reset',
             iconSize: 23,

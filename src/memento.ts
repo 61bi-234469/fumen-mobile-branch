@@ -163,6 +163,8 @@ interface UserSettings {
     gradient: string;  // Pieceの順に数字で保存する e.g., 112233001
     paletteShortcuts: string;  // JSON文字列で保存
     editShortcuts: string;  // JSON文字列で保存
+    pieceShortcuts: string;  // JSON文字列で保存
+    pieceShortcutDasMs: number;
 }
 
 const safer = {
@@ -176,6 +178,9 @@ const safer = {
     },
     boolean: (value: any): boolean | undefined => {
         return lodash.isBoolean(value) ? value : undefined;
+    },
+    number: (value: any): number | undefined => {
+        return lodash.isNumber(value) && !isNaN(value) ? value : undefined;
     },
 };
 
@@ -205,6 +210,8 @@ export const localStorageWrapper = {
             gradient: safer.string(obj.gradient),
             paletteShortcuts: safer.string(obj.paletteShortcuts),
             editShortcuts: safer.string(obj.editShortcuts),
+            pieceShortcuts: safer.string(obj.pieceShortcuts),
+            pieceShortcutDasMs: safer.number(obj.pieceShortcutDasMs),
         };
     },
 };

@@ -215,6 +215,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     modePiece: state.mode.piece,
                     colorize: guideLineColor,
                     paletteShortcuts: state.mode.paletteShortcuts,
+                    editShortcuts: state.mode.editShortcuts,
                 });
             }
             case ModeTypes.Piece: {
@@ -228,6 +229,8 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     flags: page.flags,
                     touchType: state.mode.touch,
                     currentIndex: state.fumen.currentIndex,
+                    pieceShortcuts: state.mode.pieceShortcuts,
+                    pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
                 });
             }
             case ModeTypes.Flags: {
@@ -297,6 +300,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     modePiece: state.mode.piece,
                     colorize: guideLineColor,
                     paletteShortcuts: state.mode.paletteShortcuts,
+                    editShortcuts: state.mode.editShortcuts,
                 });
             }
             }
@@ -323,16 +327,32 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         ];
     };
 
+    // フィールドエリアをクリックしたらフォーカスを移動（キーボードショートカット有効化のため）
+    const handleFieldClick = (event: MouseEvent) => {
+        const target = event.target as HTMLElement;
+        // コメント入力欄以外をクリックした場合、フィールドにフォーカスを移動
+        const tagName = target.tagName.toLowerCase();
+        if (tagName !== 'input' && tagName !== 'textarea') {
+            const fieldTop = document.getElementById('field-top');
+            if (fieldTop) {
+                fieldTop.focus();
+            }
+        }
+    };
+
     return div({
         key: 'field-top',
         id: 'field-top',
+        tabIndex: -1, // フォーカス可能にする（tabでは移動しない）
         style: style({
             display: 'flex',
             justifyContent: 'center',
             flexDirection: 'row',
             alignItems: 'center',
             userSelect: 'none',
+            outline: 'none', // フォーカス時の枠線を消す
         }),
+        onclick: handleFieldClick,
     }, getChildren());
 };
 

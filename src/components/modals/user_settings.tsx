@@ -1,11 +1,11 @@
 import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
-import { EditShortcuts, PaletteShortcuts, resources } from '../../states';
+import { EditShortcuts, PaletteShortcuts, PieceShortcuts, resources } from '../../states';
 import { i18n } from '../../locales/keys';
 import { div } from '@hyperapp/html';
 import { gradientPieces } from '../../actions/user_settings';
 import { GradientPattern, parsePieceName } from '../../lib/enums';
-import { displayShortcut, isModifierKey } from '../../lib/shortcuts';
+import { displayShortcut, isModifierKey, normalizeShortcutFromEvent } from '../../lib/shortcuts';
 
 declare const M: any;
 
@@ -15,6 +15,8 @@ interface UserSettingsModalProps {
     gradient: string;
     paletteShortcuts: PaletteShortcuts;
     editShortcuts: EditShortcuts;
+    pieceShortcuts: PieceShortcuts;
+    pieceShortcutDasMs: number;
     actions: {
         closeUserSettingsModal: () => void;
         commitUserSettings: () => void;
@@ -24,12 +26,15 @@ interface UserSettingsModalProps {
         keepGradient: (data: { gradient: string }) => void;
         keepPaletteShortcut: (data: { palette: keyof PaletteShortcuts, code: string }) => void;
         keepEditShortcut: (data: { shortcut: keyof EditShortcuts, code: string }) => void;
+        keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => void;
+        keepPieceShortcutDas: (data: { dasMs: number }) => void;
     };
 }
 
 const paletteKeys: (keyof PaletteShortcuts)[] = ['I', 'L', 'O', 'Z', 'T', 'J', 'S', 'Empty', 'Gray', 'Comp'];
 const editShortcutKeys: (keyof EditShortcuts)[] = [
     'InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView', 'EditHome',
+    'Undo', 'Redo', 'Add', 'Insert', 'Copy', 'Cut',
 ];
 
 const editShortcutLabels: Record<keyof EditShortcuts, () => string> = {
@@ -40,10 +45,29 @@ const editShortcutLabels: Record<keyof EditShortcuts, () => string> = {
     ListView: i18n.UserSettings.EditShortcuts.ListView,
     TreeView: i18n.UserSettings.EditShortcuts.TreeView,
     EditHome: i18n.UserSettings.EditShortcuts.EditHome,
+    Undo: i18n.UserSettings.EditShortcuts.Undo,
+    Redo: i18n.UserSettings.EditShortcuts.Redo,
+    Add: i18n.UserSettings.EditShortcuts.Add,
+    Insert: i18n.UserSettings.EditShortcuts.Insert,
+    Copy: i18n.UserSettings.EditShortcuts.Copy,
+    Cut: i18n.UserSettings.EditShortcuts.Cut,
+};
+
+const pieceShortcutKeys: (keyof PieceShortcuts)[] = [
+    'MoveLeft', 'MoveRight', 'Drop', 'RotateLeft', 'RotateRight', 'Reset',
+];
+
+const pieceShortcutLabels: Record<keyof PieceShortcuts, () => string> = {
+    MoveLeft: i18n.UserSettings.PieceShortcuts.MoveLeft,
+    MoveRight: i18n.UserSettings.PieceShortcuts.MoveRight,
+    Drop: i18n.UserSettings.PieceShortcuts.Drop,
+    RotateLeft: i18n.UserSettings.PieceShortcuts.RotateLeft,
+    RotateRight: i18n.UserSettings.PieceShortcuts.RotateRight,
+    Reset: i18n.UserSettings.PieceShortcuts.Reset,
 };
 
 export const UserSettingsModal: Component<UserSettingsModalProps> = (
-    { ghostVisible, loop, gradient, paletteShortcuts, editShortcuts, actions },
+    { ghostVisible, loop, gradient, paletteShortcuts, editShortcuts, pieceShortcuts, pieceShortcutDasMs, actions },
 ) => {
     const oncreate = (element: HTMLDivElement) => {
         const instance = M.Modal.init(element, {
@@ -138,23 +162,51 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
         e.preventDefault();
         e.stopPropagation();
 
-        // 修飾キーは無視
+        // 修飾キー単体は無視
         if (isModifierKey(e.code)) {
             return;
         }
 
-        // 修飾キー押下中は無視
-        if (e.ctrlKey || e.altKey || e.metaKey) {
+        // Backspace/Delete でクリア（修飾キーなしの場合のみ）
+        if ((e.code === 'Backspace' || e.code === 'Delete') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            actions.keepEditShortcut({ shortcut, code: '' });
+            return;
+        }
+
+        // Mod+... 形式で保存（Ctrl/Cmd を共通の Mod として正規化）
+        const normalizedCode = normalizeShortcutFromEvent(e);
+        actions.keepEditShortcut({ shortcut, code: normalizedCode });
+    };
+
+    const onkeydownPieceShortcut = (shortcut: keyof PieceShortcuts, e: KeyboardEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // 修飾キー単体は無視
+        if (isModifierKey(e.code)) {
+            return;
+        }
+
+        // 修飾キー押下中は無効（PIECEは修飾キーなしのみ）
+        if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) {
             return;
         }
 
         // Backspace/Delete でクリア
         if (e.code === 'Backspace' || e.code === 'Delete') {
-            actions.keepEditShortcut({ shortcut, code: '' });
+            actions.keepPieceShortcut({ shortcut, code: '' });
             return;
         }
 
-        actions.keepEditShortcut({ shortcut, code: e.code });
+        actions.keepPieceShortcut({ shortcut, code: e.code });
+    };
+
+    const onchangeDas = (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const value = parseInt(target.value, 10);
+        if (!isNaN(value) && value >= 50 && value <= 1000) {
+            actions.keepPieceShortcutDas({ dasMs: value });
+        }
     };
 
     return (
@@ -293,6 +345,65 @@ export const UserSettingsModal: Component<UserSettingsModalProps> = (
                                         />,
                                     ];
                                 })}
+                            </div>
+                        </div>
+
+                        <div>
+                            <h6>{i18n.UserSettings.PieceShortcuts.Title()}</h6>
+                            <div style={style({ color: '#666', marginBottom: px(10), fontSize: px(12) })}>
+                                {i18n.UserSettings.PieceShortcuts.Description()}
+                            </div>
+
+                            <div style={style({
+                                display: 'grid',
+                                gridTemplateColumns: 'auto 1fr',
+                                gap: px(8),
+                                alignItems: 'center',
+                            })}>
+                                {pieceShortcutKeys.map((shortcut) => {
+                                    const code = pieceShortcuts[shortcut];
+                                    const notSetText = i18n.UserSettings.PieceShortcuts.NotSet();
+                                    const display = code ? displayShortcut(code) : notSetText;
+                                    return [
+                                        <div style={style({ fontWeight: 'bold', minWidth: px(80) })}>
+                                            {pieceShortcutLabels[shortcut]()}
+                                        </div>,
+                                        <input
+                                            type="text"
+                                            readonly
+                                            value={display}
+                                            onkeydown={(e: KeyboardEvent) => onkeydownPieceShortcut(shortcut, e)}
+                                            style={style({
+                                                cursor: 'pointer',
+                                                textAlign: 'center',
+                                                color: code ? '#333' : '#999',
+                                                marginBottom: px(0),
+                                                height: px(32),
+                                            })}
+                                        />,
+                                    ];
+                                })}
+                            </div>
+
+                            <div style={style({ marginTop: px(15) })}>
+                                <div style={style({ fontWeight: 'bold' })}>
+                                    {i18n.UserSettings.PieceShortcuts.DasMs()}
+                                </div>
+                                <div style={style({ color: '#666', fontSize: px(12), marginBottom: px(5) })}>
+                                    {i18n.UserSettings.PieceShortcuts.DasDescription()}
+                                </div>
+                                <input
+                                    type="number"
+                                    value={pieceShortcutDasMs}
+                                    min={50}
+                                    max={1000}
+                                    step={10}
+                                    onchange={onchangeDas}
+                                    style={style({
+                                        width: px(80),
+                                        textAlign: 'center',
+                                    })}
+                                />
                             </div>
                         </div>
                     </div>

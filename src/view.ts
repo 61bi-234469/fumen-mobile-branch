@@ -78,6 +78,8 @@ export const view: View<State, Actions> = (state, actions) => {
             gradient: state.temporary.userSettings.gradient,
             paletteShortcuts: state.temporary.userSettings.paletteShortcuts,
             editShortcuts: state.temporary.userSettings.editShortcuts,
+            pieceShortcuts: state.temporary.userSettings.pieceShortcuts,
+            pieceShortcutDasMs: state.temporary.userSettings.pieceShortcutDasMs,
         }) : undefined as any,
 
         state.modal.listViewReplace ? ListViewReplaceModal({

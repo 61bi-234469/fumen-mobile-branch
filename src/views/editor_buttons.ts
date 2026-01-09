@@ -250,10 +250,11 @@ export const toolButton = (
     {
         width, backgroundColorClass, textColor, borderColor, borderWidth = 1, borderType = 'solid',
         datatest, key, onclick, onlongpress, flexGrow, margin, enable = true, position,
+        shortcutLabel, shortcutLabelColor = '#666', longPressDurationMs = LONG_PRESS_DURATION,
     }: {
         flexGrow?: number;
         width: number;
-        margin: number;
+        margin: number | string;
         backgroundColorClass: string;
         textColor: string;
         borderColor: string;
@@ -265,6 +266,9 @@ export const toolButton = (
         onclick?: (event: MouseEvent) => void;
         onlongpress?: () => void;
         position?: 'relative' | 'absolute';
+        shortcutLabel?: string;
+        shortcutLabelColor?: string;
+        longPressDurationMs?: number;
     },
     contents: string | number | (string | number | VNode<{}>)[],
 ) => {
@@ -288,7 +292,7 @@ export const toolButton = (
                 longPressState.triggered = true;
                 longPressState.timer = null;
                 onlongpress();
-            }, LONG_PRESS_DURATION);
+            }, longPressDurationMs);
         }
     };
 
@@ -343,6 +347,22 @@ export const toolButton = (
         } : undefined,
     };
 
+    // ショートカットラベル要素
+    const shortcutLabelElement = shortcutLabel ? span({
+        style: style({
+            position: 'absolute',
+            right: px(2),
+            bottom: px(0),
+            fontSize: px(9),
+            color: shortcutLabelColor,
+            lineHeight: '1',
+            pointerEvents: 'none',
+        }),
+    }, shortcutLabel) : null;
+
+    // position を設定（ショートカットラベルがある場合は relative に）
+    const effectivePosition = shortcutLabel ? (position ?? 'relative') : position;
+
     return a({
         datatest,
         key,
@@ -351,10 +371,10 @@ export const toolButton = (
             + `z-depth-0 btn ${backgroundColorClass} ${enable ? '' : 'disabled'}`,
         style: style({
             flexGrow,
-            position,
+            position: effectivePosition,
             color: enable ? textColor : '#9e9e9e',
             border: enable ? `${borderType} ${borderWidth}px ${borderColor}` : 'solid 1px #9e9e9e',
-            margin: `${px(margin)} 0px`,
+            margin: typeof margin === 'string' ? margin : `${px(margin)} 0px`,
             padding: px(0),
             width: px(width),
             maxWidth: px(width),
@@ -364,7 +384,19 @@ export const toolButton = (
             userSelect: 'none', // テキスト選択を防ぐ
         }),
         ...eventHandlers,
-    }, [
+    }, shortcutLabelElement !== null ? [
+        div({
+            style: {
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                alignItems: 'center',
+            },
+        }, contents),
+        shortcutLabelElement,
+    ] : [
         div({
             style: {
                 width: '100%',

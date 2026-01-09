@@ -19,12 +19,30 @@ export const defaultPaletteShortcuts: PaletteShortcuts = {
 };
 
 export type EditShortcuts = {
-    [key in 'InsertPage' | 'PrevPage' | 'NextPage' | 'Menu' | 'ListView' | 'TreeView' | 'EditHome']: string;
+    [key in 'InsertPage' | 'PrevPage' | 'NextPage' | 'Menu' | 'ListView' | 'TreeView' | 'EditHome'
+        | 'Undo' | 'Redo' | 'Add' | 'Insert' | 'Copy' | 'Cut']: string;
 };
 
 export const defaultEditShortcuts: EditShortcuts = {
     InsertPage: '', PrevPage: '', NextPage: '', Menu: '', ListView: '', TreeView: '', EditHome: '',
+    Undo: 'Mod+KeyZ', Redo: 'Mod+KeyY', Add: 'Mod+KeyM',
+    Insert: 'Mod+KeyV', Copy: 'Mod+KeyC', Cut: 'Mod+KeyX',
 };
+
+export type PieceShortcuts = {
+    [key in 'MoveLeft' | 'MoveRight' | 'Drop' | 'RotateLeft' | 'RotateRight' | 'Reset']: string;
+};
+
+export const defaultPieceShortcuts: PieceShortcuts = {
+    MoveLeft: 'ArrowLeft',
+    MoveRight: 'ArrowRight',
+    Drop: 'ArrowDown',
+    RotateLeft: 'KeyZ',
+    RotateRight: 'KeyX',
+    Reset: 'Escape',
+};
+
+export const DEFAULT_PIECE_SHORTCUT_DAS_MS = 167;
 import { TreeState, initialTreeState } from './lib/fumen/tree_types';
 import { HyperStage } from './lib/hyper';
 import { Box } from './components/box';
@@ -102,6 +120,8 @@ export interface State {
             gradient: string;
             paletteShortcuts: PaletteShortcuts;
             editShortcuts: EditShortcuts;
+            pieceShortcuts: PieceShortcuts;
+            pieceShortcutDasMs: number;
         };
     };
     handlers: {
@@ -127,6 +147,8 @@ export interface State {
         };
         paletteShortcuts: PaletteShortcuts;
         editShortcuts: EditShortcuts;
+        pieceShortcuts: PieceShortcuts;
+        pieceShortcutDasMs: number;
     };
     history: {
         undoCount: number;
@@ -211,6 +233,8 @@ export const initState: Readonly<State> = {
             gradient: '0000000',
             paletteShortcuts: { ...defaultPaletteShortcuts },
             editShortcuts: { ...defaultEditShortcuts },
+            pieceShortcuts: { ...defaultPieceShortcuts },
+            pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
         },
     },
     handlers: {
@@ -234,6 +258,8 @@ export const initState: Readonly<State> = {
         gradient: {},
         paletteShortcuts: { ...defaultPaletteShortcuts },
         editShortcuts: { ...defaultEditShortcuts },
+        pieceShortcuts: { ...defaultPieceShortcuts },
+        pieceShortcutDasMs: DEFAULT_PIECE_SHORTCUT_DAS_MS,
     },
     history: {
         undoCount: 0,

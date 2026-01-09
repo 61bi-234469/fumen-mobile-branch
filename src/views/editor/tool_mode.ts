@@ -10,11 +10,11 @@ import {
     toolSpace,
 } from '../editor_buttons';
 import { EditorLayout, toolStyle } from './editor';
-import { PaletteShortcuts } from '../../states';
+import { EditShortcuts, PaletteShortcuts } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
 
 export const toolMode = ({
-    layout, currentIndex, grayAfterLineClear, touchType, modePiece, colorize, paletteShortcuts, actions,
+    layout, currentIndex, grayAfterLineClear, touchType, modePiece, colorize, paletteShortcuts, editShortcuts, actions,
 }: {
     layout: EditorLayout;
     currentIndex: number;
@@ -23,6 +23,7 @@ export const toolMode = ({
     modePiece: Piece | undefined;
     colorize: boolean;
     paletteShortcuts: PaletteShortcuts;
+    editShortcuts: EditShortcuts;
     actions: {
         cutCurrentPage: () => void;
         insertNewPage: (data: { index: number }) => void;
@@ -49,6 +50,10 @@ export const toolMode = ({
             ? 'Empty'
             : piece === Piece.Gray ? 'Gray' : Piece[piece] as keyof PaletteShortcuts;
         const code = paletteShortcuts[key];
+        return code ? displayShortcut(code) : undefined;
+    };
+    const getEditShortcutLabel = (key: keyof EditShortcuts): string | undefined => {
+        const code = editShortcuts[key];
         return code ? displayShortcut(code) : undefined;
     };
     const toolButtonMargin = 3;
@@ -80,6 +85,7 @@ export const toolMode = ({
             borderColor: '#333',
             datatest: 'btn-insert-new-page',
             key: 'btn-insert-new-page',
+            shortcutLabel: getEditShortcutLabel('Add'),
             onclick: () => {
                 actions.insertNewPage({ index: currentIndex + 1 });
             },
@@ -97,6 +103,7 @@ export const toolMode = ({
             borderColor: '#333',
             datatest: 'btn-insert-from-clipboard',
             key: 'btn-insert-from-clipboard',
+            shortcutLabel: getEditShortcutLabel('Insert'),
             onclick: () => actions.insertPageFromClipboard(),
             onlongpress: () => actions.replaceAllFromClipboard(),
         }, iconContents({
@@ -113,6 +120,7 @@ export const toolMode = ({
             borderColor: '#333',
             datatest: 'btn-copy-to-clipboard',
             key: 'btn-copy-to-clipboard',
+            shortcutLabel: getEditShortcutLabel('Copy'),
             onclick: () => actions.copyCurrentPageToClipboard(),
             onlongpress: () => actions.copyAllPagesToClipboard(),
         }, iconContents({
@@ -129,6 +137,7 @@ export const toolMode = ({
             borderColor: '#333',
             datatest: 'btn-cut-page',
             key: 'btn-cut-page',
+            shortcutLabel: getEditShortcutLabel('Cut'),
             onclick: () => actions.cutCurrentPage(),
             onlongpress: () => actions.cutAllPages(),
         }, iconContents({

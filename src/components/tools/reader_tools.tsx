@@ -112,7 +112,7 @@ export const ReaderTools: Component<Props> = (
 
                 <ToolButton iconName="mode_edit" datatest="btn-writable-in-reader" width={40} height={height - 10}
                             key="btn-writable-in-reader" fontSize={33.75} marginRight={10} colors={palette}
-                            shortcutLabel={getLabel('EditHome')} shortcutLabelColor="#666"
+                            shortcutLabel={getLabel('EditHome')}
                             actions={{
                                 onclick: () => {
                                     actions.changeToDrawerScreen({ refresh: true });

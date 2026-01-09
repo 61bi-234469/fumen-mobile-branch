@@ -1,6 +1,6 @@
 import { ModeTypes, Piece, Screens } from '../lib/enums';
-import { isModifierKey } from '../lib/shortcuts';
-import { EditShortcuts, PaletteShortcuts, State } from '../states';
+import { isModifierKey, matchShortcut } from '../lib/shortcuts';
+import { EditShortcuts, PaletteShortcuts, PieceShortcuts, State } from '../states';
 import { Actions } from '../actions';
 import { TreeViewMode } from '../lib/fumen/tree_types';
 
@@ -18,9 +18,16 @@ type ActiveShortcut = {
 } | {
     type: 'edit';
     key: EditShortcutKey;
+} | {
+    type: 'piece';
+    key: PieceShortcutKey;
 } | null;
 
 let activeShortcut: ActiveShortcut = null;
+
+// DASタイマー状態（PIECE用）
+let dasTimer: ReturnType<typeof setTimeout> | null = null;
+let dasTriggered = false;
 
 // パレットキーの種類
 type PaletteKey = keyof PaletteShortcuts;
@@ -28,9 +35,15 @@ type PaletteKey = keyof PaletteShortcuts;
 // 編集用ショートカットキーの種類
 type EditShortcutKey = keyof EditShortcuts;
 
+// ピースショートカットキーの種類
+type PieceShortcutKey = keyof PieceShortcuts;
+
 // 画面ごとに許可される編集用ショートカット
 const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = {
-    [Screens.Editor]: ['InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView', 'EditHome'],
+    [Screens.Editor]: [
+        'InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView', 'EditHome',
+        'Undo', 'Redo', 'Add', 'Insert', 'Copy', 'Cut',
+    ],
     [Screens.Reader]: ['Menu', 'ListView', 'TreeView', 'PrevPage', 'NextPage', 'EditHome'],
     [Screens.ListView]: ['ListView', 'TreeView', 'EditHome'],
 };
@@ -43,11 +56,24 @@ const isAnyModalOpen = (state: State): boolean => {
 };
 
 // 入力フィールドにフォーカスしているかチェック
+// readonly属性がついている場合はfalseを返す（ショートカットを有効にする）
 const isInputFocused = (): boolean => {
     const el = document.activeElement;
     if (!el) return false;
     const tagName = el.tagName.toLowerCase();
-    if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+    if (tagName === 'input') {
+        const inputEl = el as HTMLInputElement;
+        // readonly属性がある場合は入力を受け付けないのでfalse
+        if (inputEl.readOnly) return false;
+        return true;
+    }
+    if (tagName === 'textarea') {
+        const textareaEl = el as HTMLTextAreaElement;
+        // readonly属性がある場合は入力を受け付けないのでfalse
+        if (textareaEl.readOnly) return false;
+        return true;
+    }
+    if (tagName === 'select') {
         return true;
     }
     if ((el as HTMLElement).isContentEditable) {
@@ -70,6 +96,18 @@ const findPaletteByCode = (shortcuts: PaletteShortcuts, code: string): PaletteKe
 const findEditShortcutByCode = (shortcuts: EditShortcuts, code: string): EditShortcutKey | null => {
     for (const key of Object.keys(shortcuts) as EditShortcutKey[]) {
         if (shortcuts[key] === code) {
+            return key;
+        }
+    }
+    return null;
+};
+
+// イベントから編集用ショートカットを検索（Mod+対応）
+const findEditShortcutByEvent = (
+    shortcuts: EditShortcuts, event: KeyboardEvent,
+): EditShortcutKey | null => {
+    for (const key of Object.keys(shortcuts) as EditShortcutKey[]) {
+        if (matchShortcut(event, shortcuts[key])) {
             return key;
         }
     }
@@ -222,6 +260,24 @@ const executeEditShortPress = (key: EditShortcutKey, state: State, actions: Acti
             actions.changeToEditorFromListView();
         }
         break;
+    case 'Undo':
+        actions.undo();
+        break;
+    case 'Redo':
+        actions.redo();
+        break;
+    case 'Add':
+        actions.insertNewPage({ index: state.fumen.currentIndex + 1 });
+        break;
+    case 'Insert':
+        actions.insertPageFromClipboard();
+        break;
+    case 'Copy':
+        actions.copyCurrentPageToClipboard();
+        break;
+    case 'Cut':
+        actions.cutCurrentPage();
+        break;
     }
 };
 
@@ -238,13 +294,79 @@ const executeEditLongPress = (key: EditShortcutKey, state: State, actions: Actio
         // ListView長押し → TreeView
         actions.changeToTreeViewScreen();
         break;
-    // InsertPage, Menu, TreeView は長押し動作なし
+    case 'Insert':
+        actions.replaceAllFromClipboard();
+        break;
+    case 'Copy':
+        actions.copyAllPagesToClipboard();
+        break;
+    case 'Cut':
+        actions.cutAllPages();
+        break;
+    // InsertPage, Menu, TreeView, Undo, Redo, Add は長押し動作なし
     }
 };
 
 // 長押し動作があるかどうか
 const hasEditLongPress = (key: EditShortcutKey): boolean => {
-    return key === 'PrevPage' || key === 'NextPage' || key === 'ListView';
+    return key === 'PrevPage' || key === 'NextPage' || key === 'ListView'
+        || key === 'Insert' || key === 'Copy' || key === 'Cut';
+};
+
+// ピースショートカットをコードで検索（修飾キーなし）
+const findPieceShortcutByCode = (
+    shortcuts: PieceShortcuts, code: string,
+): PieceShortcutKey | null => {
+    for (const key of Object.keys(shortcuts) as PieceShortcutKey[]) {
+        if (shortcuts[key] === code) {
+            return key;
+        }
+    }
+    return null;
+};
+
+// 現在のページにピースがあるかチェック
+const currentPageHasPiece = (state: State): boolean => {
+    const page = state.fumen.pages[state.fumen.currentIndex];
+    return page?.piece !== undefined;
+};
+
+// ピースショートカット即時実行（keydown時）
+const executePieceShortcut = (key: PieceShortcutKey, actions: Actions) => {
+    switch (key) {
+    case 'MoveLeft':
+        actions.moveToLeft();
+        break;
+    case 'MoveRight':
+        actions.moveToRight();
+        break;
+    case 'Drop':
+        actions.harddrop();
+        break;
+    case 'RotateLeft':
+        actions.rotateToLeft();
+        break;
+    case 'RotateRight':
+        actions.rotateToRight();
+        break;
+    case 'Reset':
+        actions.clearPiece();
+        break;
+    }
+};
+
+// ピースDAS実行（長押し時、端まで移動）
+const executePieceDas = (key: PieceShortcutKey, actions: Actions) => {
+    if (key === 'MoveLeft') {
+        actions.moveToLeftEnd();
+    } else if (key === 'MoveRight') {
+        actions.moveToRightEnd();
+    }
+};
+
+// DAS動作があるかどうか
+const hasPieceDas = (key: PieceShortcutKey): boolean => {
+    return key === 'MoveLeft' || key === 'MoveRight';
 };
 
 // 現在の状態を取得するためのgetter (mainから呼び出し時に設定)
@@ -276,17 +398,14 @@ const handleKeyDown = (event: KeyboardEvent) => {
     // 入力フォーカス中は無効
     if (isInputFocused()) return;
 
-    // 修飾キー押下中は無効
-    if (event.ctrlKey || event.altKey || event.metaKey) return;
-
     // 修飾キー自体は無視
     if (isModifierKey(event.code)) return;
 
-    // リピート防止
+    // リピート防止（event.code のみで判定）
     if (pressedKey === event.code) return;
 
-    // 編集用ショートカットを優先して検索
-    const editShortcut = findEditShortcutByCode(state.mode.editShortcuts, event.code);
+    // 編集用ショートカットを検索（Mod+対応）
+    const editShortcut = findEditShortcutByEvent(state.mode.editShortcuts, event);
     const allowedKeys = allowedEditShortcuts[screen];
 
     if (editShortcut && allowedKeys.includes(editShortcut)) {
@@ -306,8 +425,35 @@ const handleKeyDown = (event: KeyboardEvent) => {
         return;
     }
 
-    // エディタ画面以外はパレットショートカット無効
+    // 修飾キー押下中はパレット/ピースショートカット無効
+    if (event.ctrlKey || event.altKey || event.metaKey) return;
+
+    // エディタ画面以外はパレット/ピースショートカット無効
     if (screen !== Screens.Editor) return;
+
+    // ピースショートカット：修飾キーなし、Shiftも無効
+    if (!event.shiftKey && currentPageHasPiece(state)) {
+        const pieceShortcut = findPieceShortcutByCode(state.mode.pieceShortcuts, event.code);
+        if (pieceShortcut) {
+            event.preventDefault();
+            pressedKey = event.code;
+            activeShortcut = { type: 'piece', key: pieceShortcut };
+
+            // 即時実行（keydownで発火）
+            executePieceShortcut(pieceShortcut, actions);
+
+            // DASタイマー開始（MoveLeft/MoveRightのみ）
+            if (hasPieceDas(pieceShortcut)) {
+                dasTriggered = false;
+                dasTimer = setTimeout(() => {
+                    executePieceDas(pieceShortcut, getActions!());
+                    dasTriggered = true;
+                    dasTimer = null;
+                }, state.mode.pieceShortcutDasMs);
+            }
+            return;
+        }
+    }
 
     // パレットショートカットを検索
     const palette = findPaletteByCode(state.mode.paletteShortcuts, event.code);
@@ -329,6 +475,13 @@ const handleKeyDown = (event: KeyboardEvent) => {
 const handleKeyUp = (event: KeyboardEvent) => {
     if (pressedKey !== event.code) return;
 
+    // DASタイマーをクリア
+    if (dasTimer) {
+        clearTimeout(dasTimer);
+        dasTimer = null;
+    }
+    dasTriggered = false;
+
     if (!getState || !getActions) {
         pressedKey = null;
         activeShortcut = null;
@@ -337,6 +490,13 @@ const handleKeyUp = (event: KeyboardEvent) => {
 
     const state = getState();
     const actions = getActions();
+
+    // ピースショートカットはkeydownで実行済み、keyupでは何もしない
+    if (activeShortcut?.type === 'piece') {
+        pressedKey = null;
+        activeShortcut = null;
+        return;
+    }
 
     // 長押しタイマーが残っていれば短押し
     if (longPressTimer) {
@@ -367,6 +527,11 @@ const handleBlur = () => {
         clearTimeout(longPressTimer);
         longPressTimer = null;
     }
+    if (dasTimer) {
+        clearTimeout(dasTimer);
+        dasTimer = null;
+    }
+    dasTriggered = false;
     pressedKey = null;
     activeShortcut = null;
     longPressExecuted = false;

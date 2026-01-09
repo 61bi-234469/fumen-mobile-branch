@@ -1,6 +1,6 @@
 import { action, actions } from '../actions';
 import { NextState, sequence } from './commons';
-import { EditShortcuts, PaletteShortcuts, State } from '../states';
+import { EditShortcuts, PaletteShortcuts, PieceShortcuts, State } from '../states';
 import { localStorageWrapper } from '../memento';
 import { Piece } from '../lib/enums';
 
@@ -12,6 +12,8 @@ export interface UserSettingsActions {
     keepGradient: (data: { gradient: string }) => action;
     keepPaletteShortcut: (data: { palette: keyof PaletteShortcuts, code: string }) => action;
     keepEditShortcut: (data: { shortcut: keyof EditShortcuts, code: string }) => action;
+    keepPieceShortcut: (data: { shortcut: keyof PieceShortcuts, code: string }) => action;
+    keepPieceShortcutDas: (data: { dasMs: number }) => action;
 }
 
 export const userSettingsActions: Readonly<UserSettingsActions> = {
@@ -25,6 +27,8 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
                     gradient: gradientToStr(state.mode.gradient),
                     paletteShortcuts: { ...state.mode.paletteShortcuts },
                     editShortcuts: { ...state.mode.editShortcuts },
+                    pieceShortcuts: { ...state.mode.pieceShortcuts },
+                    pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
                 },
             },
         };
@@ -39,6 +43,12 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             }),
             actions.changeEditShortcuts({
                 editShortcuts: state.temporary.userSettings.editShortcuts,
+            }),
+            actions.changePieceShortcuts({
+                pieceShortcuts: state.temporary.userSettings.pieceShortcuts,
+            }),
+            actions.changePieceShortcutDas({
+                dasMs: state.temporary.userSettings.pieceShortcutDasMs,
             }),
             saveToLocalStorage,
             actions.reopenCurrentPage(),
@@ -94,23 +104,41 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             return undefined;
         }
 
-        // 重複チェック：同じcodeを持つ他パレットをクリア（後勝ち）
-        const newShortcuts = { ...state.temporary.userSettings.paletteShortcuts };
+        // Cross-category deduplication: clear from all categories
+        const newPaletteShortcuts = { ...state.temporary.userSettings.paletteShortcuts };
+        const newEditShortcuts = { ...state.temporary.userSettings.editShortcuts };
+        const newPieceShortcuts = { ...state.temporary.userSettings.pieceShortcuts };
+
         if (code) {
-            for (const key of Object.keys(newShortcuts) as (keyof PaletteShortcuts)[]) {
-                if (newShortcuts[key] === code && key !== palette) {
-                    newShortcuts[key] = '';
+            // Clear from Palette (except current)
+            for (const key of Object.keys(newPaletteShortcuts) as (keyof PaletteShortcuts)[]) {
+                if (newPaletteShortcuts[key] === code && key !== palette) {
+                    newPaletteShortcuts[key] = '';
+                }
+            }
+            // Clear from Edit
+            for (const key of Object.keys(newEditShortcuts) as (keyof EditShortcuts)[]) {
+                if (newEditShortcuts[key] === code) {
+                    newEditShortcuts[key] = '';
+                }
+            }
+            // Clear from Piece
+            for (const key of Object.keys(newPieceShortcuts) as (keyof PieceShortcuts)[]) {
+                if (newPieceShortcuts[key] === code) {
+                    newPieceShortcuts[key] = '';
                 }
             }
         }
-        newShortcuts[palette] = code;
+        newPaletteShortcuts[palette] = code;
 
         return {
             temporary: {
                 ...state.temporary,
                 userSettings: {
                     ...state.temporary.userSettings,
-                    paletteShortcuts: newShortcuts,
+                    paletteShortcuts: newPaletteShortcuts,
+                    editShortcuts: newEditShortcuts,
+                    pieceShortcuts: newPieceShortcuts,
                 },
             },
         };
@@ -120,23 +148,100 @@ export const userSettingsActions: Readonly<UserSettingsActions> = {
             return undefined;
         }
 
-        // 重複チェック：同じcodeを持つ他ショートカットをクリア（後勝ち）
-        const newShortcuts = { ...state.temporary.userSettings.editShortcuts };
+        // Cross-category deduplication: clear from all categories
+        const newPaletteShortcuts = { ...state.temporary.userSettings.paletteShortcuts };
+        const newEditShortcuts = { ...state.temporary.userSettings.editShortcuts };
+        const newPieceShortcuts = { ...state.temporary.userSettings.pieceShortcuts };
+
         if (code) {
-            for (const key of Object.keys(newShortcuts) as (keyof EditShortcuts)[]) {
-                if (newShortcuts[key] === code && key !== shortcut) {
-                    newShortcuts[key] = '';
+            // Clear from Palette
+            for (const key of Object.keys(newPaletteShortcuts) as (keyof PaletteShortcuts)[]) {
+                if (newPaletteShortcuts[key] === code) {
+                    newPaletteShortcuts[key] = '';
+                }
+            }
+            // Clear from Edit (except current)
+            for (const key of Object.keys(newEditShortcuts) as (keyof EditShortcuts)[]) {
+                if (newEditShortcuts[key] === code && key !== shortcut) {
+                    newEditShortcuts[key] = '';
+                }
+            }
+            // Clear from Piece
+            for (const key of Object.keys(newPieceShortcuts) as (keyof PieceShortcuts)[]) {
+                if (newPieceShortcuts[key] === code) {
+                    newPieceShortcuts[key] = '';
                 }
             }
         }
-        newShortcuts[shortcut] = code;
+        newEditShortcuts[shortcut] = code;
 
         return {
             temporary: {
                 ...state.temporary,
                 userSettings: {
                     ...state.temporary.userSettings,
-                    editShortcuts: newShortcuts,
+                    paletteShortcuts: newPaletteShortcuts,
+                    editShortcuts: newEditShortcuts,
+                    pieceShortcuts: newPieceShortcuts,
+                },
+            },
+        };
+    },
+    keepPieceShortcut: ({ shortcut, code }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        // Cross-category deduplication: clear from all categories
+        const newPaletteShortcuts = { ...state.temporary.userSettings.paletteShortcuts };
+        const newEditShortcuts = { ...state.temporary.userSettings.editShortcuts };
+        const newPieceShortcuts = { ...state.temporary.userSettings.pieceShortcuts };
+
+        if (code) {
+            // Clear from Palette
+            for (const key of Object.keys(newPaletteShortcuts) as (keyof PaletteShortcuts)[]) {
+                if (newPaletteShortcuts[key] === code) {
+                    newPaletteShortcuts[key] = '';
+                }
+            }
+            // Clear from Edit
+            for (const key of Object.keys(newEditShortcuts) as (keyof EditShortcuts)[]) {
+                if (newEditShortcuts[key] === code) {
+                    newEditShortcuts[key] = '';
+                }
+            }
+            // Clear from Piece (except current)
+            for (const key of Object.keys(newPieceShortcuts) as (keyof PieceShortcuts)[]) {
+                if (newPieceShortcuts[key] === code && key !== shortcut) {
+                    newPieceShortcuts[key] = '';
+                }
+            }
+        }
+        newPieceShortcuts[shortcut] = code;
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    paletteShortcuts: newPaletteShortcuts,
+                    editShortcuts: newEditShortcuts,
+                    pieceShortcuts: newPieceShortcuts,
+                },
+            },
+        };
+    },
+    keepPieceShortcutDas: ({ dasMs }) => (state): NextState => {
+        if (!state.modal.userSettings) {
+            return undefined;
+        }
+
+        return {
+            temporary: {
+                ...state.temporary,
+                userSettings: {
+                    ...state.temporary.userSettings,
+                    pieceShortcutDasMs: dasMs,
                 },
             },
         };
@@ -150,6 +255,8 @@ const saveToLocalStorage = (state: Readonly<State>): NextState => {
         gradient: gradientToStr(state.mode.gradient),
         paletteShortcuts: JSON.stringify(state.mode.paletteShortcuts),
         editShortcuts: JSON.stringify(state.mode.editShortcuts),
+        pieceShortcuts: JSON.stringify(state.mode.pieceShortcuts),
+        pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
     });
     return undefined;
 };
