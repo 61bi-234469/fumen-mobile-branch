@@ -290,7 +290,7 @@ export interface TreeOperationActions {
     updateTreeDropSlot: (data: { slotIndex: number | null }) => action;
     updateTreeDragButtonTarget: (data: {
         parentNodeId: TreeNodeId | null;
-        buttonType: 'insert' | 'branch' | null;
+        buttonType: 'insert' | 'branch' | 'delete' | null;
     }) => action;
     endTreeDrag: () => action;
     executeTreeDrop: () => action;
@@ -1239,7 +1239,34 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         if (!state.tree.enabled) return undefined;
         if (state.tree.dragState.sourceNodeId === null) return undefined;
 
-        // Validate that we can move to this target
+        // For delete button, parentNodeId must equal sourceNodeId (delete self)
+        if (buttonType === 'delete') {
+            if (parentNodeId !== state.tree.dragState.sourceNodeId) {
+                return {
+                    tree: {
+                        ...state.tree,
+                        dragState: {
+                            ...state.tree.dragState,
+                            targetButtonParentId: null,
+                            targetButtonType: null,
+                        },
+                    },
+                };
+            }
+            // Skip canMoveNode validation for delete - it's handled by canDeleteNode in UI
+            return {
+                tree: {
+                    ...state.tree,
+                    dragState: {
+                        ...state.tree.dragState,
+                        targetButtonParentId: parentNodeId,
+                        targetButtonType: buttonType,
+                    },
+                },
+            };
+        }
+
+        // Validate that we can move to this target (for insert/branch)
         if (parentNodeId !== null) {
             const tree = getOrCreateTree(state);
             const allowDescendantOnButtonDrop = !state.tree.buttonDropMovesSubtree;
@@ -1313,6 +1340,69 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             targetButtonType,
         } = state.tree.dragState;
         const moveSubtreeOnButtonDrop = state.tree.buttonDropMovesSubtree;
+
+        // Priority 0: Handle DELETE button drops (self-deletion via left-edge badge)
+        if (sourceNodeId !== null && targetButtonType === 'delete') {
+            // Verify targetButtonParentId === sourceNodeId (delete requires dropping on self)
+            if (targetButtonParentId !== sourceNodeId) {
+                return treeOperationActions.endTreeDrag()(state);
+            }
+
+            const tree = getOrCreateTree(state);
+            const sourceNode = findNode(tree, sourceNodeId);
+            if (!sourceNode) {
+                return treeOperationActions.endTreeDrag()(state);
+            }
+
+            const removeDescendants = moveSubtreeOnButtonDrop;
+            const nodeIdsToRemove = removeDescendants ? getDescendants(tree, sourceNodeId) : [sourceNodeId];
+            const removedPageIndices = collectRemovedPageIndices(tree, nodeIdsToRemove, state.fumen.pages.length);
+
+            // Validate: cannot delete all pages
+            if (removedPageIndices.length === 0 || removedPageIndices.length >= state.fumen.pages.length) {
+                return treeOperationActions.endTreeDrag()(state);
+            }
+
+            const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+            const prunedTree = removeNode(tree, sourceNodeId, removeDescendants);
+            const newPages = removePagesByIndices(state.fumen.pages, removedPageIndices);
+            const shiftedTree = shiftTreeForRemovedPages(prunedTree, removedPageIndices);
+
+            // Determine next active node
+            const activeNodeId = state.tree.activeNodeId;
+            const activeRemoved = activeNodeId !== null && (
+                activeNodeId === sourceNodeId ||
+                (removeDescendants && isDescendant(tree, sourceNodeId, activeNodeId))
+            );
+            const preferredActiveNodeId = activeRemoved ? sourceNode.parentId : activeNodeId;
+            const nextActiveNodeId = resolveActiveNodeId(shiftedTree, preferredActiveNodeId);
+            const nextActiveNode = nextActiveNodeId ? findNode(shiftedTree, nextActiveNodeId) : undefined;
+            const nextCurrentIndex = nextActiveNode?.pageIndex ?? 0;
+
+            const normalized = normalizeTreeAndPages(shiftedTree, newPages, nextCurrentIndex, nextActiveNodeId);
+            const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
+            const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+            const { mementoActions } = require('./memento');
+
+            return sequence(state, [
+                mementoActions.registerHistoryTask({ task }),
+                () => ({
+                    fumen: {
+                        ...state.fumen,
+                        pages: normalized.pages,
+                        maxPage: normalized.pages.length,
+                        currentIndex: normalized.currentIndex,
+                    },
+                    tree: {
+                        ...state.tree,
+                        nodes: normalized.tree.nodes,
+                        rootId: normalized.tree.rootId,
+                        activeNodeId: nextActiveNodeId,
+                        dragState: initialTreeDragState,
+                    },
+                }),
+            ]);
+        }
 
         // Priority 1: Handle button drops (drag-to-button operation)
         if (sourceNodeId !== null && targetButtonParentId !== null && targetButtonType !== null) {
@@ -1536,11 +1626,12 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 if (!rerooted) {
                     return treeOperationActions.endTreeDrag()(state);
                 }
+                // Note: 'delete' is already handled above, so targetButtonType here is 'insert' | 'branch'
                 const reparentedTree = attachDetachedNodeToTarget(
                     rerooted.tree,
                     sourceNodeId,
                     targetButtonParentId,
-                    targetButtonType,
+                    targetButtonType as 'insert' | 'branch',
                 );
 
                 // Create history snapshots
@@ -1597,12 +1688,13 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             const targetIsDescendant = isDescendant(tree, sourceNodeId, targetButtonParentId);
             if (targetIsDescendant) {
                 // Detach first to avoid cycles, then attach under target
+                // Note: 'delete' is already handled above, so targetButtonType here is 'insert' | 'branch'
                 const detachedTree = detachNodeLeavingChildren(tree, sourceNodeId);
                 newTree = attachDetachedNodeToTarget(
                     detachedTree,
                     sourceNodeId,
                     targetButtonParentId,
-                    targetButtonType,
+                    targetButtonType as 'insert' | 'branch',
                 );
             } else if (targetButtonType === 'insert') {
                 // INSERT: Move node to become first child of target, taking over target's first child

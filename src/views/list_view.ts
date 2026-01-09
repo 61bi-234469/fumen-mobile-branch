@@ -10,11 +10,14 @@ import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
 import { TreeViewMode, TreeDragMode } from '../lib/fumen/tree_types';
 import { style, px } from '../lib/types';
-import { canMoveNode, findNode } from '../lib/fumen/tree_utils';
+import { canMoveNode, findNode, getDescendants } from '../lib/fumen/tree_utils';
 import { displayShortcut } from '../lib/shortcuts';
 import {
     TREE_ADD_BUTTON_SIZE,
     TREE_BUTTON_X,
+    TREE_DELETE_BADGE_OFFSET_X,
+    TREE_DELETE_BADGE_OFFSET_Y,
+    TREE_DELETE_BADGE_SIZE,
     TREE_NODE_WIDTH,
     calculateTreeViewLayout,
 } from '../lib/fumen/tree_view_layout';
@@ -339,11 +342,51 @@ export const view: View<State, Actions> = (state, actions) => {
         let foundNodeId: string | null = null;
         let foundSlotIndex: number | null = null;
         let foundButtonParentId: string | null = null;
-        let foundButtonType: 'insert' | 'branch' | null = null;
+        let foundButtonType: 'insert' | 'branch' | 'delete' | null = null;
 
         const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
 
-        // First pass: Check ALL buttons (they have priority over nodes)
+        // Calculate minDepth for left-edge node detection
+        let minDepth = Infinity;
+        for (const node of state.tree.nodes) {
+            const pos = treeViewLayout.layout.positions.get(node.id);
+            if (pos) {
+                minDepth = Math.min(minDepth, pos.x);
+            }
+        }
+
+        // Check delete badge first (only for drag source, left-edge only)
+        if (sourceNodeId) {
+            const sourceNodeLayout = treeViewLayout.nodeLayouts.get(sourceNodeId);
+            const sourcePos = treeViewLayout.layout.positions.get(sourceNodeId);
+            if (sourceNodeLayout && sourcePos && sourcePos.x === minDepth) {
+                const deleteBadgeX = sourceNodeLayout.x - TREE_DELETE_BADGE_OFFSET_X;
+                const deleteBadgeY = sourceNodeLayout.y + TREE_DELETE_BADGE_OFFSET_Y;
+                const deleteHitRadius = TREE_DELETE_BADGE_SIZE / 2 + 6;
+                const distToDelete = Math.sqrt(
+                    (svgX - deleteBadgeX) ** 2 + (svgY - deleteBadgeY) ** 2,
+                );
+
+                if (distToDelete <= deleteHitRadius) {
+                    // Check delete eligibility
+                    const nodeIds = buttonDropMovesSubtree ? getDescendants(tree, sourceNodeId) : [sourceNodeId];
+                    const pageIndices = new Set<number>();
+                    for (const id of nodeIds) {
+                        const node = findNode(tree, id);
+                        if (node && node.pageIndex >= 0) pageIndices.add(node.pageIndex);
+                    }
+                    const canDelete = pageIndices.size > 0 && pageIndices.size < state.fumen.pages.length;
+
+                    if (canDelete) {
+                        foundButtonParentId = sourceNodeId;
+                        foundButtonType = 'delete';
+                    }
+                }
+            }
+        }
+
+        // First pass: Check ALL buttons (they have priority over nodes) - only if no delete badge hit
+        if (foundButtonParentId === null) {
         for (const node of state.tree.nodes) {
             const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
             if (!nodeLayout) continue;
@@ -399,6 +442,7 @@ export const view: View<State, Actions> = (state, actions) => {
                 }
             }
         }
+        } // end if (foundButtonParentId === null) for insert/branch buttons
 
         // Second pass: Check node bounds (only if no button was found)
         if (foundButtonParentId === null) {

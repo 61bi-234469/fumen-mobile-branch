@@ -6,7 +6,7 @@ import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { Page } from '../../lib/fumen/types';
 import { TreeNode, TreeNodeId, SerializedTree, TreeDragMode } from '../../lib/fumen/tree_types';
-import { findNode, canMoveNode, isDescendant, isVirtualNode } from '../../lib/fumen/tree_utils';
+import { findNode, canMoveNode, isDescendant, isVirtualNode, getDescendants } from '../../lib/fumen/tree_utils';
 import { generateThumbnail } from '../../lib/thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
 import {
@@ -15,6 +15,9 @@ import {
     TREE_COMMENT_MARGIN_X,
     TREE_COMMENT_TOP_OFFSET,
     TREE_COMMENT_WIDTH,
+    TREE_DELETE_BADGE_OFFSET_X,
+    TREE_DELETE_BADGE_OFFSET_Y,
+    TREE_DELETE_BADGE_SIZE,
     TREE_HORIZONTAL_GAP,
     TREE_NODE_RADIUS,
     TREE_NODE_WIDTH,
@@ -48,7 +51,7 @@ interface Props {
     dragTargetNodeId: TreeNodeId | null;
     dropSlotIndex: number | null;
     dragTargetButtonParentId: TreeNodeId | null;
-    dragTargetButtonType: 'insert' | 'branch' | null;
+    dragTargetButtonType: 'insert' | 'branch' | 'delete' | null;
     buttonDropMovesSubtree: boolean;
     trimTopBlank: boolean;
     autoFocusPending?: boolean;
@@ -60,7 +63,7 @@ interface Props {
         onDragStart: (nodeId: TreeNodeId) => void;
         onDragOverNode: (nodeId: TreeNodeId) => void;
         onDragOverSlot: (slotIndex: number) => void;
-        onDragOverButton: (parentNodeId: TreeNodeId, buttonType: 'insert' | 'branch') => void;
+        onDragOverButton: (parentNodeId: TreeNodeId, buttonType: 'insert' | 'branch' | 'delete') => void;
         onDragLeaveButton: () => void;
         onDragLeave: () => void;
         onDrop: () => void;
@@ -78,6 +81,28 @@ const getNodeLayout = (
     nodeId: TreeNodeId,
 ): TreeNodeLayout | null => {
     return nodeLayouts.get(nodeId) ?? null;
+};
+
+/**
+ * Check if a node (and optionally its descendants) can be deleted.
+ * Returns true if deletion would not remove all pages.
+ */
+const canDeleteNode = (
+    tree: SerializedTree,
+    nodeId: TreeNodeId,
+    moveSubtree: boolean,
+    totalPages: number,
+): boolean => {
+    const nodeIds = moveSubtree ? getDescendants(tree, nodeId) : [nodeId];
+    const pageIndices = new Set<number>();
+    for (const id of nodeIds) {
+        const node = findNode(tree, id);
+        if (node && node.pageIndex >= 0) {
+            pageIndices.add(node.pageIndex);
+        }
+    }
+    const count = pageIndices.size;
+    return count > 0 && count < totalPages;
 };
 
 /**
@@ -148,6 +173,9 @@ const renderNode = (
     scale: number,
     hideButtons: boolean,
     trimTopBlank: boolean,
+    isLeftEdgeNode: boolean,
+    isDeleteButtonHighlighted: boolean,
+    canDelete: boolean,
 ) => {
     const pos = { x: nodeLayout.x, y: nodeLayout.y };
 
@@ -341,6 +369,53 @@ const renderNode = (
                     r={8}
                     fill="#FF9800"
                 />
+            )}
+
+            {/* Delete badge - appears on drag source when it's a left-edge node */}
+            {isDragSource && isLeftEdgeNode && (
+                <g
+                    transform={`translate(${-TREE_DELETE_BADGE_OFFSET_X}, ${TREE_DELETE_BADGE_OFFSET_Y})`}
+                    style={style({ cursor: canDelete ? 'pointer' : 'not-allowed' })}
+                    onmouseenter={(e: MouseEvent) => {
+                        if (isDragging && canDelete) {
+                            e.stopPropagation();
+                            actions.onDragOverButton(node.id, 'delete');
+                        }
+                    }}
+                    onmousemove={(e: MouseEvent) => {
+                        if (isDragging && canDelete) {
+                            e.stopPropagation();
+                            actions.onDragOverButton(node.id, 'delete');
+                        }
+                    }}
+                    onmouseup={() => {
+                        if (isDragging && canDelete) {
+                            actions.onDrop();
+                        }
+                    }}
+                >
+                    <circle
+                        r={TREE_DELETE_BADGE_SIZE / 2 + 6}
+                        fill="transparent"
+                    />
+                    <circle
+                        r={TREE_DELETE_BADGE_SIZE / 2}
+                        fill={canDelete
+                            ? (isDeleteButtonHighlighted ? '#EF5350' : '#F44336')
+                            : '#9E9E9E'}
+                        stroke="#fff"
+                        stroke-width={isDeleteButtonHighlighted ? 3 : 2}
+                    />
+                    <text
+                        text-anchor="middle"
+                        dominant-baseline="central"
+                        font-size="16"
+                        font-weight="bold"
+                        fill="#fff"
+                    >
+                        −
+                    </text>
+                </g>
             )}
 
             {/* Add buttons - INSERT (green) and Branch (orange) */}
@@ -629,6 +704,15 @@ export const FumenGraph: Component<Props> = ({
     const pagesObj = new Pages(pages);
     const renderableNodes = tree.nodes.filter(node => !isVirtualNode(node));
 
+    // Calculate minDepth for left-edge node detection
+    let minDepth = Infinity;
+    for (const node of renderableNodes) {
+        const pos = layout.positions.get(node.id);
+        if (pos) {
+            minDepth = Math.min(minDepth, pos.x);
+        }
+    }
+
     // Render connections
     const connections = layout.connections.map(conn =>
         renderConnection(treeViewLayout.nodeLayouts, conn.fromId, conn.toId, conn.isBranch, activeNodeId),
@@ -667,9 +751,19 @@ export const FumenGraph: Component<Props> = ({
         const isBranchButtonHighlighted = isDragging
             && dragTargetButtonParentId === node.id
             && dragTargetButtonType === 'branch';
+        const isDeleteButtonHighlighted = isDragging
+            && dragTargetButtonParentId === node.id
+            && dragTargetButtonType === 'delete';
 
         // Check if this node is the parent of the drag source
         const isParentOfDragSource = isDragging && sourceNode != null && sourceNode.parentId === node.id;
+
+        // Check if this is a left-edge node (for delete badge)
+        const nodePos = layout.positions.get(node.id);
+        const isLeftEdgeNode = nodePos !== undefined && nodePos.x === minDepth;
+
+        // Check if this node can be deleted
+        const canDelete = isDragSource && canDeleteNode(tree, node.id, buttonDropMovesSubtree, pages.length);
 
         const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
         if (!nodeLayout) {
@@ -695,6 +789,9 @@ export const FumenGraph: Component<Props> = ({
             scale,
             hideButtons,
             trimTopBlank,
+            isLeftEdgeNode,
+            isDeleteButtonHighlighted,
+            canDelete,
         );
     });
 
@@ -885,8 +982,32 @@ export const FumenGraph: Component<Props> = ({
 
         // First, check for button hits (priority over slots)
         const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
-        let foundButton: { nodeId: TreeNodeId; type: 'insert' | 'branch' } | null = null;
+        let foundButton: { nodeId: TreeNodeId; type: 'insert' | 'branch' | 'delete' } | null = null;
 
+        // Check delete badge first (only for drag source node, left-edge only)
+        if (dragSourceNodeId) {
+            const sourceNodeLayout = treeViewLayout.nodeLayouts.get(dragSourceNodeId);
+            const sourcePos = layout.positions.get(dragSourceNodeId);
+            if (sourceNodeLayout && sourcePos && sourcePos.x === minDepth) {
+                const deleteBadgeX = sourceNodeLayout.x - TREE_DELETE_BADGE_OFFSET_X;
+                const deleteBadgeY = sourceNodeLayout.y + TREE_DELETE_BADGE_OFFSET_Y;
+                const deleteHitRadius = TREE_DELETE_BADGE_SIZE / 2 + 6;
+                const distToDelete = Math.sqrt(
+                    (mouseX - deleteBadgeX) ** 2 + (mouseY - deleteBadgeY) ** 2,
+                );
+
+                if (distToDelete <= deleteHitRadius) {
+                    const canDelete = canDeleteNode(tree, dragSourceNodeId, buttonDropMovesSubtree, pages.length);
+                    if (canDelete) {
+                        foundButton = { nodeId: dragSourceNodeId, type: 'delete' };
+                        console.log('>>> DELETE BADGE HIT:', foundButton);
+                    }
+                }
+            }
+        }
+
+        // Check insert/branch buttons (only if no delete badge hit)
+        if (foundButton === null) {
         for (const node of tree.nodes) {
             const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
             if (!nodeLayout) continue;
@@ -934,6 +1055,7 @@ export const FumenGraph: Component<Props> = ({
                 }
             }
         }
+        } // end if (foundButton === null)
 
         // If button found, update button target and clear slot
         if (foundButton !== null) {

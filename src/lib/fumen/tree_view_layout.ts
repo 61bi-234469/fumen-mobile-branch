@@ -21,6 +21,11 @@ export const TREE_COMMENT_WIDTH = TREE_NODE_WIDTH - TREE_COMMENT_MARGIN_X * 2;
 export const TREE_COMMENT_HEIGHT =
     TREE_NODE_EXTRA_HEIGHT - TREE_COMMENT_TOP_OFFSET - TREE_COMMENT_BOTTOM_PADDING;
 
+// Delete badge constants (smaller badge that appears on drag source for left-edge nodes)
+export const TREE_DELETE_BADGE_SIZE = 22;
+export const TREE_DELETE_BADGE_OFFSET_X = 6;
+export const TREE_DELETE_BADGE_OFFSET_Y = 8;
+
 export interface TreeNodeLayout {
     id: TreeNodeId;
     x: number;
