@@ -45,6 +45,7 @@ import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
 import { Pages, PageFieldOperation } from '../lib/pages';
+import { localStorageWrapper } from '../memento';
 
 // ============================================================================
 // Helpers for root reparenting
@@ -1110,7 +1111,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 main.refresh();
             }, 500);
         }
-        return {
+        const nextTree = {
             tree: {
                 ...state.tree,
                 ...data,
@@ -1122,6 +1123,16 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     : (data.autoFocusPending ?? state.tree.autoFocusPending),
             },
         };
+
+        if (data.buttonDropMovesSubtree !== undefined || data.grayAfterLineClear !== undefined) {
+            localStorageWrapper.saveViewSettings({
+                trimTopBlank: state.listView.trimTopBlank,
+                buttonDropMovesSubtree: nextTree.tree.buttonDropMovesSubtree,
+                grayAfterLineClear: nextTree.tree.grayAfterLineClear,
+            });
+        }
+
+        return nextTree;
     },
 
     // ============================================================================

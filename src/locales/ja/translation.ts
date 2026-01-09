@@ -71,7 +71,7 @@ export const resources = {
             NotSet: '未設定',
             MoveLeft: '左移動',
             MoveRight: '右移動',
-            Drop: 'ハードドロップ',
+            Drop: 'DROP',
             RotateLeft: '左回転',
             RotateRight: '右回転',
             Reset: 'ピースリセット',

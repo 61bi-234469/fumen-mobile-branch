@@ -358,6 +358,22 @@ const loadUserSettings = () => {
         updated = true;
     }
 
+    const viewSettings = localStorageWrapper.loadViewSettings();
+    if (viewSettings.trimTopBlank !== undefined) {
+        main.setListViewTrimTopBlank({ enabled: viewSettings.trimTopBlank });
+    }
+
+    const treeViewSettings: Partial<State['tree']> = {};
+    if (viewSettings.buttonDropMovesSubtree !== undefined) {
+        treeViewSettings.buttonDropMovesSubtree = viewSettings.buttonDropMovesSubtree;
+    }
+    if (viewSettings.grayAfterLineClear !== undefined) {
+        treeViewSettings.grayAfterLineClear = viewSettings.grayAfterLineClear;
+    }
+    if (Object.keys(treeViewSettings).length > 0) {
+        main.setTreeState(treeViewSettings);
+    }
+
     if (updated) {
         main.reopenCurrentPage();
     }

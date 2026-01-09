@@ -9,6 +9,7 @@ import { Page } from '../lib/fumen/types';
 import { downloadImage, generateListViewExportImage, generateTreeViewExportImage } from '../lib/thumbnail';
 import { decode, encode } from '../lib/fumen/fumen';
 import { SerializedTree, TreeViewMode } from '../lib/fumen/tree_types';
+import { localStorageWrapper } from '../memento';
 import {
     createTreeFromPages,
     embedTreeInPages,
@@ -403,6 +404,15 @@ export const listViewActions: Readonly<ListViewActions> = {
         };
     },
     setListViewTrimTopBlank: ({ enabled }) => (state): NextState => {
+        if (state.listView.trimTopBlank === enabled) {
+            return undefined;
+        }
+
+        localStorageWrapper.saveViewSettings({
+            trimTopBlank: enabled,
+            buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+            grayAfterLineClear: state.tree.grayAfterLineClear,
+        });
         return {
             listView: {
                 ...state.listView,

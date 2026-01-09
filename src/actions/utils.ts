@@ -185,13 +185,21 @@ export const utilsActions: Readonly<UtilsActions> = {
         const finalScreenParam = screenParam ?? urlScreenParam;
 
         // Set up tree state
+        const preservedTreeSettings = {
+            buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
+            grayAfterLineClear: state.tree.grayAfterLineClear,
+        };
         let treeState = normalizedTree ? {
             ...initialTreeState,
+            ...preservedTreeSettings,
             enabled: true,
             nodes: normalizedTree.nodes,
             rootId: normalizedTree.rootId,
             activeNodeId: getDefaultActiveNodeId(normalizedTree),
-        } : { ...initialTreeState };
+        } : {
+            ...initialTreeState,
+            ...preservedTreeSettings,
+        };
 
         if (finalTreeEnabledParam !== undefined) {
             if (finalTreeEnabledParam) {

@@ -14,8 +14,8 @@ export type PaletteShortcuts = {
 };
 
 export const defaultPaletteShortcuts: PaletteShortcuts = {
-    I: '', L: '', O: '', Z: '', T: '', J: '', S: '',
-    Empty: '', Gray: '', Comp: '',
+    I: 'KeyQ', L: 'KeyW', O: 'KeyE', Z: 'KeyR', T: 'KeyA', J: 'KeyS', S: 'KeyD',
+    Empty: 'KeyF', Gray: 'KeyG', Comp: 'KeyC',
 };
 
 export type EditShortcuts = {
@@ -24,8 +24,8 @@ export type EditShortcuts = {
 };
 
 export const defaultEditShortcuts: EditShortcuts = {
-    InsertPage: '', PrevPage: '', NextPage: '', Menu: '', ListView: '', TreeView: '', EditHome: '',
-    Undo: 'Mod+KeyZ', Redo: 'Mod+KeyY', Add: 'Mod+KeyM',
+    InsertPage: 'Space', PrevPage: 'Digit1', NextPage: 'Digit2', Menu: 'KeyM', ListView: 'Tab', TreeView: 'KeyT', EditHome: 'KeyH',
+    Undo: 'Mod+KeyZ', Redo: 'Mod+KeyY', Add: 'KeyN',
     Insert: 'Mod+KeyV', Copy: 'Mod+KeyC', Cut: 'Mod+KeyX',
 };
 

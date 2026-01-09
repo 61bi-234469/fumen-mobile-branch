@@ -168,6 +168,12 @@ interface UserSettings {
     pieceShortcutDasMs: number;
 }
 
+interface ViewSettings {
+    trimTopBlank: boolean;
+    buttonDropMovesSubtree: boolean;
+    grayAfterLineClear: boolean;
+}
+
 const safer = {
     fumenV115: (value: any): string | undefined => {
         const safeString = safer.string(value);
@@ -214,6 +220,28 @@ export const localStorageWrapper = {
             editShortcuts: safer.string(obj.editShortcuts),
             pieceShortcuts: safer.string(obj.pieceShortcuts),
             pieceShortcutDasMs: safer.number(obj.pieceShortcutDasMs),
+        };
+    },
+    saveViewSettings: (data: ViewSettings) => {
+        localStorage.setItem('view-settings@1', JSON.stringify(data));
+    },
+    loadViewSettings: (): Partial<ViewSettings> => {
+        const data = localStorage.getItem('view-settings@1');
+        if (!data) {
+            return {};
+        }
+
+        let obj: any;
+        try {
+            obj = JSON.parse(data);
+        } catch {
+            return {};
+        }
+
+        return {
+            trimTopBlank: safer.boolean(obj.trimTopBlank),
+            buttonDropMovesSubtree: safer.boolean(obj.buttonDropMovesSubtree),
+            grayAfterLineClear: safer.boolean(obj.grayAfterLineClear),
         };
     },
 };

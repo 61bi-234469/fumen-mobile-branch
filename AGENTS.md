@@ -1,4 +1,4 @@
-﻿# AGENTS.md
+# AGENTS.md
 
 Project: fumen-for-mobile (tetfu-sp). A Hyperapp 1.x + TypeScript PWA for viewing/editing Tetris fumen on mobile/desktop; Konva renders the 10x23 field.
 
@@ -23,4 +23,4 @@ Project: fumen-for-mobile (tetfu-sp). A Hyperapp 1.x + TypeScript PWA for viewin
 - TypeScript strict + TSLint (Airbnb); 4-space indent, ~120 char lines; Hyperapp JSX factory is `h`
 - Keep actions pure/immutable; prefer using existing domain actions instead of ad-hoc state edits
 - When changing fumen logic, run Jest; for UI flows or modal/list changes, run Cypress
-- Update translations when adding user-visible text; keep Reader/Editor/ListView behaviors in sync
+- Update translations when adding user-visible text; keep Reader/Editor/ListView behaviors in sync
