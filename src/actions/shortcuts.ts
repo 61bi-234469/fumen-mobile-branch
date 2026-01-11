@@ -270,7 +270,13 @@ const executeEditShortPress = (key: EditShortcutKey, state: State, actions: Acti
         actions.insertNewPage({ index: state.fumen.currentIndex + 1 });
         break;
     case 'Insert':
-        actions.insertPageFromClipboard();
+        // TreeView では独立ツリーとして追加（右上INSERTボタンと同じ動作）
+        if (screen === Screens.ListView && state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree) {
+            actions.importPagesFromClipboard({ mode: 'add' });
+        } else {
+            // Reader/Editor/ListView(List表示) では現在ページの後に挿入
+            actions.insertPageFromClipboard();
+        }
         break;
     case 'Copy':
         actions.copyCurrentPageToClipboard();
@@ -505,12 +511,12 @@ const handleKeyUp = (event: KeyboardEvent) => {
 
         if (activeShortcut) {
             if (activeShortcut.type === 'edit') {
-                // 非Editor画面では Insert/Copy/Cut の短押しを無効化（長押しのみ有効）
+                // 非Editor画面では Copy/Cut の短押しを無効化（長押しのみ有効）
+                // Insert は Reader/ListView で短押し有効
                 const screen = state.mode.screen;
-                const isClipboardShortcut = activeShortcut.key === 'Insert'
-                    || activeShortcut.key === 'Copy'
+                const isCopyCutShortcut = activeShortcut.key === 'Copy'
                     || activeShortcut.key === 'Cut';
-                if (!(screen !== Screens.Editor && isClipboardShortcut)) {
+                if (!(screen !== Screens.Editor && isCopyCutShortcut)) {
                     executeEditShortPress(activeShortcut.key, state, actions);
                 }
             } else if (activeShortcut.type === 'palette') {
