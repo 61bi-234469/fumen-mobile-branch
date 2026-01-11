@@ -1,4 +1,4 @@
-import { Piece, Rotation, toPositionIndex, TouchTypes } from '../lib/enums';
+import { ModeTypes, Piece, Rotation, toPositionIndex, TouchTypes } from '../lib/enums';
 import { action, actions } from '../actions';
 import { NextState, sequence } from './commons';
 import { putPieceActions } from './put_piece';
@@ -12,6 +12,7 @@ import { fillRowActions } from './fill_row';
 import { ViewError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
 import { getBlockPositions } from '../lib/piece';
+import { State } from '../states';
 
 export interface FieldEditorActions {
     fixInferencePiece(): action;
@@ -31,6 +32,16 @@ export interface FieldEditorActions {
     ontouchStartSentLine(data: { index: number }): action;
 
     ontouchMoveSentLine(data: { index: number }): action;
+
+    onrightStartField(data: { index: number }): action;
+
+    onrightMoveField(data: { index: number }): action;
+
+    onrightEnd(): action;
+
+    onrightStartSentLine(data: { index: number }): action;
+
+    onrightMoveSentLine(data: { index: number }): action;
 
     selectPieceColor(data: { piece: Piece }): action;
 
@@ -58,6 +69,27 @@ export interface FieldEditorActions {
 
     harddrop(): action;
 }
+
+// Helper to determine right-click override mode based on current ModeType
+const getRightClickOverride = (state: State): { touch: TouchTypes; piece: Piece } => ({
+    touch: state.mode.type === ModeTypes.Fill ? TouchTypes.Fill
+        : state.mode.type === ModeTypes.FillRow ? TouchTypes.FillRow
+        : TouchTypes.Drawing,
+    piece: Piece.Empty,
+});
+
+// Wrapper to run an action with overridden mode (for right-click erase)
+const runWithOverride = (
+    state: State,
+    actionFn: (s: State) => NextState,
+): NextState => {
+    const override = getRightClickOverride(state);
+    const patched: State = {
+        ...state,
+        mode: { ...state.mode, touch: override.touch, piece: override.piece },
+    };
+    return actionFn(patched);
+};
 
 export const fieldEditorActions: Readonly<FieldEditorActions> = {
     fixInferencePiece: () => (state): NextState => {
@@ -159,6 +191,31 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             return fillActions.ontouchMoveSentLine({ index })(state);
         }
         return undefined;
+    },
+    onrightStartField: ({ index }) => (state): NextState => {
+        return runWithOverride(state, (patchedState) => {
+            return fieldEditorActions.ontouchStartField({ index })(patchedState);
+        });
+    },
+    onrightMoveField: ({ index }) => (state): NextState => {
+        return runWithOverride(state, (patchedState) => {
+            return fieldEditorActions.ontouchMoveField({ index })(patchedState);
+        });
+    },
+    onrightEnd: () => (state): NextState => {
+        return runWithOverride(state, (patchedState) => {
+            return fieldEditorActions.ontouchEnd()(patchedState);
+        });
+    },
+    onrightStartSentLine: ({ index }) => (state): NextState => {
+        return runWithOverride(state, (patchedState) => {
+            return fieldEditorActions.ontouchStartSentLine({ index })(patchedState);
+        });
+    },
+    onrightMoveSentLine: ({ index }) => (state): NextState => {
+        return runWithOverride(state, (patchedState) => {
+            return fieldEditorActions.ontouchMoveSentLine({ index })(patchedState);
+        });
     },
     selectPieceColor: ({ piece }) => (state): NextState => {
         return sequence(state, [
