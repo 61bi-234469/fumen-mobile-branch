@@ -2,7 +2,8 @@ import { Page } from './fumen/types';
 import { Pages, PageFieldOperation, isTextCommentResult } from './pages';
 import { decidePieceColor } from './colors';
 import { HighlightType } from '../state_types';
-import { FieldConstants } from './enums';
+import { FieldConstants, Piece, Rotation } from './enums';
+import { getBlocks } from './piece';
 import { SerializedTree, TreeNodeId } from './fumen/tree_types';
 import { calculateTreeLayout, findNode, getNodeDfsNumbers } from './fumen/tree_utils';
 
@@ -169,52 +170,10 @@ const findTopFilledRow = (fieldArray: (number | undefined)[]): number | null => 
 };
 
 function getPiecePositions(piece: number, rotation: number): number[][] {
-    const shapes: { [key: number]: { [key: number]: number[][] } } = {
-        1: {
-            0: [[0, 0], [-1, 0], [1, 0], [2, 0]],
-            1: [[0, 0], [0, -1], [0, 1], [0, 2]],
-            2: [[0, 0], [-1, 0], [1, 0], [-2, 0]],
-            3: [[0, 0], [0, -1], [0, 1], [0, -2]],
-        },
-        2: {
-            0: [[0, 0], [-1, 0], [1, 0], [-1, 1]],
-            1: [[0, 0], [0, -1], [0, 1], [1, 1]],
-            2: [[0, 0], [-1, 0], [1, 0], [1, -1]],
-            3: [[0, 0], [0, -1], [0, 1], [-1, -1]],
-        },
-        3: {
-            0: [[0, 0], [1, 0], [0, 1], [1, 1]],
-            1: [[0, 0], [1, 0], [0, 1], [1, 1]],
-            2: [[0, 0], [1, 0], [0, 1], [1, 1]],
-            3: [[0, 0], [1, 0], [0, 1], [1, 1]],
-        },
-        4: {
-            0: [[0, 0], [-1, 0], [0, 1], [1, 1]],
-            1: [[0, 0], [0, 1], [1, 0], [1, -1]],
-            2: [[0, 0], [-1, -1], [0, -1], [1, 0]],
-            3: [[0, 0], [-1, 0], [-1, 1], [0, -1]],
-        },
-        5: {
-            0: [[0, 0], [-1, 0], [1, 0], [0, 1]],
-            1: [[0, 0], [0, -1], [0, 1], [1, 0]],
-            2: [[0, 0], [-1, 0], [1, 0], [0, -1]],
-            3: [[0, 0], [0, -1], [0, 1], [-1, 0]],
-        },
-        6: {
-            0: [[0, 0], [-1, 0], [1, 0], [1, 1]],
-            1: [[0, 0], [0, -1], [0, 1], [1, -1]],
-            2: [[0, 0], [-1, 0], [1, 0], [-1, -1]],
-            3: [[0, 0], [0, -1], [0, 1], [-1, 1]],
-        },
-        7: {
-            0: [[0, 0], [1, 0], [0, 1], [-1, 1]],
-            1: [[0, 0], [0, -1], [1, 0], [1, 1]],
-            2: [[0, 0], [1, -1], [0, -1], [-1, 0]],
-            3: [[0, 0], [-1, 0], [-1, -1], [0, 1]],
-        },
-    };
-
-    return shapes[piece]?.[rotation] || [];
+    if (piece < Piece.I || piece > Piece.S) {
+        return [];
+    }
+    return getBlocks(piece as Piece, rotation as Rotation);
 }
 
 // List view export constants
