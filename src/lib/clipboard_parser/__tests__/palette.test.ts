@@ -103,5 +103,35 @@ describe('palette', () => {
         test('returns null for unknown color', () => {
             expect(matchColorToPiece({ r: 255, g: 100, b: 200 })).toBeNull();
         });
+
+        describe('TETR.IO variant colors (from color_sample/)', () => {
+            test('matches teal-green to I piece', () => {
+                expect(matchColorToPiece({ r: 60, g: 191, b: 143 })).toBe(Piece.I);
+            });
+
+            test('matches golden yellow to O piece', () => {
+                expect(matchColorToPiece({ r: 192, g: 166, b: 60 })).toBe(Piece.O);
+            });
+
+            test('matches variant purple to T piece', () => {
+                expect(matchColorToPiece({ r: 173, g: 72, b: 163 })).toBe(Piece.T);
+            });
+
+            test('matches variant orange to L piece', () => {
+                expect(matchColorToPiece({ r: 193, g: 111, b: 61 })).toBe(Piece.L);
+            });
+
+            test('matches purple-blue to J piece', () => {
+                expect(matchColorToPiece({ r: 88, g: 71, b: 173 })).toBe(Piece.J);
+            });
+
+            test('matches lime green to S piece', () => {
+                expect(matchColorToPiece({ r: 141, g: 191, b: 60 })).toBe(Piece.S);
+            });
+
+            test('matches variant red to Z piece', () => {
+                expect(matchColorToPiece({ r: 195, g: 63, b: 70 })).toBe(Piece.Z);
+            });
+        });
     });
 });

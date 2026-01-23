@@ -15,42 +15,49 @@ export const TETRIO_PALETTE: Record<Piece, RGBColor[]> = {
         { r: 0, g: 255, b: 255 },
         { r: 49, g: 199, b: 239 },
         { r: 66, g: 182, b: 206 },
+        { r: 60, g: 191, b: 143 },   // TETR.IO variant (teal-green)
     ],
     [Piece.O]: [
         { r: 200, g: 200, b: 0 },
         { r: 255, g: 255, b: 0 },
         { r: 247, g: 211, b: 8 },
         { r: 239, g: 239, b: 82 },
+        { r: 192, g: 166, b: 60 },   // TETR.IO variant (golden)
     ],
     [Piece.T]: [
         { r: 160, g: 0, b: 160 },
         { r: 255, g: 0, b: 255 },
         { r: 173, g: 77, b: 156 },
         { r: 181, g: 49, b: 189 },
+        { r: 173, g: 72, b: 163 },   // TETR.IO variant
     ],
     [Piece.L]: [
         { r: 200, g: 100, b: 0 },
         { r: 255, g: 165, b: 0 },
         { r: 239, g: 121, b: 33 },
         { r: 239, g: 149, b: 57 },
+        { r: 193, g: 111, b: 61 },   // TETR.IO variant
     ],
     [Piece.J]: [
         { r: 0, g: 0, b: 200 },
         { r: 0, g: 0, b: 255 },
         { r: 66, g: 105, b: 190 },
         { r: 90, g: 101, b: 173 },
+        { r: 88, g: 71, b: 173 },    // TETR.IO variant (purple-blue)
     ],
     [Piece.S]: [
         { r: 0, g: 200, b: 0 },
         { r: 0, g: 255, b: 0 },
         { r: 102, g: 198, b: 92 },
         { r: 107, g: 181, b: 107 },
+        { r: 141, g: 191, b: 60 },   // TETR.IO variant (lime green)
     ],
     [Piece.Z]: [
         { r: 200, g: 0, b: 0 },
         { r: 255, g: 0, b: 0 },
         { r: 239, g: 32, b: 41 },
         { r: 239, g: 82, b: 82 },
+        { r: 195, g: 63, b: 70 },    // TETR.IO variant
     ],
     [Piece.Empty]: [
         { r: 0, g: 0, b: 0 },
