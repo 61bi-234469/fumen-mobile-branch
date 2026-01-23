@@ -92,6 +92,22 @@ export const resources = {
         Buttons: {
             Close: 'Close',
         },
+        Messages: {
+            InsertedFromClipboard: 'Inserted from clipboard',
+            InsertedField: 'Inserted field from clipboard',
+            ReplacedPages: 'Replaced with {{count}} pages',
+            ReplacedWithField: 'Replaced with field from clipboard',
+        },
+        Errors: {
+            NoValidData: 'No valid data in clipboard',
+            FailedToInsert: 'Failed to insert',
+            FailedToReplace: 'Failed to replace',
+            InvalidRowCount: 'Invalid row count (expected 20)',
+            InvalidColumnCount: 'Invalid column count (expected 10)',
+            InvalidSymbol: 'Invalid symbol in field',
+            InvalidImageRatio: 'Invalid image ratio (expected 2:1)',
+            TooManyUnknownColors: 'Too many unknown colors in image',
+        },
     },
     Menu: {
         Title: 'Menu',

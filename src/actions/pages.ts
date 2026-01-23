@@ -30,6 +30,8 @@ import {
 import { SerializedTree } from '../lib/fumen/tree_types';
 import { toTreeOperationTask, createSnapshot } from './tree_operations';
 import { mementoActions } from './memento';
+import { parseClipboard } from '../lib/clipboard_parser';
+import { i18n } from '../locales/keys';
 
 declare const M: any;
 const safeDecodeClipboardFumen = (value: string): string => {
@@ -62,6 +64,19 @@ const parseFumenFromClipboard = (text: string): string | null => {
     const fumenMatch = decodedText.match(/[vdVDmM]115@[a-zA-Z0-9+/?]+/);
     return fumenMatch ? fumenMatch[0] : null;
 };
+
+const createPageFromField = (field: Field): Page => ({
+    index: 0,
+    field: { obj: field.copy() },
+    comment: { text: '' },
+    flags: {
+        lock: true,
+        mirror: false,
+        colorize: true,
+        rise: false,
+        quiz: false,
+    },
+});
 
 export interface PageActions {
     reopenCurrentPage: () => action;
@@ -609,21 +624,45 @@ export const pageActions: Readonly<PageActions> = {
 
         (async () => {
             try {
-                const text = await navigator.clipboard.readText();
+                const content = await parseClipboard();
 
-                const fumenData = parseFumenFromClipboard(text);
-                if (!fumenData) {
-                    M.toast({ html: 'No fumen data in clipboard', classes: 'top-toast', displayLength: 1500 });
-                    return;
+                switch (content.type) {
+                case 'fumen': {
+                    const decodedPages = await decode(content.fumen!);
+                    main.appendPages({ pages: decodedPages, pageIndex: currentIndex + 1 });
+                    M.toast({
+                        html: i18n.Clipboard.Messages.InsertedFromClipboard(),
+                        classes: 'top-toast',
+                        displayLength: 1000,
+                    });
+                    break;
                 }
-
-                const decodedPages = await decode(fumenData);
-
-                main.appendPages({ pages: decodedPages, pageIndex: currentIndex + 1 });
-                M.toast({ html: 'Inserted from clipboard', classes: 'top-toast', displayLength: 1000 });
+                case 'fieldText':
+                case 'fieldImage': {
+                    const page = createPageFromField(content.field!);
+                    main.appendPages({ pages: [page], pageIndex: currentIndex + 1 });
+                    let msg = i18n.Clipboard.Messages.InsertedField();
+                    if (content.warning) {
+                        msg += ` (${content.warning})`;
+                    }
+                    M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
+                    break;
+                }
+                case 'none':
+                default:
+                    M.toast({
+                        html: i18n.Clipboard.Errors.NoValidData(),
+                        classes: 'top-toast',
+                        displayLength: 1500,
+                    });
+                }
             } catch (error) {
                 console.error(error);
-                M.toast({ html: `Failed to insert: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                M.toast({
+                    html: `${i18n.Clipboard.Errors.FailedToInsert()}: ${error}`,
+                    classes: 'top-toast',
+                    displayLength: 1500,
+                });
             }
         })();
 
@@ -717,28 +756,46 @@ export const pageActions: Readonly<PageActions> = {
     replaceAllFromClipboard: () => (state): NextState => {
         (async () => {
             try {
-                // クリップボードからテキストを読み取り
-                const text = await navigator.clipboard.readText();
+                const content = await parseClipboard();
 
-                // fumen URLからデータ部分を抽出
-                const fumenMatch = text.match(/[vdVDmM]115@[a-zA-Z0-9+/?]+/);
-                if (!fumenMatch) {
-                    M.toast({ html: 'No fumen data in clipboard', classes: 'top-toast', displayLength: 1500 });
-                    return;
+                switch (content.type) {
+                case 'fumen': {
+                    const decodedPages = await decode(content.fumen!);
+                    main.loadFumen({ fumen: content.fumen! });
+                    M.toast({
+                        html: i18n.Clipboard.Messages.ReplacedPages(decodedPages.length),
+                        classes: 'top-toast',
+                        displayLength: 1000,
+                    });
+                    break;
                 }
-
-                const fumenData = fumenMatch[0];
-
-                // デコード
-                const decodedPages = await decode(fumenData);
-
-                // 全ページを置き換え（loadFumenを使用）
-                main.loadFumen({ fumen: fumenData });
-                const msg = `Replaced with ${decodedPages.length} pages`;
-                M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
+                case 'fieldText':
+                case 'fieldImage': {
+                    const page = createPageFromField(content.field!);
+                    const encoded = await encode([page]);
+                    main.loadFumen({ fumen: `v115@${encoded}` });
+                    let msg = i18n.Clipboard.Messages.ReplacedWithField();
+                    if (content.warning) {
+                        msg += ` (${content.warning})`;
+                    }
+                    M.toast({ html: msg, classes: 'top-toast', displayLength: 1000 });
+                    break;
+                }
+                case 'none':
+                default:
+                    M.toast({
+                        html: i18n.Clipboard.Errors.NoValidData(),
+                        classes: 'top-toast',
+                        displayLength: 1500,
+                    });
+                }
             } catch (error) {
                 console.error(error);
-                M.toast({ html: `Failed to replace: ${error}`, classes: 'top-toast', displayLength: 1500 });
+                M.toast({
+                    html: `${i18n.Clipboard.Errors.FailedToReplace()}: ${error}`,
+                    classes: 'top-toast',
+                    displayLength: 1500,
+                });
             }
         })();
 

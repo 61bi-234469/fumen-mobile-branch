@@ -97,6 +97,22 @@ export const i18n = {
         Buttons: {
             Close: () => t('Clipboard.Buttons.Close'),
         },
+        Messages: {
+            InsertedFromClipboard: () => t('Clipboard.Messages.InsertedFromClipboard'),
+            InsertedField: () => t('Clipboard.Messages.InsertedField'),
+            ReplacedPages: (count: number) => t('Clipboard.Messages.ReplacedPages', { count }),
+            ReplacedWithField: () => t('Clipboard.Messages.ReplacedWithField'),
+        },
+        Errors: {
+            NoValidData: () => t('Clipboard.Errors.NoValidData'),
+            FailedToInsert: () => t('Clipboard.Errors.FailedToInsert'),
+            FailedToReplace: () => t('Clipboard.Errors.FailedToReplace'),
+            InvalidRowCount: () => t('Clipboard.Errors.InvalidRowCount'),
+            InvalidColumnCount: () => t('Clipboard.Errors.InvalidColumnCount'),
+            InvalidSymbol: () => t('Clipboard.Errors.InvalidSymbol'),
+            InvalidImageRatio: () => t('Clipboard.Errors.InvalidImageRatio'),
+            TooManyUnknownColors: () => t('Clipboard.Errors.TooManyUnknownColors'),
+        },
     },
     Menu: {
         Title: () => t('Menu.Title'),

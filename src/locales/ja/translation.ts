@@ -85,6 +85,25 @@ export const resources = {
     },
     Clipboard: {
         Title: 'クリップボードにコピー',
+        Buttons: {
+            Close: '閉じる',
+        },
+        Messages: {
+            InsertedFromClipboard: 'クリップボードから挿入しました',
+            InsertedField: 'フィールドをクリップボードから挿入しました',
+            ReplacedPages: '{{count}}ページで置き換えました',
+            ReplacedWithField: 'フィールドで置き換えました',
+        },
+        Errors: {
+            NoValidData: 'クリップボードに有効なデータがありません',
+            FailedToInsert: '挿入に失敗しました',
+            FailedToReplace: '置き換えに失敗しました',
+            InvalidRowCount: '行数が不正です（20行必要）',
+            InvalidColumnCount: '列数が不正です（10列必要）',
+            InvalidSymbol: 'フィールドに不正な文字があります',
+            InvalidImageRatio: '画像のアスペクト比が不正です（2:1が必要）',
+            TooManyUnknownColors: '画像に不明な色が多すぎます',
+        },
     },
     Menu: {
         Buttons: {
