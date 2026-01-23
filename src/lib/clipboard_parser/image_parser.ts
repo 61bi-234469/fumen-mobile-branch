@@ -1,4 +1,4 @@
-import { Piece } from '../enums';
+import { FieldConstants, Piece } from '../enums';
 import { Field } from '../fumen/field';
 import { ClipboardParseOutcome, ImageParseOptions } from './types';
 import { RGBColor, matchColorToPiece } from './palette';
@@ -8,14 +8,48 @@ declare const OffscreenCanvas: {
     new(width: number, height: number): HTMLCanvasElement;
 } | undefined;
 
-const EXPECTED_ROWS = 20;
-const EXPECTED_COLS = 10;
-const EXPECTED_RATIO = 2.0;
+const EXPECTED_COLS = FieldConstants.Width;
+const MIN_ROWS = 1;
+const MAX_ROWS = FieldConstants.Height;
 
 const DEFAULT_OPTIONS: Required<ImageParseOptions> = {
     ratioTolerance: 0.15,
     alphaThreshold: 128,
     unknownColorThreshold: 0.05,
+};
+
+const inferRowCount = (
+    width: number,
+    height: number,
+    ratioTolerance: number,
+): number | null => {
+    if (width <= 0 || height <= 0) {
+        return null;
+    }
+
+    const ratio = height / width;
+    let bestRows: number | null = null;
+    let bestDiff = Number.POSITIVE_INFINITY;
+
+    for (let rows = MIN_ROWS; rows <= MAX_ROWS; rows += 1) {
+        const expectedRatio = rows / EXPECTED_COLS;
+        const diff = Math.abs(ratio - expectedRatio);
+        if (diff < bestDiff) {
+            bestDiff = diff;
+            bestRows = rows;
+        }
+    }
+
+    if (bestRows === null) {
+        return null;
+    }
+
+    const expectedRatio = bestRows / EXPECTED_COLS;
+    if (bestDiff > ratioTolerance * expectedRatio) {
+        return null;
+    }
+
+    return bestRows;
 };
 
 /**
@@ -73,7 +107,7 @@ const getCellCenterColor = (
 };
 
 /**
- * Parse an image blob as a 20x10 field
+ * Parse an image blob as a 10-column field with variable rows
  */
 export const parseFieldImage = async (
     imageBlob: Blob,
@@ -85,12 +119,12 @@ export const parseFieldImage = async (
     const { width, height } = imageBitmap;
 
     const ratio = height / width;
-    const ratioDiff = Math.abs(ratio - EXPECTED_RATIO);
+    const inferredRows = inferRowCount(width, height, opts.ratioTolerance);
 
-    if (ratioDiff > opts.ratioTolerance * EXPECTED_RATIO) {
+    if (inferredRows === null) {
         return {
             success: false,
-            error: `Invalid aspect ratio: ${ratio.toFixed(2)} (expected ~${EXPECTED_RATIO})`,
+            error: `Invalid aspect ratio: ${ratio.toFixed(2)} (expected ${EXPECTED_COLS} columns, ${MIN_ROWS}-${MAX_ROWS} rows)`,
             errorKey: 'Clipboard.Errors.InvalidImageRatio',
         };
     }
@@ -118,13 +152,13 @@ export const parseFieldImage = async (
     const imageData = ctx.getImageData(0, 0, width, height);
 
     const cellWidth = width / EXPECTED_COLS;
-    const cellHeight = height / EXPECTED_ROWS;
+    const cellHeight = height / inferredRows;
 
     const field = new Field({});
     let unknownCells = 0;
-    const totalCells = EXPECTED_ROWS * EXPECTED_COLS;
+    const totalCells = inferredRows * EXPECTED_COLS;
 
-    for (let row = 0; row < EXPECTED_ROWS; row += 1) {
+    for (let row = 0; row < inferredRows; row += 1) {
         for (let col = 0; col < EXPECTED_COLS; col += 1) {
             const cellX = col * cellWidth;
             const cellY = row * cellHeight;
@@ -148,7 +182,7 @@ export const parseFieldImage = async (
             }
 
             if (piece !== Piece.Empty) {
-                const fieldRow = EXPECTED_ROWS - 1 - row;
+                const fieldRow = inferredRows - 1 - row;
                 field.setToPlayField(col + fieldRow * EXPECTED_COLS, piece);
             }
         }
@@ -181,7 +215,5 @@ export const validateImageDimensions = (
     height: number,
     ratioTolerance: number = 0.15,
 ): boolean => {
-    const ratio = height / width;
-    const epsilon = 1e-9;
-    return Math.abs(ratio - EXPECTED_RATIO) <= ratioTolerance * EXPECTED_RATIO + epsilon;
+    return inferRowCount(width, height, ratioTolerance) !== null;
 };

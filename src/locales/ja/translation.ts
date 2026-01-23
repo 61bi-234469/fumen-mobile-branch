@@ -101,7 +101,7 @@ export const resources = {
             InvalidRowCount: '行数が不正です（20行必要）',
             InvalidColumnCount: '列数が不正です（10列必要）',
             InvalidSymbol: 'フィールドに不正な文字があります',
-            InvalidImageRatio: '画像のアスペクト比が不正です（2:1が必要）',
+            InvalidImageRatio: '画像のアスペクト比が不正です（10列・1〜23行を想定）',
             TooManyUnknownColors: '画像に不明な色が多すぎます',
         },
     },

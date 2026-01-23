@@ -105,7 +105,7 @@ export const resources = {
             InvalidRowCount: 'Invalid row count (expected 20)',
             InvalidColumnCount: 'Invalid column count (expected 10)',
             InvalidSymbol: 'Invalid symbol in field',
-            InvalidImageRatio: 'Invalid image ratio (expected 2:1)',
+            InvalidImageRatio: 'Invalid image ratio (expected 10 columns with 1-23 rows)',
             TooManyUnknownColors: 'Too many unknown colors in image',
         },
     },
