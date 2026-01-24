@@ -568,6 +568,8 @@ export const pageActions: Readonly<PageActions> = {
 
         // 現在のページを独立したKeyPageとして構築
         const currentPage = pages[currentIndex];
+        // 元のfumenの最初のページのcolorizeフラグを継承
+        const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
         const singlePage: Page = {
             index: 0,
             field: { obj: field.copy() },
@@ -578,7 +580,7 @@ export const pageActions: Readonly<PageActions> = {
                         ? pages[currentPage.comment.ref].comment.text
                         : ''),
             },
-            flags: { ...currentPage.flags },
+            flags: { ...currentPage.flags, colorize: originalFirstPageColorize },
             piece: currentPage.piece,
         };
 
