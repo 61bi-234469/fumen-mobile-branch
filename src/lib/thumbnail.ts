@@ -81,9 +81,6 @@ export function generateThumbnail(
     if (page && page.piece) {
         const { type, rotation, coordinate } = page.piece;
         const positions = getPiecePositions(type, rotation);
-        const isOnFilledLine = positions.some(pos => filledLines.has(coordinate.y + pos[1]));
-        const pieceHighlight = isOnFilledLine ? HighlightType.Highlight1 : HighlightType.Highlight2;
-        const pieceColor = decidePieceColor(type, pieceHighlight, guideLineColor);
 
         for (const pos of positions) {
             const px = coordinate.x + pos[0];
@@ -91,8 +88,7 @@ export function generateThumbnail(
 
             if (px >= 0 && px < FieldConstants.Width && py >= 0 && py < FieldConstants.Height) {
                 if (py <= visibleTopRow) {
-                    const blockHighlight = filledLines.has(py) ? HighlightType.Highlight1 : HighlightType.Highlight2;
-                    ctx.fillStyle = decidePieceColor(type, blockHighlight, guideLineColor);
+                    ctx.fillStyle = decidePieceColor(type, HighlightType.Highlight2, guideLineColor);
                     ctx.fillRect(
                         px * BLOCK_SIZE,
                         (visibleTopRow - py) * BLOCK_SIZE,
@@ -345,8 +341,7 @@ function drawThumbnail(
 
             if (px >= 0 && px < FieldConstants.Width && py >= 0 && py < FieldConstants.Height
                 && py <= resolvedVisibleTopRow) {
-                const blockHighlight = filledLines.has(py) ? HighlightType.Highlight1 : HighlightType.Highlight2;
-                ctx.fillStyle = decidePieceColor(type, blockHighlight, guideLineColor);
+                ctx.fillStyle = decidePieceColor(type, HighlightType.Highlight2, guideLineColor);
                 ctx.fillRect(
                     x + px * BLOCK_SIZE,
                     y + (resolvedVisibleTopRow - py) * BLOCK_SIZE,
