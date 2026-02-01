@@ -21,9 +21,9 @@ export const operations = {
         block: {
             open: ({ home = true } = {}) => {
                 if (home) {
-                    operations.mode.tools.home()
+                    operations.mode.tools.home();
                 }
-                cy.get(datatest('btn-block-mode')).click();
+                // home() clicks btn-drawing-tool which enters Drawing mode
             },
             Completion: () => {
                 cy.get(datatest('btn-piece-inference')).click();
@@ -167,6 +167,7 @@ export const operations = {
         },
         flags: {
             open: () => {
+                operations.mode.tools.home();
                 cy.get(datatest('btn-flags-mode')).click();
             },
             lockToOn: () => {
@@ -190,6 +191,7 @@ export const operations = {
         },
         piece: {
             open: () => {
+                operations.mode.tools.home();
                 cy.get(datatest('btn-piece-mode')).click();
             },
             resetPiece: () => {
@@ -267,10 +269,11 @@ export const operations = {
                 if (home) {
                     operations.mode.tools.home()
                 }
-                cy.get(datatest('btn-duplicate-page')).click();
+                cy.get(datatest('btn-insert-page')).click();
             },
             removePage: () => {
-                cy.get(datatest('btn-remove-page')).click();
+                operations.mode.tools.home();
+                cy.get(datatest('btn-cut-page')).click();
             },
             addNewPage: () => {
                 cy.get(datatest('btn-insert-new-page')).click();
