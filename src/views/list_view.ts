@@ -387,62 +387,63 @@ export const view: View<State, Actions> = (state, actions) => {
 
         // First pass: Check ALL buttons (they have priority over nodes) - only if no delete badge hit
         if (foundButtonParentId === null) {
-        for (const node of state.tree.nodes) {
-            const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
-            if (!nodeLayout) continue;
+            for (const node of state.tree.nodes) {
+                const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
+                if (!nodeLayout) continue;
 
-            const nodeX = nodeLayout.x;
-            const nodeY = nodeLayout.y;
-            const nodeHeight = nodeLayout.height;
+                const nodeX = nodeLayout.x;
+                const nodeY = nodeLayout.y;
+                const nodeHeight = nodeLayout.height;
 
-            // Check INSERT button (green)
-            const insertButtonCenterX = nodeX + TREE_BUTTON_X;
-            const insertButtonCenterY = nodeY + nodeHeight / 2;
+                // Check INSERT button (green)
+                const insertButtonCenterX = nodeX + TREE_BUTTON_X;
+                const insertButtonCenterY = nodeY + nodeHeight / 2;
 
-            const distToInsert = Math.sqrt(
-                (svgX - insertButtonCenterX) ** 2 +
-                (svgY - insertButtonCenterY) ** 2,
-            );
-
-            if (distToInsert <= buttonHitRadius) {
-                const isValidTarget = !isRootDragSource
-                    && canMoveNode(tree, sourceNodeId!, node.id, { allowDescendant: allowDescendantOnButtonDrop });
-                if (isValidTarget) {
-                    foundButtonParentId = node.id;
-                    foundButtonType = 'insert';
-                    break;  // Only break when we found a valid target
-                }
-                // If not valid target, continue checking other buttons
-                continue;
-            }
-
-            // Check BRANCH button (orange) - only if node has children
-            const hideBranchButton = sourceParentId !== null
-                && sourceParentId === node.id
-                && node.childrenIds.length <= 1;
-            if (node.childrenIds.length > 0 && !hideBranchButton) {
-                const branchButtonCenterX = nodeX + TREE_BUTTON_X;
-                const branchButtonCenterY = nodeY + nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + 4;
-
-                const distToBranch = Math.sqrt(
-                    (svgX - branchButtonCenterX) ** 2 +
-                    (svgY - branchButtonCenterY) ** 2,
+                const distToInsert = Math.sqrt(
+                    (svgX - insertButtonCenterX) ** 2 +
+                    (svgY - insertButtonCenterY) ** 2,
                 );
 
-                if (distToBranch <= buttonHitRadius) {
+                if (distToInsert <= buttonHitRadius) {
                     const isValidTarget = !isRootDragSource
                         && canMoveNode(tree, sourceNodeId!, node.id, { allowDescendant: allowDescendantOnButtonDrop });
                     if (isValidTarget) {
                         foundButtonParentId = node.id;
-                        foundButtonType = 'branch';
+                        foundButtonType = 'insert';
                         break;  // Only break when we found a valid target
                     }
                     // If not valid target, continue checking other buttons
                     continue;
                 }
+
+                // Check BRANCH button (orange) - only if node has children
+                const hideBranchButton = sourceParentId !== null
+                    && sourceParentId === node.id
+                    && node.childrenIds.length <= 1;
+                if (node.childrenIds.length > 0 && !hideBranchButton) {
+                    const branchButtonCenterX = nodeX + TREE_BUTTON_X;
+                    const branchButtonCenterY = nodeY + nodeHeight / 2 + TREE_ADD_BUTTON_SIZE + 4;
+
+                    const distToBranch = Math.sqrt(
+                        (svgX - branchButtonCenterX) ** 2 +
+                        (svgY - branchButtonCenterY) ** 2,
+                    );
+
+                    if (distToBranch <= buttonHitRadius) {
+                        const opts = { allowDescendant: allowDescendantOnButtonDrop };
+                        const isValidTarget = !isRootDragSource
+                            && canMoveNode(tree, sourceNodeId!, node.id, opts);
+                        if (isValidTarget) {
+                            foundButtonParentId = node.id;
+                            foundButtonType = 'branch';
+                            break;  // Only break when we found a valid target
+                        }
+                        // If not valid target, continue checking other buttons
+                        continue;
+                    }
+                }
             }
         }
-        } // end if (foundButtonParentId === null) for insert/branch buttons
 
         // Second pass: Check node bounds (only if no button was found)
         if (foundButtonParentId === null) {

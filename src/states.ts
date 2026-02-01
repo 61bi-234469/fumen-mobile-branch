@@ -24,7 +24,8 @@ export type EditShortcuts = {
 };
 
 export const defaultEditShortcuts: EditShortcuts = {
-    InsertPage: 'Space', PrevPage: 'Digit1', NextPage: 'Digit2', Menu: 'KeyM', ListView: 'Tab', TreeView: 'KeyT', EditHome: 'KeyH',
+    InsertPage: 'Space', PrevPage: 'Digit1', NextPage: 'Digit2', Menu: 'KeyM',
+    ListView: 'Tab', TreeView: 'KeyT', EditHome: 'KeyH',
     Undo: 'Mod+KeyZ', Redo: 'Mod+KeyY', Add: 'KeyN',
     Insert: 'Mod+KeyV', Copy: 'Mod+KeyC', Cut: 'Mod+KeyX',
 };

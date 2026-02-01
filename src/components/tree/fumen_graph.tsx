@@ -1069,54 +1069,54 @@ export const FumenGraph: Component<Props> = ({
 
         // Check insert/branch buttons (only if no delete badge hit)
         if (foundButton === null) {
-        for (const node of tree.nodes) {
-            const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
-            if (!nodeLayout) continue;
+            for (const node of tree.nodes) {
+                const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
+                if (!nodeLayout) continue;
 
-            // Check if this node is a valid drop target
-            const isValidTarget = dragSourceNodeId !== null
-                && node.id !== dragSourceNodeId
-                && !isRootDragSource
-                && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant: allowDescendantOnButtonDrop });
+                // Check if this node is a valid drop target
+                const isValidTarget = dragSourceNodeId !== null
+                    && node.id !== dragSourceNodeId
+                    && !isRootDragSource
+                    && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant: allowDescendantOnButtonDrop });
 
-            // DEBUG: Log each node's button position and distance
-            const insertBtnX = nodeLayout.x + TREE_NODE_WIDTH + 4;
-            const insertBtnY = nodeLayout.y + nodeLayout.height / 2;
-            const distToInsert = Math.sqrt((mouseX - insertBtnX) ** 2 + (mouseY - insertBtnY) ** 2);
+                // DEBUG: Log each node's button position and distance
+                const insertBtnX = nodeLayout.x + TREE_NODE_WIDTH + 4;
+                const insertBtnY = nodeLayout.y + nodeLayout.height / 2;
+                const distToInsert = Math.sqrt((mouseX - insertBtnX) ** 2 + (mouseY - insertBtnY) ** 2);
 
-            console.log(`Node ${node.id}:`, {
-                isValidTarget,
-                distToInsert,
-                buttonHitRadius,
-                nodePos: nodeLayout,
-                insertBtnPos: { x: insertBtnX, y: insertBtnY },
-                isHit: distToInsert <= buttonHitRadius,
-            });
+                console.log(`Node ${node.id}:`, {
+                    isValidTarget,
+                    distToInsert,
+                    buttonHitRadius,
+                    nodePos: nodeLayout,
+                    insertBtnPos: { x: insertBtnX, y: insertBtnY },
+                    isHit: distToInsert <= buttonHitRadius,
+                });
 
-            if (!isValidTarget) continue;
+                if (!isValidTarget) continue;
 
-            if (distToInsert <= buttonHitRadius) {
-                foundButton = { nodeId: node.id, type: 'insert' };
-                console.log('>>> BUTTON HIT:', foundButton);
-                break;
-            }
-
-            // Check BRANCH button (only if node has children)
-            const hideBranchButton = sourceParentId !== null
-                && sourceParentId === node.id
-                && node.childrenIds.length <= 1;
-            if (node.childrenIds.length > 0 && !hideBranchButton) {
-                const branchBtnY = nodeLayout.y + nodeLayout.height / 2 + TREE_ADD_BUTTON_SIZE + 4;
-                const distToBranch = Math.sqrt((mouseX - insertBtnX) ** 2 + (mouseY - branchBtnY) ** 2);
-
-                if (distToBranch <= buttonHitRadius) {
-                    foundButton = { nodeId: node.id, type: 'branch' };
-                    console.log('>>> BRANCH BUTTON HIT:', foundButton);
+                if (distToInsert <= buttonHitRadius) {
+                    foundButton = { nodeId: node.id, type: 'insert' };
+                    console.log('>>> BUTTON HIT:', foundButton);
                     break;
+                }
+
+                // Check BRANCH button (only if node has children)
+                const hideBranchButton = sourceParentId !== null
+                    && sourceParentId === node.id
+                    && node.childrenIds.length <= 1;
+                if (node.childrenIds.length > 0 && !hideBranchButton) {
+                    const branchBtnY = nodeLayout.y + nodeLayout.height / 2 + TREE_ADD_BUTTON_SIZE + 4;
+                    const distToBranch = Math.sqrt((mouseX - insertBtnX) ** 2 + (mouseY - branchBtnY) ** 2);
+
+                    if (distToBranch <= buttonHitRadius) {
+                        foundButton = { nodeId: node.id, type: 'branch' };
+                        console.log('>>> BRANCH BUTTON HIT:', foundButton);
+                        break;
+                    }
                 }
             }
         }
-        } // end if (foundButton === null)
 
         // If button found, update button target and clear slot
         if (foundButton !== null) {
