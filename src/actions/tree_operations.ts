@@ -24,6 +24,7 @@ import {
     getDescendants,
     addBranchNode,
     insertNode,
+    addSiblingNodeAfter,
     removeNode,
     removePageFromTree,
     moveNodeToParent,
@@ -274,6 +275,7 @@ export interface TreeOperationActions {
     addBranchFromCurrentNode: (data?: { parentNodeId?: TreeNodeId }) => action;
     addRootFromCurrentNode: () => action;
     insertNodeAfterCurrent: (data?: { parentNodeId?: TreeNodeId }) => action;
+    copyTreeNode: (data: { nodeId: TreeNodeId }) => action;
     removeCurrentTreeNode: (data?: { removeDescendants?: boolean }) => action;
 
     // Add page respecting tree mode
@@ -930,6 +932,84 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
 
         // Insert node in tree
         const { tree: newTree, newNodeId } = insertNode(tree, currentNode.id, newPageIndex);
+
+        // Create new pages array
+        const newPages = [...state.fumen.pages, newPage];
+        const normalized = normalizeTreeAndPages(newTree, newPages, newPageIndex, newNodeId);
+
+        // Create next snapshot for history
+        const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
+
+        // Create history task
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+
+        const { mementoActions } = require('./memento');
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: normalized.pages,
+                    maxPage: normalized.pages.length,
+                    currentIndex: normalized.currentIndex,
+                },
+                tree: {
+                    ...state.tree,
+                    nodes: normalized.tree.nodes,
+                    rootId: normalized.tree.rootId,
+                    activeNodeId: newNodeId,
+                },
+            }),
+        ]);
+    },
+
+    /**
+     * Copy a tree node and create a sibling node with the same page content
+     * The new node is added as a sibling directly after the source node
+     */
+    copyTreeNode: ({ nodeId }) => (state): NextState => {
+        if (!state.tree.enabled) return undefined;
+
+        const tree = getOrCreateTree(state);
+        const sourceNode = findNode(tree, nodeId);
+
+        if (!sourceNode || isVirtualNode(sourceNode)) return undefined;
+
+        // Cannot copy if source has no parent (is effectively root)
+        if (!sourceNode.parentId) return undefined;
+
+        // Create previous snapshot for history
+        const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+
+        // Get source page data using Pages helper to resolve refs
+        const sourcePage = state.fumen.pages[sourceNode.pageIndex];
+        const pagesObj = new Pages(state.fumen.pages);
+        const newPageIndex = state.fumen.pages.length;
+
+        // Get field as-is without applying line clears or gray conversion
+        const resolvedField = pagesObj.getField(sourceNode.pageIndex, PageFieldOperation.None);
+        const newField = resolvedField.copy();
+
+        // Resolve comment ref to find the page with actual text
+        // If source page has text, new page can ref it directly
+        // If source page has ref, follow to find the text source page
+        let commentRefIndex = sourceNode.pageIndex;
+        if (sourcePage.comment.ref !== undefined) {
+            commentRefIndex = sourcePage.comment.ref;
+        }
+
+        // Create new page with resolved field data
+        // Copy all flags from source (including quiz flag - per spec, don't force quiz=false)
+        const newPage: Page = {
+            index: newPageIndex,
+            field: { obj: newField },
+            comment: { ref: commentRefIndex },
+            flags: { ...sourcePage.flags },
+        };
+
+        // Add sibling node after source in tree
+        const { tree: newTree, newNodeId } = addSiblingNodeAfter(tree, nodeId, newPageIndex);
 
         // Create new pages array
         const newPages = [...state.fumen.pages, newPage];

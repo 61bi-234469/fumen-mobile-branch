@@ -546,6 +546,66 @@ export const insertNode = (
 };
 
 /**
+ * Add a sibling node directly after the source node (same parent, positioned after source)
+ * Used by page copy operation to create a copy as a sibling branch
+ */
+export const addSiblingNodeAfter = (
+    tree: SerializedTree,
+    sourceId: TreeNodeId,
+    pageIndex: number,
+): { tree: SerializedTree; newNodeId: TreeNodeId } => {
+    const sourceNode = findNode(tree, sourceId);
+    if (!sourceNode) {
+        throw new Error(`Source node not found: ${sourceId}`);
+    }
+
+    const parentId = sourceNode.parentId;
+    if (!parentId) {
+        throw new Error(`Cannot add sibling after root node: ${sourceId}`);
+    }
+
+    const parentNode = findNode(tree, parentId);
+    if (!parentNode) {
+        throw new Error(`Parent node not found: ${parentId}`);
+    }
+
+    const newNodeId = generateNodeId();
+    const newNode: TreeNode = {
+        parentId,
+        pageIndex,
+        id: newNodeId,
+        childrenIds: [],
+    };
+
+    // Find source's position in parent's children and insert new node after it
+    const sourceIndex = parentNode.childrenIds.indexOf(sourceId);
+    if (sourceIndex === -1) {
+        throw new Error(`Source node ${sourceId} not found in parent's children`);
+    }
+
+    const updatedNodes = tree.nodes.map((node) => {
+        if (node.id === parentId) {
+            const newChildrenIds = [...node.childrenIds];
+            // Insert new node directly after source
+            newChildrenIds.splice(sourceIndex + 1, 0, newNodeId);
+            return {
+                ...node,
+                childrenIds: newChildrenIds,
+            };
+        }
+        return node;
+    });
+
+    return {
+        newNodeId,
+        tree: {
+            ...tree,
+            nodes: [...updatedNodes, newNode],
+        },
+    };
+};
+
+/**
  * Remove a node from the tree
  * @param removeDescendants If true, removes all descendants. If false, re-parents children to grandparent.
  */

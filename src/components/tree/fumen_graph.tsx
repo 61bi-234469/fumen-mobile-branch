@@ -15,6 +15,8 @@ import {
     TREE_COMMENT_MARGIN_X,
     TREE_COMMENT_TOP_OFFSET,
     TREE_COMMENT_WIDTH,
+    TREE_COPY_BUTTON_MARGIN_BOTTOM,
+    TREE_COPY_BUTTON_SIZE,
     TREE_DELETE_BADGE_OFFSET_X,
     TREE_DELETE_BADGE_OFFSET_Y,
     TREE_DELETE_BADGE_SIZE,
@@ -59,6 +61,7 @@ interface Props {
         onNodeClick: (nodeId: TreeNodeId) => void;
         onAddBranch: (parentNodeId: TreeNodeId) => void;
         onInsertNode: (parentNodeId: TreeNodeId) => void;
+        onCopyNode: (nodeId: TreeNodeId) => void;
         onCommentChange: (pageIndex: number, comment: string) => void;
         onDragStart: (nodeId: TreeNodeId) => void;
         onDragOverNode: (nodeId: TreeNodeId) => void;
@@ -176,6 +179,7 @@ const renderNode = (
     isLeftEdgeNode: boolean,
     isDeleteButtonHighlighted: boolean,
     canDelete: boolean,
+    canCopy: boolean,
 ) => {
     const pos = { x: nodeLayout.x, y: nodeLayout.y };
 
@@ -369,6 +373,59 @@ const renderNode = (
                     r={8}
                     fill="#FF9800"
                 />
+            )}
+
+            {/* Copy button - below the node (outside node bounds) */}
+            {canCopy && (
+                <g
+                    transform={`translate(${TREE_NODE_WIDTH / 2}, ${nodeHeight + TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_COPY_BUTTON_SIZE / 2})`}
+                    style={style({
+                        cursor: isDragging ? 'default' : 'pointer',
+                        pointerEvents: isDragging ? 'none' : 'auto',
+                        opacity: isDragging ? 0.4 : 1,
+                    })}
+                    onmousedown={(e: MouseEvent) => {
+                        e.stopPropagation();
+                    }}
+                    onclick={(e: MouseEvent) => {
+                        e.stopPropagation();
+                        if (!isDragging) {
+                            actions.onCopyNode(node.id);
+                        }
+                    }}
+                    ontouchstart={(e: TouchEvent) => {
+                        e.stopPropagation();
+                    }}
+                    ontouchend={(e: TouchEvent) => {
+                        e.stopPropagation();
+                        if (!isDragging) {
+                            actions.onCopyNode(node.id);
+                        }
+                    }}
+                >
+                    {/* Larger hit area for touch */}
+                    <circle
+                        r={TREE_COPY_BUTTON_SIZE / 2 + 6}
+                        fill="transparent"
+                    />
+                    {/* Visible button */}
+                    <circle
+                        r={TREE_COPY_BUTTON_SIZE / 2}
+                        fill="#2196F3"
+                        stroke="#fff"
+                        stroke-width={2}
+                    />
+                    {/* "+" icon for copy */}
+                    <text
+                        text-anchor="middle"
+                        dominant-baseline="central"
+                        font-size="16"
+                        font-weight="bold"
+                        fill="#fff"
+                    >
+                        +
+                    </text>
+                </g>
             )}
 
             {/* Delete badge - appears on drag source when it's a left-edge node */}
@@ -765,6 +822,9 @@ export const FumenGraph: Component<Props> = ({
         // Check if this node can be deleted
         const canDelete = isDragSource && canDeleteNode(tree, node.id, buttonDropMovesSubtree, pages.length);
 
+        // Check if this node can be copied (must have a parent - not root-level)
+        const canCopy = node.parentId !== null && !isVirtualNode(findNode(tree, node.parentId) ?? node);
+
         const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
         if (!nodeLayout) {
             return null;
@@ -792,6 +852,7 @@ export const FumenGraph: Component<Props> = ({
             isLeftEdgeNode,
             isDeleteButtonHighlighted,
             canDelete,
+            canCopy,
         );
     });
 

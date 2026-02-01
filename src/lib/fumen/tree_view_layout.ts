@@ -26,6 +26,10 @@ export const TREE_DELETE_BADGE_SIZE = 22;
 export const TREE_DELETE_BADGE_OFFSET_X = 6;
 export const TREE_DELETE_BADGE_OFFSET_Y = 8;
 
+// Copy button constants (smaller button below the node)
+export const TREE_COPY_BUTTON_SIZE = 22;
+export const TREE_COPY_BUTTON_MARGIN_BOTTOM = -6;
+
 export interface TreeNodeLayout {
     id: TreeNodeId;
     x: number;

@@ -819,6 +819,10 @@ export const view: View<State, Actions> = (state, actions) => {
                             // INSERT operation: insert between current node and first child
                             actions.insertNodeAfterCurrent({ parentNodeId });
                         },
+                        onCopyNode: (nodeId) => {
+                            // Copy operation: copy page and create sibling node
+                            actions.copyTreeNode({ nodeId });
+                        },
                         onCommentChange: (pageIndex: number, comment: string) => {
                             actions.updatePageComment({
                                 pageIndex,
