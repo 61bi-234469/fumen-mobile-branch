@@ -39,7 +39,7 @@ describe('Drawing', () => {
         operations.mode.block.O();
 
         // Go to next page
-        operations.mode.tools.addNewPage();
+        cy.get(datatest('btn-next-page')).click();
 
         {
             operations.mode.block.click(9, 5);
@@ -142,7 +142,7 @@ describe('Drawing', () => {
         operations.mode.block.click(2, 1);
 
         // Go to next page
-        operations.mode.tools.addNewPage();
+        cy.get(datatest('btn-next-page')).click();
 
         expectFumen('v115@ygwhh0BewwDewhg0BeywwhBewhg0ywR4whBtwhRpww?R4glwhg0BtRpAeilwhi0JeAgHvhAAgH');
     });

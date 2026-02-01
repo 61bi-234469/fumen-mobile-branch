@@ -4,25 +4,6 @@ import { datatest } from './common';
 const px = (x) => 35 + 24 * x;
 const py = (y) => 540 - 24 * y;
 
-const parsePagesText = (text) => {
-    const match = /(\d+)\s*\/\s*(\d+)/.exec(text);
-    if (!match) {
-        return { current: 1, max: 1 };
-    }
-    return {
-        current: parseInt(match[1], 10),
-        max: parseInt(match[2], 10),
-    };
-};
-
-const addNewPageByShortcut = () => {
-    cy.get(datatest('text-pages')).click({ force: true });
-    cy.window().then((win) => {
-        win.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyN', key: 'n', bubbles: true }));
-        win.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyN', key: 'n', bubbles: true }));
-    });
-};
-
 export const operations = {
     screen: {
         writable: () => {
@@ -40,10 +21,9 @@ export const operations = {
         block: {
             open: ({ home = true } = {}) => {
                 if (home) {
-                    operations.mode.tools.home();
-                } else {
-                    cy.get(datatest('btn-drawing-tool')).click();
+                    operations.mode.tools.home()
                 }
+                cy.get(datatest('btn-block-mode')).click();
             },
             Completion: () => {
                 cy.get(datatest('btn-piece-inference')).click();
@@ -187,7 +167,6 @@ export const operations = {
         },
         flags: {
             open: () => {
-                operations.mode.tools.home();
                 cy.get(datatest('btn-flags-mode')).click();
             },
             lockToOn: () => {
@@ -211,7 +190,6 @@ export const operations = {
         },
         piece: {
             open: () => {
-                operations.mode.tools.home();
                 cy.get(datatest('btn-piece-mode')).click();
             },
             resetPiece: () => {
@@ -289,16 +267,12 @@ export const operations = {
                 if (home) {
                     operations.mode.tools.home()
                 }
-                cy.get(datatest('btn-insert-page')).click();
+                cy.get(datatest('btn-duplicate-page')).click();
             },
             removePage: () => {
-                operations.mode.tools.home();
-                cy.get(datatest('btn-cut-page')).click();
+                cy.get(datatest('btn-remove-page')).click();
             },
-            addNewPage: ({ home = true } = {}) => {
-                if (home) {
-                    operations.mode.tools.home();
-                }
+            addNewPage: () => {
                 cy.get(datatest('btn-insert-new-page')).click();
             },
             convertToGray: ({ home = true } = {}) => {
@@ -332,27 +306,15 @@ export const operations = {
                 cy.get(datatest('btn-drawing-tool')).click();
             },
             nextPage: () => {
-                cy.get(datatest('text-pages'))
-                    .invoke('text')
-                    .then(parsePagesText)
-                    .then(({ current, max }) => {
-                        if (current < max) {
-                            cy.get(datatest('btn-next-page')).click();
-                            return;
-                        }
-
-                        addNewPageByShortcut();
-                    });
+                cy.get(datatest('btn-next-page')).click();
             },
             backPage: () => {
                 cy.get(datatest('btn-back-page')).click();
             },
             toRef: () => {
-                operations.mode.flags.open();
                 cy.get(datatest('btn-key-page-on')).click();
             },
             toKey: () => {
-                operations.mode.flags.open();
                 cy.get(datatest('btn-key-page-off')).click();
             },
             inheritComment: ({ home = true } = {}) => {
