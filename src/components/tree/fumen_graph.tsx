@@ -395,11 +395,14 @@ const renderNode = (
                     }}
                     ontouchstart={(e: TouchEvent) => {
                         e.stopPropagation();
-                    }}
-                    ontouchend={(e: TouchEvent) => {
-                        e.stopPropagation();
-                        if (!isDragging) {
-                            actions.onCopyNode(node.id);
+                        if (e.cancelable) {
+                            e.preventDefault();
+                        }
+                        if (e.touches.length === 1 && typeof window !== 'undefined') {
+                            (window as any).__treeTouchStartPosition = {
+                                x: e.touches[0].clientX,
+                                y: e.touches[0].clientY,
+                            };
                         }
                     }}
                 >

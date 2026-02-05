@@ -10,11 +10,13 @@ import { ListViewGrid } from '../components/list_view/list_view_grid';
 import { FumenGraph } from '../components/tree/fumen_graph';
 import { TreeViewMode, TreeDragMode } from '../lib/fumen/tree_types';
 import { style, px } from '../lib/types';
-import { canMoveNode, findNode, getDescendants } from '../lib/fumen/tree_utils';
+import { canMoveNode, findNode, getDescendants, isVirtualNode } from '../lib/fumen/tree_utils';
 import { displayShortcut } from '../lib/shortcuts';
 import {
     TREE_ADD_BUTTON_SIZE,
     TREE_BUTTON_X,
+    TREE_COPY_BUTTON_MARGIN_BOTTOM,
+    TREE_COPY_BUTTON_SIZE,
     TREE_DELETE_BADGE_OFFSET_X,
     TREE_DELETE_BADGE_OFFSET_Y,
     TREE_DELETE_BADGE_SIZE,
@@ -222,7 +224,7 @@ export const view: View<State, Actions> = (state, actions) => {
         clientX: number,
         clientY: number,
         container: HTMLElement,
-    ): { parentNodeId: string; type: 'insert' | 'branch' } | null => {
+    ): { nodeId: string; type: 'insert' | 'branch' | 'copy' } | null => {
         const svgElement = container.querySelector('svg') as SVGSVGElement;
         if (!svgElement) return null;
         const scrollContainer = svgElement.parentElement as HTMLElement;
@@ -240,6 +242,7 @@ export const view: View<State, Actions> = (state, actions) => {
         };
         const treeViewLayout = calculateTreeViewLayout(tree, state.fumen.pages, trimTopBlank);
         const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
+        const copyHitRadius = TREE_COPY_BUTTON_SIZE / 2 + 6;
 
         for (const node of state.tree.nodes) {
             const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
@@ -248,6 +251,22 @@ export const view: View<State, Actions> = (state, actions) => {
             const nodeX = nodeLayout.x;
             const nodeY = nodeLayout.y;
             const nodeHeight = nodeLayout.height;
+            const parentNode = node.parentId !== null ? findNode(tree, node.parentId) : null;
+            const canCopy = node.parentId !== null && !isVirtualNode(parentNode ?? node);
+
+            const copyButtonCenterX = nodeX + TREE_NODE_WIDTH / 2;
+            const copyButtonCenterY = nodeY + nodeHeight
+                + TREE_COPY_BUTTON_MARGIN_BOTTOM
+                + TREE_COPY_BUTTON_SIZE / 2;
+
+            const distToCopy = Math.sqrt(
+                (svgX - copyButtonCenterX) ** 2 +
+                (svgY - copyButtonCenterY) ** 2,
+            );
+
+            if (canCopy && distToCopy <= copyHitRadius) {
+                return { nodeId: node.id, type: 'copy' };
+            }
 
             // Check INSERT button (green)
             const insertButtonCenterX = nodeX + TREE_BUTTON_X;
@@ -259,7 +278,7 @@ export const view: View<State, Actions> = (state, actions) => {
             );
 
             if (distToInsert <= buttonHitRadius) {
-                return { parentNodeId: node.id, type: 'insert' };
+                return { nodeId: node.id, type: 'insert' };
             }
 
             // Check BRANCH button (orange) - only if node has children
@@ -273,7 +292,7 @@ export const view: View<State, Actions> = (state, actions) => {
                 );
 
                 if (distToBranch <= buttonHitRadius) {
-                    return { parentNodeId: node.id, type: 'branch' };
+                    return { nodeId: node.id, type: 'branch' };
                 }
             }
         }
@@ -551,9 +570,11 @@ export const view: View<State, Actions> = (state, actions) => {
                     // Button was tapped - execute the action
                     actions.endTreeDrag();
                     if (buttonHit.type === 'insert') {
-                        actions.insertNodeAfterCurrent({ parentNodeId: buttonHit.parentNodeId });
+                        actions.insertNodeAfterCurrent({ parentNodeId: buttonHit.nodeId });
+                    } else if (buttonHit.type === 'branch') {
+                        actions.addBranchFromCurrentNode({ parentNodeId: buttonHit.nodeId });
                     } else {
-                        actions.addBranchFromCurrentNode({ parentNodeId: buttonHit.parentNodeId });
+                        actions.copyTreeNode({ nodeId: buttonHit.nodeId });
                     }
                     pinchState.active = false;
                     return;
