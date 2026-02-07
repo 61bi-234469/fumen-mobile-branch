@@ -987,8 +987,8 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         const pagesObj = new Pages(state.fumen.pages);
         const newPageIndex = state.fumen.pages.length;
 
-        // Get field as-is without applying line clears or gray conversion
-        const resolvedField = pagesObj.getField(sourceNode.pageIndex, PageFieldOperation.None);
+        // Copy the rendered field state (commands applied) so it matches what users see in tree thumbnails.
+        const resolvedField = pagesObj.getField(sourceNode.pageIndex, PageFieldOperation.Command);
         const newField = resolvedField.copy();
 
         // Resolve comment ref to find the page with actual text
@@ -1006,6 +1006,13 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             field: { obj: newField },
             comment: { ref: commentRefIndex },
             flags: { ...sourcePage.flags },
+            piece: sourcePage.piece !== undefined ? {
+                type: sourcePage.piece.type,
+                rotation: sourcePage.piece.rotation,
+                coordinate: {
+                    ...sourcePage.piece.coordinate,
+                },
+            } : undefined,
         };
 
         // Add sibling node after source in tree
