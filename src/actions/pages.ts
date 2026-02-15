@@ -522,7 +522,7 @@ export const pageActions: Readonly<PageActions> = {
                         ? pages[currentPage.comment.ref].comment.text
                         : ''),
             },
-            flags: { ...currentPage.flags },
+            flags: { ...currentPage.flags, colorize: pages[0]?.flags.colorize ?? true },
             piece: currentPage.piece, // ピースも含める（ライン消去前の状態）
         };
 
