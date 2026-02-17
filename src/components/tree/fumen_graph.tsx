@@ -376,7 +376,7 @@ const renderNode = (
             )}
 
             {/* Copy button - below the node (outside node bounds) */}
-            {canCopy && (
+            {canCopy && !isDragging && (
                 <g
                     transform={`translate(${TREE_NODE_WIDTH / 2}, ${nodeHeight + TREE_COPY_BUTTON_MARGIN_BOTTOM + TREE_COPY_BUTTON_SIZE / 2})`}
                     style={style({
