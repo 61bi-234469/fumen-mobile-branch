@@ -40,6 +40,7 @@ import {
     getDefaultActiveNodeId,
     isVirtualNode,
     updateTreePageIndices,
+    removeTreeFromComment,
 } from '../lib/fumen/tree_utils';
 import { OperationTask, toPrimitivePage, toPage, PrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
@@ -587,13 +588,45 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             };
         }
 
-        // Disable tree mode but keep data
-        return {
-            tree: {
-                ...state.tree,
-                enabled: false,
-            },
+        // Disable tree mode: register history so undo can restore the tree
+        const tree = getOrCreateTree(state);
+        const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+
+        // Remove #TREE= from comments
+        const cleanedPages = state.fumen.pages.map((page, index) => {
+            if (index === 0 && page.comment.text !== undefined) {
+                const cleanComment = removeTreeFromComment(page.comment.text);
+                if (cleanComment !== page.comment.text) {
+                    return { ...page, comment: { text: cleanComment } };
+                }
+            }
+            return page;
+        });
+
+        const nextSnapshot: TreeOperationSnapshot = {
+            tree: { nodes: [], rootId: null, version: 2 },
+            pages: cleanedPages.map(toPrimitivePage),
+            currentIndex: state.fumen.currentIndex,
         };
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+        const { mementoActions } = require('./memento');
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: cleanedPages,
+                },
+                tree: {
+                    ...state.tree,
+                    enabled: false,
+                    nodes: [],
+                    rootId: null,
+                    activeNodeId: null,
+                },
+            }),
+        ]);
     },
 
     /**

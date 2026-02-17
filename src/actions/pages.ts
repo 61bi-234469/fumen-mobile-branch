@@ -671,14 +671,14 @@ export const pageActions: Readonly<PageActions> = {
         return undefined;
     },
     copyAllPagesToClipboard: () => (state): NextState => {
-        // Embed tree data if it exists (even when tree view is off)
-        const treeExists = state.tree.rootId !== null && state.tree.nodes.length > 0;
+        // Embed tree data only when tree mode is enabled
+        const treeExists = state.tree.enabled && state.tree.rootId !== null && state.tree.nodes.length > 0;
         const tree: SerializedTree | null = treeExists ? {
             nodes: state.tree.nodes,
             rootId: state.tree.rootId,
             version: 1,
         } : null;
-        const pages = embedTreeInPages(state.fumen.pages, tree, tree !== null);
+        const pages = embedTreeInPages(state.fumen.pages, tree, treeExists);
 
         // 非同期でエンコードしてクリップボードにコピー
         (async () => {

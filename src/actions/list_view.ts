@@ -557,7 +557,7 @@ export const listViewActions: Readonly<ListViewActions> = {
     exportListViewAsUrl: () => (state): NextState => {
         (async () => {
             try {
-                const hasTreeData = state.tree.nodes.length > 0 && state.tree.rootId !== null;
+                const hasTreeData = state.tree.enabled && state.tree.nodes.length > 0 && state.tree.rootId !== null;
                 const tree = hasTreeData
                     ? {
                         nodes: state.tree.nodes,
@@ -565,7 +565,7 @@ export const listViewActions: Readonly<ListViewActions> = {
                         version: 1 as const,
                     }
                     : (state.tree.enabled ? createTreeFromPages(state.fumen.pages) : null);
-                const pagesToEncode = embedTreeInPages(state.fumen.pages, tree, tree !== null);
+                const pagesToEncode = embedTreeInPages(state.fumen.pages, tree, state.tree.enabled);
                 const encoded = await encode(pagesToEncode);
 
                 const params = new URLSearchParams();

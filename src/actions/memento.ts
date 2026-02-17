@@ -175,7 +175,7 @@ export const mementoActions: Readonly<MementoActions> = {
 };
 
 const saveToMemento = (state: Readonly<State>): NextState => {
-    const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
+    const hasTreeData = state.tree.enabled && state.tree.rootId !== null && state.tree.nodes.length > 0;
     const tree: SerializedTree | null = hasTreeData ? {
         nodes: state.tree.nodes,
         rootId: state.tree.rootId,
@@ -184,7 +184,7 @@ const saveToMemento = (state: Readonly<State>): NextState => {
 
     console.log('saveToMemento: tree enabled =', state.tree.enabled, 'tree nodes =', tree?.nodes.length);
 
-    const pagesToSave = embedTreeInPages(state.fumen.pages, tree, tree !== null);
+    const pagesToSave = embedTreeInPages(state.fumen.pages, tree, hasTreeData);
 
     console.log('saveToMemento: first page comment text =', pagesToSave[0]?.comment?.text,
         'contains #TREE=', pagesToSave[0]?.comment?.text?.includes('#TREE='));
