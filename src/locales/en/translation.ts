@@ -151,6 +151,7 @@ export const resources = {
         Buttons: {
             Fumen: 'Fumen (v115+)',
             Url: 'URL Export',
+            UrlLeftToActive: 'URL (Leftmost to Active)',
             Image: 'Image Export',
             Cancel: 'Cancel',
         },

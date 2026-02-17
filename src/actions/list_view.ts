@@ -15,8 +15,11 @@ import {
     embedTreeInPages,
     ensureVirtualRoot,
     extractTreeFromPages,
+    findNode,
     findNodeByPageIndex,
+    getPathToNode,
     isVirtualNode,
+    removeTreeFromComment,
     updateTreePageIndices,
 } from '../lib/fumen/tree_utils';
 
@@ -221,6 +224,7 @@ export interface ListViewActions {
     navigateToPageFromListView: (data: { pageIndex: number }) => action;
     exportListViewAsImage: () => action;
     exportListViewAsUrl: () => action;
+    exportLeftSegmentAsUrl: () => action;
     replaceAllComments: (data: { searchText: string; replaceText: string }) => action;
     importPagesFromClipboard: (data: { mode: ClipboardImportMode }) => action;
     addPagesFromClipboard: (data: {
@@ -573,6 +577,137 @@ export const listViewActions: Readonly<ListViewActions> = {
                 params.set('screen', 'list');
                 params.set('tree', state.tree.enabled ? '1' : '0');
                 params.set('treeView', state.tree.viewMode === TreeViewMode.Tree ? 'tree' : 'list');
+
+                const base = `${window.location.origin}${window.location.pathname}`;
+                const url = `${base}#?${params.toString()}`;
+                window.open(url, '_blank');
+            } catch (error) {
+                console.error(error);
+                M.toast({ html: `Failed to export URL: ${error}`, classes: 'top-toast', displayLength: 1500 });
+            }
+        })();
+
+        return undefined;
+    },
+    exportLeftSegmentAsUrl: () => (state): NextState => {
+        (async () => {
+            try {
+                const tree: SerializedTree = {
+                    nodes: state.tree.nodes,
+                    rootId: state.tree.rootId,
+                    version: 1 as const,
+                };
+
+                // 1. Resolve active node
+                let activeNode = state.tree.activeNodeId
+                    ? findNode(tree, state.tree.activeNodeId)
+                    : undefined;
+                if (!activeNode) {
+                    activeNode = findNodeByPageIndex(tree, state.fumen.currentIndex);
+                }
+                if (!activeNode) {
+                    M.toast({ html: 'Cannot resolve active node', classes: 'top-toast', displayLength: 1500 });
+                    return;
+                }
+
+                // 2. Get path from root to active, filter out virtual root
+                const pathIds = getPathToNode(tree, activeNode.id);
+                const chainNodes = pathIds
+                    .map(id => findNode(tree, id))
+                    .filter((n): n is NonNullable<typeof n> => n !== undefined && !isVirtualNode(n));
+
+                if (chainNodes.length === 0) {
+                    M.toast({ html: 'No nodes in chain', classes: 'top-toast', displayLength: 1500 });
+                    return;
+                }
+
+                // 3. Extract pages and resolve refs
+                const allPages = state.fumen.pages;
+                const extractedPages: Page[] = [];
+
+                for (const node of chainNodes) {
+                    const page = allPages[node.pageIndex];
+                    if (!page) {
+                        const msg = `Page not found at index ${node.pageIndex}`;
+                        M.toast({ html: msg, classes: 'top-toast', displayLength: 1500 });
+                        return;
+                    }
+
+                    // Resolve field.ref
+                    let resolvedField = page.field;
+                    if (page.field.ref !== undefined) {
+                        let refIndex: number | undefined = page.field.ref;
+                        let resolvedObj;
+                        while (refIndex !== undefined) {
+                            const refPage: Page | undefined = allPages[refIndex];
+                            if (refPage && refPage.field.obj) {
+                                resolvedObj = refPage.field.obj.copy();
+                                break;
+                            }
+                            refIndex = refPage?.field.ref;
+                        }
+                        if (!resolvedObj) {
+                            const msg = 'Failed to resolve field reference';
+                            M.toast({ html: msg, classes: 'top-toast', displayLength: 1500 });
+                            return;
+                        }
+                        resolvedField = { obj: resolvedObj };
+                    }
+
+                    // Resolve comment.ref
+                    let resolvedComment = page.comment;
+                    if (page.comment.ref !== undefined) {
+                        let refIndex: number | undefined = page.comment.ref;
+                        let resolvedText: string | undefined;
+                        while (refIndex !== undefined) {
+                            const refPage: Page | undefined = allPages[refIndex];
+                            if (refPage && refPage.comment.text !== undefined) {
+                                resolvedText = refPage.comment.text;
+                                break;
+                            }
+                            refIndex = refPage?.comment.ref;
+                        }
+                        if (resolvedText === undefined) {
+                            const msg = 'Failed to resolve comment reference';
+                            M.toast({ html: msg, classes: 'top-toast', displayLength: 1500 });
+                            return;
+                        }
+                        resolvedComment = { text: resolvedText };
+                    }
+
+                    extractedPages.push({
+                        ...page,
+                        field: resolvedField,
+                        comment: resolvedComment,
+                    });
+                }
+
+                // 4. Re-index pages 0..N-1 and preserve first page colorize
+                const originalFirstColorize = extractedPages[0]?.flags.colorize ?? true;
+                const reindexedPages: Page[] = extractedPages.map((page, i) => ({
+                    ...page,
+                    index: i,
+                    flags: i === 0 ? { ...page.flags, colorize: originalFirstColorize } : page.flags,
+                }));
+
+                // 5. Remove tree data from comments
+                const cleanedPages: Page[] = reindexedPages.map((page) => {
+                    if (page.comment.text !== undefined) {
+                        return {
+                            ...page,
+                            comment: { text: removeTreeFromComment(page.comment.text) },
+                        };
+                    }
+                    return page;
+                });
+
+                // 6. Encode (no tree embedding)
+                const encoded = await encode(cleanedPages);
+
+                const params = new URLSearchParams();
+                params.set('d', `v115@${encoded}`);
+                params.set('screen', 'list');
+                params.set('tree', '0');
 
                 const base = `${window.location.origin}${window.location.pathname}`;
                 const url = `${base}#?${params.toString()}`;

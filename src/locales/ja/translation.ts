@@ -126,6 +126,7 @@ export const resources = {
         Buttons: {
             Fumen: 'テト譜(v115～)',
             Url: 'URL',
+            UrlLeftToActive: 'URL(左端～アクティブまで)',
             Image: '画像',
             Cancel: 'キャンセル',
         },

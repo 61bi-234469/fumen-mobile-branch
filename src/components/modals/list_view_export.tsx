@@ -6,15 +6,17 @@ import { i18n } from '../../locales/keys';
 declare const M: any;
 
 interface ListViewExportModalProps {
+    isTreeView: boolean;
     actions: {
         closeListViewExportModal: () => void;
         exportListViewAsUrl: () => void;
+        exportLeftSegmentAsUrl: () => void;
         exportListViewAsImage: () => void;
         copyAllPagesToClipboard: () => void;
     };
 }
 
-export const ListViewExportModal: Component<ListViewExportModalProps> = ({ actions }) => {
+export const ListViewExportModal: Component<ListViewExportModalProps> = ({ isTreeView, actions }) => {
     const close = () => {
         const modal = resources.modals.listViewExport;
         if (modal !== undefined) {
@@ -46,6 +48,11 @@ export const ListViewExportModal: Component<ListViewExportModalProps> = ({ actio
 
     const exportUrl = () => {
         actions.exportListViewAsUrl();
+        cancel();
+    };
+
+    const exportLeftSegment = () => {
+        actions.exportLeftSegmentAsUrl();
         cancel();
     };
 
@@ -82,6 +89,13 @@ export const ListViewExportModal: Component<ListViewExportModalProps> = ({ actio
                        className="waves-effect waves-light btn red" onclick={exportUrl}>
                         {i18n.ListViewExport.Buttons.Url()}
                     </a>
+
+                    {isTreeView ? (
+                        <a href="#" key="btn-export-left-segment" datatest="btn-export-left-segment"
+                           className="waves-effect waves-light btn red" onclick={exportLeftSegment}>
+                            {i18n.ListViewExport.Buttons.UrlLeftToActive()}
+                        </a>
+                    ) : undefined}
 
                     <a href="#" key="btn-export-image" datatest="btn-export-image"
                        className="waves-effect waves-light btn red" onclick={exportImage}>

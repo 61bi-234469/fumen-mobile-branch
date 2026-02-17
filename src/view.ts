@@ -15,7 +15,7 @@ import { ListViewReplaceModal } from './components/modals/list_view_replace';
 import { ListViewImportModal } from './components/modals/list_view_import';
 import { ListViewExportModal } from './components/modals/list_view_export';
 import { embedTreeInPages } from './lib/fumen/tree_utils';
-import { SerializedTree } from './lib/fumen/tree_types';
+import { SerializedTree, TreeViewMode } from './lib/fumen/tree_types';
 
 export const view: View<State, Actions> = (state, actions) => {
     const selectView = () => {
@@ -93,6 +93,7 @@ export const view: View<State, Actions> = (state, actions) => {
 
         state.modal.listViewExport ? ListViewExportModal({
             actions,
+            isTreeView: state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree,
         }) : undefined as any,
 
         // key付きの空のdivを置くことで、配列末尾の要素でも存在の有無を判定できるようにする

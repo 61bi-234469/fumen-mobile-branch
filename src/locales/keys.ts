@@ -156,6 +156,7 @@ export const i18n = {
         Buttons: {
             Fumen: () => t('ListViewExport.Buttons.Fumen'),
             Url: () => t('ListViewExport.Buttons.Url'),
+            UrlLeftToActive: () => t('ListViewExport.Buttons.UrlLeftToActive'),
             Image: () => t('ListViewExport.Buttons.Image'),
             Cancel: () => t('ListViewExport.Buttons.Cancel'),
         },
