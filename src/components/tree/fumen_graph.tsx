@@ -364,7 +364,7 @@ const renderNode = (
                     e.stopPropagation();
                 }}
             >
-                {pageNumber}
+                #{pageNumber}
             </text>
 
             {/* Branch indicator (shows if node has multiple children) */}

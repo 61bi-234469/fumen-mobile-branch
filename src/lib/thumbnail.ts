@@ -674,7 +674,7 @@ function drawTreeNode(
     ctx.fillStyle = '#333';
     ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(String(dfsNumber), x + TREE_NODE_WIDTH / 2, thumbY + thumbnailHeight + 20);
+    ctx.fillText(`#${dfsNumber}`, x + TREE_NODE_WIDTH / 2, thumbY + thumbnailHeight + 20);
 
     // Comment text
     let commentText = '';

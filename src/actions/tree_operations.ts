@@ -1280,9 +1280,13 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
     startTreeDrag: ({ sourceNodeId }) => (state): NextState => {
         if (!state.tree.enabled) return undefined;
 
+        const sourceNode = state.tree.nodes.find(n => n.id === sourceNodeId);
+        const pageIndex = sourceNode && sourceNode.pageIndex >= 0 ? sourceNode.pageIndex : undefined;
+
         return {
             tree: {
                 ...state.tree,
+                activeNodeId: sourceNodeId,
                 dragState: {
                     ...state.tree.dragState,
                     sourceNodeId,
@@ -1290,6 +1294,12 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     dropSlotIndex: null,
                 },
             },
+            ...(pageIndex !== undefined ? {
+                fumen: {
+                    ...state.fumen,
+                    currentIndex: pageIndex,
+                },
+            } : {}),
         };
     },
 

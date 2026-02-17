@@ -238,7 +238,7 @@ export const ListViewItem: Component<Props> = ({
                         actions.onPageClick(pageIndex);
                     }}
                 >
-                    {pageIndex + 1}
+                    #{pageIndex + 1}
                 </div>
             </div>
             <textarea
