@@ -10,8 +10,8 @@ import { gradientPieces } from './user_settings';
 export interface ScreenActions {
     changeToReaderScreen: () => action;
     changeToDrawerScreen: (data: { refresh?: boolean }) => action;
-    changeToListViewScreen: () => action;
-    changeToTreeViewScreen: () => action;
+    changeToListViewScreen: (data?: { lockNav?: boolean }) => action;
+    changeToTreeViewScreen: (data?: { lockNav?: boolean }) => action;
     changeToDrawingMode: () => action;
     changeToDrawingToolMode: () => action;
     changeToFlagsMode: () => action;
@@ -57,14 +57,18 @@ export const modeActions: Readonly<ScreenActions> = {
             refresh ? actions.changeToDrawingToolMode() : undefined,
         ]);
     },
-    changeToListViewScreen: () => (state): NextState => {
-        // Always lock undo/redo buttons for 500ms to prevent accidental presses
-        // from screen transition touch events (buttons are at same coordinates)
+    changeToListViewScreen: (data) => (state): NextState => {
+        // Lock undo/redo buttons for 500ms only when transitioning from
+        // the bottom-left button in READ/EDIT view, to prevent accidental
+        // presses from screen transition touch events (buttons are at same coordinates)
         const lockListViewNav = () => {
-            const lockUntil = Date.now() + 500;
-            setTimeout(() => {
-                main.refresh();
-            }, 500);
+            const shouldLock = data?.lockNav === true;
+            const lockUntil = shouldLock ? Date.now() + 500 : state.tree.treeViewNavLockUntil;
+            if (shouldLock) {
+                setTimeout(() => {
+                    main.refresh();
+                }, 500);
+            }
             // Set autoFocusPending when entering tree view mode
             const shouldAutoFocus = state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree;
             return {
@@ -88,7 +92,7 @@ export const modeActions: Readonly<ScreenActions> = {
             }),
         ]);
     },
-    changeToTreeViewScreen: () => (state): NextState => {
+    changeToTreeViewScreen: (data) => (state): NextState => {
         const ensureTreeEnabled = state.tree.enabled ? undefined : actions.toggleTreeMode();
         const rebuildTree = state.tree.enabled && (state.tree.nodes.length === 0 || state.tree.rootId === null)
             ? (currentState: State): NextState => {
@@ -113,7 +117,7 @@ export const modeActions: Readonly<ScreenActions> = {
             ensureTreeEnabled,
             rebuildTree,
             ensureTreeViewMode,
-            actions.changeToListViewScreen(),
+            actions.changeToListViewScreen({ lockNav: data?.lockNav }),
         ]);
     },
     changeToDrawingMode: () => (state): NextState => {

@@ -19,8 +19,8 @@ interface Props {
     shortcutLabelVisible: boolean;
     actions: {
         changeToDrawerScreen: (data: { refresh?: boolean }) => void;
-        changeToListViewScreen: () => void;
-        changeToTreeViewScreen: () => void;
+        changeToListViewScreen: (data?: { lockNav?: boolean }) => void;
+        changeToTreeViewScreen: (data?: { lockNav?: boolean }) => void;
         openMenuModal: () => void;
         startAnimation: () => void;
         pauseAnimation: () => void;
@@ -83,8 +83,8 @@ export const ReaderTools: Component<Props> = (
                             key="btn-list-view" fontSize={30} colors={palette}
                             shortcutLabel={getLabel('ListView')}
                             actions={{
-                                onclick: () => actions.changeToListViewScreen(),
-                                onlongpress: () => actions.changeToTreeViewScreen(),
+                                onclick: () => actions.changeToListViewScreen({ lockNav: true }),
+                                onlongpress: () => actions.changeToTreeViewScreen({ lockNav: true }),
                             }}/>
 
                 <ToolButton iconName={animationState !== 'pause' ? 'pause' : 'play_arrow'} datatest="btn-play-anime"

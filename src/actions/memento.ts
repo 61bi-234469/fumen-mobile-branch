@@ -145,19 +145,7 @@ export const mementoActions: Readonly<MementoActions> = {
             };
         })();
 
-        const treeStateWithLock = (() => {
-            if (treeState.enabled && treeState.viewMode === TreeViewMode.Tree) {
-                const lockUntil = Date.now() + 500;
-                setTimeout(() => {
-                    main.refresh();
-                }, 500);
-                return {
-                    ...treeState,
-                    treeViewNavLockUntil: lockUntil,
-                };
-            }
-            return treeState;
-        })();
+        const treeStateWithLock = treeState;
 
         return sequence(state, [
             actions.setPages({ pages: cleanedPages, open: false }),

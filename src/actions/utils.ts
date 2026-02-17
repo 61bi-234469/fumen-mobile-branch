@@ -234,17 +234,6 @@ export const utilsActions: Readonly<UtilsActions> = {
             };
         }
 
-        if (treeState.enabled && treeState.viewMode === TreeViewMode.Tree) {
-            const lockUntil = Date.now() + 500;
-            setTimeout(() => {
-                main.refresh();
-            }, 500);
-            treeState = {
-                ...treeState,
-                treeViewNavLockUntil: lockUntil,
-            };
-        }
-
         // Build screen state update if screen param is provided
         const screenUpdate = finalScreenParam !== undefined
             ? () => ({ mode: { ...state.mode, screen: finalScreenParam } })

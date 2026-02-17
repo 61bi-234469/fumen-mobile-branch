@@ -568,14 +568,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             // Initialize tree from pages if not already done
             const tree = createTreeFromPages(state.fumen.pages);
             const currentNode = findNodeByPageIndex(tree, state.fumen.currentIndex);
-            const shouldLockNav = state.tree.viewMode === TreeViewMode.Tree;
-            const lockUntil = shouldLockNav ? Date.now() + 500 : 0;
-            if (shouldLockNav) {
-                setTimeout(() => {
-                    main.refresh();
-                }, 500);
-            }
-
             return {
                 tree: {
                     ...state.tree,
@@ -583,7 +575,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     nodes: tree.nodes,
                     rootId: tree.rootId,
                     activeNodeId: currentNode?.id ?? null,
-                    treeViewNavLockUntil: lockUntil,
                 },
             };
         }
@@ -646,16 +637,11 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
      */
     setTreeViewMode: ({ mode }) => (state): NextState => {
         if (mode === TreeViewMode.Tree) {
-            const lockUntil = Date.now() + 500;
-            setTimeout(() => {
-                main.refresh();
-            }, 500);
             return sequence(state, [
                 () => ({
                     tree: {
                         ...state.tree,
                         viewMode: mode,
-                        treeViewNavLockUntil: lockUntil,
                         autoFocusPending: true,
                     },
                 }),
@@ -667,7 +653,6 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             tree: {
                 ...state.tree,
                 viewMode: mode,
-                treeViewNavLockUntil: 0,
             },
         };
     },
@@ -1224,20 +1209,11 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         const nextViewMode = data.viewMode !== undefined ? data.viewMode : state.tree.viewMode;
         const isEnteringTreeView = nextEnabled && nextViewMode === TreeViewMode.Tree
             && state.tree.viewMode !== TreeViewMode.Tree;
-        const shouldLock = isEnteringTreeView;
-        const lockUntil = shouldLock ? Date.now() + 500 : state.tree.treeViewNavLockUntil;
-        if (shouldLock) {
-            setTimeout(() => {
-                main.refresh();
-            }, 500);
-        }
         const nextTree = {
             tree: {
                 ...state.tree,
                 ...data,
-                treeViewNavLockUntil: shouldLock
-                    ? lockUntil
-                    : (data.treeViewNavLockUntil ?? state.tree.treeViewNavLockUntil),
+                treeViewNavLockUntil: data.treeViewNavLockUntil ?? state.tree.treeViewNavLockUntil,
                 autoFocusPending: isEnteringTreeView
                     ? true
                     : (data.autoFocusPending ?? state.tree.autoFocusPending),

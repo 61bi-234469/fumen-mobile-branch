@@ -21,8 +21,8 @@ interface Props {
     actions: {
         openFumenModal: () => void;
         openMenuModal: () => void;
-        changeToListViewScreen: () => void;
-        changeToTreeViewScreen: () => void;
+        changeToListViewScreen: (data?: { lockNav?: boolean }) => void;
+        changeToTreeViewScreen: (data?: { lockNav?: boolean }) => void;
         startAnimation: () => void;
         pauseAnimation: () => void;
         backPage: (data: { loop: boolean }) => void;
@@ -96,8 +96,8 @@ export const EditorTools: Component<Props> = (
                             key="btn-list-view" fontSize={30} colors={colors}
                             shortcutLabel={getLabel('ListView')}
                             actions={{
-                                onclick: () => actions.changeToListViewScreen(),
-                                onlongpress: () => actions.changeToTreeViewScreen(),
+                                onclick: () => actions.changeToListViewScreen({ lockNav: true }),
+                                onlongpress: () => actions.changeToTreeViewScreen({ lockNav: true }),
                             }}/>
 
                 <ToolButton iconName="undo" datatest="btn-undo" width={35} height={height - 10}
