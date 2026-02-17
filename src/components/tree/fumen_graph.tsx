@@ -11,6 +11,7 @@ import { generateThumbnail } from '../../lib/thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
 import {
     TREE_ADD_BUTTON_SIZE,
+    calculateTreeMinDepth,
     TREE_COMMENT_HEIGHT,
     TREE_COMMENT_MARGIN_X,
     TREE_COMMENT_TOP_OFFSET,
@@ -27,6 +28,7 @@ import {
     TREE_PAGE_NUMBER_OFFSET,
     TREE_THUMBNAIL_WIDTH,
     calculateTreeViewLayout,
+    shouldShowDeleteBadge,
     TreeNodeLayout,
 } from '../../lib/fumen/tree_view_layout';
 
@@ -771,14 +773,8 @@ export const FumenGraph: Component<Props> = ({
     const pagesObj = new Pages(pages);
     const renderableNodes = tree.nodes.filter(node => !isVirtualNode(node));
 
-    // Calculate minDepth for left-edge node detection
-    let minDepth = Infinity;
-    for (const node of renderableNodes) {
-        const pos = layout.positions.get(node.id);
-        if (pos) {
-            minDepth = Math.min(minDepth, pos.x);
-        }
-    }
+    // Calculate minDepth for delete badge visibility/hit detection
+    const minDepth = calculateTreeMinDepth(tree, layout);
 
     // Render connections
     const connections = layout.connections.map(conn =>
@@ -825,17 +821,8 @@ export const FumenGraph: Component<Props> = ({
         // Check if this node is the parent of the drag source
         const isParentOfDragSource = isDragging && sourceNode != null && sourceNode.parentId === node.id;
 
-        // Check if this is a left-edge node (for delete badge)
-        const nodePos = layout.positions.get(node.id);
-        const isLeftEdgeNode = nodePos !== undefined && nodePos.x === minDepth;
-
-        // Show delete badge on dragged node if left-edge OR parent is on a different lane
-        // (when parent is on a different lane, sibling subtrees exist between them,
-        // making the parent's delete button potentially far away or off-screen)
-        const parentPos = node.parentId ? layout.positions.get(node.parentId) : undefined;
-        const hasDistantParent = nodePos !== undefined && parentPos !== undefined
-            && nodePos.y !== parentPos.y;
-        const showDeleteBadge = isLeftEdgeNode || hasDistantParent;
+        // Show delete badge when left-edge OR parent is on a different lane.
+        const showDeleteBadge = shouldShowDeleteBadge(tree, layout, node.id, minDepth);
 
         // Check if this node can be deleted
         const canDelete = isDragSource && canDeleteNode(tree, node.id, buttonDropMovesSubtree, pages.length);
@@ -1066,14 +1053,10 @@ export const FumenGraph: Component<Props> = ({
         // Check delete badge first (for drag source node: left-edge or parent on different lane)
         if (dragSourceNodeId) {
             const sourceNodeLayout = treeViewLayout.nodeLayouts.get(dragSourceNodeId);
-            const sourcePos = layout.positions.get(dragSourceNodeId);
-            const sourceNode = findNode(tree, dragSourceNodeId);
-            const sourceParentPos = sourceNode?.parentId
-                ? layout.positions.get(sourceNode.parentId) : undefined;
-            const isLeftEdge = sourcePos !== undefined && sourcePos.x === minDepth;
-            const hasDistantParent = sourcePos !== undefined && sourceParentPos !== undefined
-                && sourcePos.y !== sourceParentPos.y;
-            if (sourceNodeLayout && sourcePos && (isLeftEdge || hasDistantParent)) {
+            if (
+                sourceNodeLayout
+                && shouldShowDeleteBadge(tree, layout, dragSourceNodeId, minDepth)
+            ) {
                 const deleteBadgeX = sourceNodeLayout.x - TREE_DELETE_BADGE_OFFSET_X;
                 const deleteBadgeY = sourceNodeLayout.y + TREE_DELETE_BADGE_OFFSET_Y;
                 const deleteHitRadius = TREE_DELETE_BADGE_SIZE / 2 + 6;

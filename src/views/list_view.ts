@@ -15,6 +15,7 @@ import { displayShortcut } from '../lib/shortcuts';
 import {
     TREE_ADD_BUTTON_SIZE,
     TREE_BUTTON_X,
+    calculateTreeMinDepth,
     TREE_COPY_BUTTON_MARGIN_BOTTOM,
     TREE_COPY_BUTTON_SIZE,
     TREE_DELETE_BADGE_OFFSET_X,
@@ -22,6 +23,7 @@ import {
     TREE_DELETE_BADGE_SIZE,
     TREE_NODE_WIDTH,
     calculateTreeViewLayout,
+    shouldShowDeleteBadge,
 } from '../lib/fumen/tree_view_layout';
 
 const TOOLS_HEIGHT = 50;
@@ -365,20 +367,16 @@ export const view: View<State, Actions> = (state, actions) => {
 
         const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
 
-        // Calculate minDepth for left-edge node detection
-        let minDepth = Infinity;
-        for (const node of state.tree.nodes) {
-            const pos = treeViewLayout.layout.positions.get(node.id);
-            if (pos) {
-                minDepth = Math.min(minDepth, pos.x);
-            }
-        }
+        // Keep delete badge visibility/hit test criteria in sync with desktop rendering.
+        const minDepth = calculateTreeMinDepth(tree, treeViewLayout.layout);
 
-        // Check delete badge first (only for drag source, left-edge only)
+        // Check delete badge first (left-edge OR parent on a different lane)
         if (sourceNodeId) {
             const sourceNodeLayout = treeViewLayout.nodeLayouts.get(sourceNodeId);
-            const sourcePos = treeViewLayout.layout.positions.get(sourceNodeId);
-            if (sourceNodeLayout && sourcePos && sourcePos.x === minDepth) {
+            if (
+                sourceNodeLayout
+                && shouldShowDeleteBadge(tree, treeViewLayout.layout, sourceNodeId, minDepth)
+            ) {
                 const deleteBadgeX = sourceNodeLayout.x - TREE_DELETE_BADGE_OFFSET_X;
                 const deleteBadgeY = sourceNodeLayout.y + TREE_DELETE_BADGE_OFFSET_Y;
                 const deleteHitRadius = TREE_DELETE_BADGE_SIZE / 2 + 6;

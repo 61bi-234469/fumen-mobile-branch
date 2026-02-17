@@ -1,6 +1,6 @@
 import { Page } from './types';
 import { SerializedTree, TreeLayout, TreeNodeId } from './tree_types';
-import { calculateTreeLayout, isVirtualNode } from './tree_utils';
+import { calculateTreeLayout, findNode, isVirtualNode } from './tree_utils';
 import { getThumbnailHeight, THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../thumbnail';
 
 export const TREE_THUMBNAIL_WIDTH = THUMBNAIL_WIDTH;
@@ -114,4 +114,50 @@ export const calculateTreeViewLayout = (
         laneOffsets,
         contentHeight,
     };
+};
+
+/**
+ * Get minimum depth (x) among renderable nodes.
+ * Returns Infinity when no renderable node positions are available.
+ */
+export const calculateTreeMinDepth = (
+    tree: SerializedTree,
+    layout: TreeLayout,
+): number => {
+    let minDepth = Infinity;
+
+    for (const node of tree.nodes) {
+        if (isVirtualNode(node)) {
+            continue;
+        }
+        const pos = layout.positions.get(node.id);
+        if (pos) {
+            minDepth = Math.min(minDepth, pos.x);
+        }
+    }
+
+    return minDepth;
+};
+
+/**
+ * Delete badge visibility condition:
+ * show when node is on left-most depth OR when parent is on different lane.
+ */
+export const shouldShowDeleteBadge = (
+    tree: SerializedTree,
+    layout: TreeLayout,
+    nodeId: TreeNodeId,
+    minDepth: number,
+): boolean => {
+    const nodePos = layout.positions.get(nodeId);
+    if (!nodePos) {
+        return false;
+    }
+
+    const isLeftEdgeNode = nodePos.x === minDepth;
+    const node = findNode(tree, nodeId);
+    const parentPos = node?.parentId ? layout.positions.get(node.parentId) : undefined;
+    const hasDistantParent = parentPos !== undefined && nodePos.y !== parentPos.y;
+
+    return isLeftEdgeNode || hasDistantParent;
 };
