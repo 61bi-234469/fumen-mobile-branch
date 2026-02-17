@@ -716,14 +716,6 @@ function drawTreeNode(
         });
     }
 
-    // Branch indicator
-    if (hasBranches) {
-        ctx.beginPath();
-        ctx.arc(x + TREE_NODE_WIDTH - 10, y + 10, 8, 0, Math.PI * 2);
-        ctx.fillStyle = '#FF9800';
-        ctx.fill();
-    }
-
     // Reset text align
     ctx.textAlign = 'left';
 }
