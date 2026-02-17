@@ -176,7 +176,7 @@ const renderNode = (
     scale: number,
     hideButtons: boolean,
     trimTopBlank: boolean,
-    isLeftEdgeNode: boolean,
+    showDeleteBadge: boolean,
     isDeleteButtonHighlighted: boolean,
     canDelete: boolean,
     canCopy: boolean,
@@ -200,8 +200,8 @@ const renderNode = (
 
     const nodeStyle = style({
         cursor: 'grab',
-        opacity: isDragSource ? 0.5 : 1,
     });
+    const dragOpacity = isDragSource ? 0.5 : 1;
     const hideBranchButton = isParentOfDragSource && node.childrenIds.length <= 1;
 
     // Determine node background and stroke based on drag state
@@ -319,6 +319,8 @@ const renderNode = (
                 actions.onDragStart(node.id);
             }}
         >
+            {/* Node content wrapper - semi-transparent when dragging */}
+            <g opacity={dragOpacity}>
             {/* Node background */}
             <rect
                 width={TREE_NODE_WIDTH}
@@ -431,8 +433,10 @@ const renderNode = (
                 </g>
             )}
 
-            {/* Delete badge - appears on drag source when it's a left-edge node */}
-            {isDragSource && isLeftEdgeNode && (
+            </g>
+
+            {/* Delete badge - appears on drag source when left-edge or parent is on different lane */}
+            {isDragSource && showDeleteBadge && (
                 <g
                     transform={`translate(${-TREE_DELETE_BADGE_OFFSET_X}, ${TREE_DELETE_BADGE_OFFSET_Y})`}
                     style={style({ cursor: canDelete ? 'pointer' : 'not-allowed' })}
@@ -478,6 +482,8 @@ const renderNode = (
                 </g>
             )}
 
+            {/* Add buttons wrapper - semi-transparent when dragging */}
+            <g opacity={dragOpacity}>
             {/* Add buttons - INSERT (green) and Branch (orange) */}
             {/* When dragging from a child node, parent's INSERT button becomes red delete button */}
             {/* and Branch button is hidden */}
@@ -658,6 +664,7 @@ const renderNode = (
                     </text>
                 </g>
             ))}
+            </g>
         </g>
     );
 };
@@ -822,6 +829,14 @@ export const FumenGraph: Component<Props> = ({
         const nodePos = layout.positions.get(node.id);
         const isLeftEdgeNode = nodePos !== undefined && nodePos.x === minDepth;
 
+        // Show delete badge on dragged node if left-edge OR parent is on a different lane
+        // (when parent is on a different lane, sibling subtrees exist between them,
+        // making the parent's delete button potentially far away or off-screen)
+        const parentPos = node.parentId ? layout.positions.get(node.parentId) : undefined;
+        const hasDistantParent = nodePos !== undefined && parentPos !== undefined
+            && nodePos.y !== parentPos.y;
+        const showDeleteBadge = isLeftEdgeNode || hasDistantParent;
+
         // Check if this node can be deleted
         const canDelete = isDragSource && canDeleteNode(tree, node.id, buttonDropMovesSubtree, pages.length);
 
@@ -852,7 +867,7 @@ export const FumenGraph: Component<Props> = ({
             scale,
             hideButtons,
             trimTopBlank,
-            isLeftEdgeNode,
+            showDeleteBadge,
             isDeleteButtonHighlighted,
             canDelete,
             canCopy,
@@ -1048,11 +1063,17 @@ export const FumenGraph: Component<Props> = ({
         const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
         let foundButton: { nodeId: TreeNodeId; type: 'insert' | 'branch' | 'delete' } | null = null;
 
-        // Check delete badge first (only for drag source node, left-edge only)
+        // Check delete badge first (for drag source node: left-edge or parent on different lane)
         if (dragSourceNodeId) {
             const sourceNodeLayout = treeViewLayout.nodeLayouts.get(dragSourceNodeId);
             const sourcePos = layout.positions.get(dragSourceNodeId);
-            if (sourceNodeLayout && sourcePos && sourcePos.x === minDepth) {
+            const sourceNode = findNode(tree, dragSourceNodeId);
+            const sourceParentPos = sourceNode?.parentId
+                ? layout.positions.get(sourceNode.parentId) : undefined;
+            const isLeftEdge = sourcePos !== undefined && sourcePos.x === minDepth;
+            const hasDistantParent = sourcePos !== undefined && sourceParentPos !== undefined
+                && sourcePos.y !== sourceParentPos.y;
+            if (sourceNodeLayout && sourcePos && (isLeftEdge || hasDistantParent)) {
                 const deleteBadgeX = sourceNodeLayout.x - TREE_DELETE_BADGE_OFFSET_X;
                 const deleteBadgeY = sourceNodeLayout.y + TREE_DELETE_BADGE_OFFSET_Y;
                 const deleteHitRadius = TREE_DELETE_BADGE_SIZE / 2 + 6;
