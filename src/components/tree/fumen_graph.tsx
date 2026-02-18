@@ -26,6 +26,8 @@ import {
     TREE_NODE_WIDTH,
     TREE_PADDING,
     TREE_PAGE_NUMBER_OFFSET,
+    TREE_SCROLL_PADDING_BOTTOM,
+    TREE_SCROLL_PADDING_RIGHT,
     TREE_THUMBNAIL_WIDTH,
     calculateTreeViewLayout,
     shouldShowDeleteBadge,
@@ -752,8 +754,8 @@ export const FumenGraph: Component<Props> = ({
     // Calculate SVG dimensions (add extra space for add button on the right)
     const buttonExtraWidth = TREE_ADD_BUTTON_SIZE + 10;
     const baseWidth = TREE_PADDING * 2 + (layout.maxDepth + 1) * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP)
-        + buttonExtraWidth;
-    const baseHeight = TREE_PADDING * 2 + treeViewLayout.contentHeight;
+        + buttonExtraWidth + TREE_SCROLL_PADDING_RIGHT;
+    const baseHeight = TREE_PADDING * 2 + treeViewLayout.contentHeight + TREE_SCROLL_PADDING_BOTTOM;
 
     // Apply scale to dimensions
     const scaledWidth = Math.max(containerWidth, baseWidth * scale);
