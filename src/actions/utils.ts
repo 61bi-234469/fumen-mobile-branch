@@ -169,12 +169,10 @@ export const utilsActions: Readonly<UtilsActions> = {
         const prevPages = prevPagesWithTree.map(toPrimitivePage);
         const currentIndex = state.fumen.currentIndex;
 
-        console.log('loadPages: pages[0].comment =', pages[0]?.comment);
-
         // Extract tree data from pages if present
         const { cleanedPages, tree } = extractTreeFromPages(pages);
         const normalizedTree = tree ? ensureVirtualRoot(tree) : null;
-        console.log('loadPages: extracted tree =', normalizedTree ? `nodes=${normalizedTree.nodes.length}` : 'null');
+        const hasImportedTree = normalizedTree !== null && normalizedTree.nodes.length > 0;
 
         const urlQuery = getURLQuery();
         const urlTreeEnabledParam = parseBooleanParam(urlQuery.get('tree'));
@@ -232,11 +230,19 @@ export const utilsActions: Readonly<UtilsActions> = {
                 ...treeState,
                 viewMode: finalTreeViewModeParam,
             };
+        } else if (hasImportedTree) {
+            treeState = {
+                ...treeState,
+                viewMode: TreeViewMode.Tree,
+            };
         }
 
-        // Build screen state update if screen param is provided
-        const screenUpdate = finalScreenParam !== undefined
-            ? () => ({ mode: { ...state.mode, screen: finalScreenParam } })
+        // Build screen state update: explicit param > URL param > hasImportedTree default
+        const targetScreen = finalScreenParam !== undefined ? finalScreenParam
+            : hasImportedTree ? Screens.ListView
+            : undefined;
+        const screenUpdate = targetScreen !== undefined
+            ? () => ({ mode: { ...state.mode, screen: targetScreen } })
             : undefined;
 
         return sequence(state, [
