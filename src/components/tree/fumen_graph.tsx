@@ -225,6 +225,7 @@ const renderNode = (
             onclick={() => actions.onNodeClick(node.id)}
             onmousedown={(e: MouseEvent) => {
                 if (e.button === 0) {  // Left click
+                    e.stopPropagation();  // Prevent triggering container pan
                     e.preventDefault();
                     actions.onDragStart(node.id);
                 }
@@ -678,6 +679,10 @@ const renderNode = (
 // Drop slot indicator width
 const DROP_SLOT_WIDTH = 6;
 
+// Holds the cleanup function for the active pan session (null when not mounted).
+// Singleton: FumenGraph is rendered at most once at a time.
+let panCleanupFn: (() => void) | null = null;
+
 /**
  * Render drop slot indicator for attach modes (visual only, hit detection is on nodes)
  */
@@ -1013,6 +1018,62 @@ export const FumenGraph: Component<Props> = ({
         });
     };
 
+    // Handle container creation: set up mouse-pan for empty-space drag (PC only)
+    const handleCreate = (container: HTMLElement) => {
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+        let panStartScrollLeft = 0;
+        let panStartScrollTop = 0;
+
+        const onPanMove = (e: MouseEvent) => {
+            if (!isPanning) return;
+            container.scrollLeft = panStartScrollLeft - (e.clientX - panStartX);
+            container.scrollTop  = panStartScrollTop  - (e.clientY - panStartY);
+        };
+
+        const onPanEnd = () => {
+            if (!isPanning) return;
+            isPanning = false;
+            document.removeEventListener('mousemove', onPanMove);
+            document.removeEventListener('mouseup',   onPanEnd);
+            container.style.cursor = '';
+        };
+
+        const onPanStart = (e: MouseEvent) => {
+            if (e.button !== 0) return;
+            isPanning = true;
+            panStartX          = e.clientX;
+            panStartY          = e.clientY;
+            panStartScrollLeft = container.scrollLeft;
+            panStartScrollTop  = container.scrollTop;
+            container.style.cursor = 'grabbing';
+            document.addEventListener('mousemove', onPanMove);
+            document.addEventListener('mouseup',   onPanEnd);
+            e.preventDefault();  // suppress text selection during drag
+        };
+
+        container.addEventListener('mousedown', onPanStart);
+
+        panCleanupFn = () => {
+            container.removeEventListener('mousedown', onPanStart);
+            if (isPanning) {
+                document.removeEventListener('mousemove', onPanMove);
+                document.removeEventListener('mouseup',   onPanEnd);
+            }
+            panCleanupFn = null;
+        };
+
+        handleAutoFocus(container);
+    };
+
+    // Handle container destruction: remove all pan listeners
+    const handleDestroy = () => {
+        if (panCleanupFn) {
+            panCleanupFn();
+        }
+    };
+
     // Handle global mouse up to end drag
     const handleMouseUp = () => {
         if (dragSourceNodeId !== null) {
@@ -1041,11 +1102,6 @@ export const FumenGraph: Component<Props> = ({
         const mouseX = (e.clientX - rect.left + (svg.parentElement?.scrollLeft ?? 0)) / scale;
         const mouseY = (e.clientY - rect.top + (svg.parentElement?.scrollTop ?? 0)) / scale;
 
-        // DEBUG: Log mouse position and button detection
-        console.log('=== handleSvgMouseMove ===');
-        console.log('Mouse SVG coords:', { mouseX, mouseY, scale });
-        console.log('dragSourceNodeId:', dragSourceNodeId);
-
         // First, check for button hits (priority over slots)
         const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
         let foundButton: { nodeId: TreeNodeId; type: 'insert' | 'branch' | 'delete' } | null = null;
@@ -1068,7 +1124,6 @@ export const FumenGraph: Component<Props> = ({
                     const canDelete = canDeleteNode(tree, dragSourceNodeId, buttonDropMovesSubtree, pages.length);
                     if (canDelete) {
                         foundButton = { nodeId: dragSourceNodeId, type: 'delete' };
-                        console.log('>>> DELETE BADGE HIT:', foundButton);
                     }
                 }
             }
@@ -1086,25 +1141,14 @@ export const FumenGraph: Component<Props> = ({
                     && !isRootDragSource
                     && canMoveNode(tree, dragSourceNodeId, node.id, { allowDescendant: allowDescendantOnButtonDrop });
 
-                // DEBUG: Log each node's button position and distance
                 const insertBtnX = nodeLayout.x + TREE_NODE_WIDTH + 4;
                 const insertBtnY = nodeLayout.y + nodeLayout.height / 2;
                 const distToInsert = Math.sqrt((mouseX - insertBtnX) ** 2 + (mouseY - insertBtnY) ** 2);
-
-                console.log(`Node ${node.id}:`, {
-                    isValidTarget,
-                    distToInsert,
-                    buttonHitRadius,
-                    nodePos: nodeLayout,
-                    insertBtnPos: { x: insertBtnX, y: insertBtnY },
-                    isHit: distToInsert <= buttonHitRadius,
-                });
 
                 if (!isValidTarget) continue;
 
                 if (distToInsert <= buttonHitRadius) {
                     foundButton = { nodeId: node.id, type: 'insert' };
-                    console.log('>>> BUTTON HIT:', foundButton);
                     break;
                 }
 
@@ -1118,7 +1162,6 @@ export const FumenGraph: Component<Props> = ({
 
                     if (distToBranch <= buttonHitRadius) {
                         foundButton = { nodeId: node.id, type: 'branch' };
-                        console.log('>>> BRANCH BUTTON HIT:', foundButton);
                         break;
                     }
                 }
@@ -1149,8 +1192,9 @@ export const FumenGraph: Component<Props> = ({
             style={containerStyle}
             onmouseup={handleMouseUp}
             onmouseleave={handleMouseUp}
-            oncreate={handleAutoFocus}
+            oncreate={handleCreate}
             onupdate={handleAutoFocus}
+            ondestroy={handleDestroy}
         >
             <div
                 key="fumen-graph-canvas"
