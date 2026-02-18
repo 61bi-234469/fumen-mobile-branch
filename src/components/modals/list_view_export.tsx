@@ -11,7 +11,6 @@ interface ListViewExportModalProps {
         closeListViewExportModal: () => void;
         exportListViewAsUrl: () => void;
         exportLeftSegmentAsUrl: () => void;
-        exportListViewAsImage: () => void;
         copyAllPagesToClipboard: () => void;
     };
 }
@@ -56,11 +55,6 @@ export const ListViewExportModal: Component<ListViewExportModalProps> = ({ isTre
         cancel();
     };
 
-    const exportImage = () => {
-        actions.exportListViewAsImage();
-        cancel();
-    };
-
     const exportFumen = () => {
         actions.copyAllPagesToClipboard();
         cancel();
@@ -68,7 +62,22 @@ export const ListViewExportModal: Component<ListViewExportModalProps> = ({ isTre
 
     const contentStyle = style({
         textAlign: 'center',
-        padding: px(20),
+        padding: px(10),
+    });
+
+    const buttonsStyle = style({
+        margin: '0px auto',
+        padding: '0px',
+        display: 'flex',
+        justifyContent: 'flex-end',
+        flexDirection: 'column',
+        alignItems: 'center',
+    });
+
+    const btnStyle = style({
+        width: '100%',
+        maxWidth: px(280),
+        margin: px(5),
     });
 
     return (
@@ -76,32 +85,35 @@ export const ListViewExportModal: Component<ListViewExportModalProps> = ({ isTre
             <div key="mdl-list-view-export" datatest="mdl-list-view-export"
                  className="modal" oncreate={oncreate}>
                 <div key="modal-content" className="modal-content" style={contentStyle}>
-                    <h4 key="export-label">{i18n.ListViewExport.Title()}</h4>
+                    <h4 key="export-label" style={style({ marginTop: '0px', marginBottom: px(10), fontSize: px(22) })}>
+                        {i18n.ListViewExport.Title()}
+                    </h4>
+
+                    <div style={buttonsStyle}>
+                        <a href="#" key="btn-export-fumen" datatest="btn-export-fumen"
+                           style={btnStyle}
+                           className="waves-effect waves-light btn red" onclick={exportFumen}>
+                            {i18n.ListViewExport.Buttons.Fumen()}
+                        </a>
+
+                        <a href="#" key="btn-export-url" datatest="btn-export-url"
+                           style={btnStyle}
+                           className="waves-effect waves-light btn red" onclick={exportUrl}>
+                            {i18n.ListViewExport.Buttons.Url()}
+                        </a>
+
+                        {isTreeView ? (
+                            <a href="#" key="btn-export-left-segment" datatest="btn-export-left-segment"
+                               style={btnStyle}
+                               className="waves-effect waves-light btn red" onclick={exportLeftSegment}>
+                                {i18n.ListViewExport.Buttons.UrlLeftToActive()}
+                            </a>
+                        ) : undefined}
+
+                    </div>
                 </div>
 
                 <div key="modal-footer" className="modal-footer">
-                    <a href="#" key="btn-export-fumen" datatest="btn-export-fumen"
-                       className="waves-effect waves-light btn red" onclick={exportFumen}>
-                        {i18n.ListViewExport.Buttons.Fumen()}
-                    </a>
-
-                    <a href="#" key="btn-export-url" datatest="btn-export-url"
-                       className="waves-effect waves-light btn red" onclick={exportUrl}>
-                        {i18n.ListViewExport.Buttons.Url()}
-                    </a>
-
-                    {isTreeView ? (
-                        <a href="#" key="btn-export-left-segment" datatest="btn-export-left-segment"
-                           className="waves-effect waves-light btn red" onclick={exportLeftSegment}>
-                            {i18n.ListViewExport.Buttons.UrlLeftToActive()}
-                        </a>
-                    ) : undefined}
-
-                    <a href="#" key="btn-export-image" datatest="btn-export-image"
-                       className="waves-effect waves-light btn red" onclick={exportImage}>
-                        {i18n.ListViewExport.Buttons.Image()}
-                    </a>
-
                     <a href="#" key="btn-cancel" datatest="btn-cancel"
                        className="waves-effect waves-teal btn-flat" onclick={cancel}>
                         {i18n.ListViewExport.Buttons.Cancel()}

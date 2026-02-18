@@ -9,6 +9,7 @@ interface ListViewImportModalProps {
     actions: {
         closeListViewImportModal: () => void;
         importPagesFromClipboard: (data: { mode: 'import' | 'add' }) => void;
+        exportListViewAsImage: () => void;
     };
 }
 
@@ -54,9 +55,30 @@ export const ListViewImportModal: Component<ListViewImportModalProps> = ({ actio
         destroy();
     };
 
+    const doExportImage = () => {
+        actions.exportListViewAsImage();
+        close();
+        destroy();
+    };
+
     const contentStyle = style({
         textAlign: 'center',
-        padding: px(20),
+        padding: px(10),
+    });
+
+    const buttonsStyle = style({
+        margin: '0px auto',
+        padding: '0px',
+        display: 'flex',
+        justifyContent: 'flex-end',
+        flexDirection: 'column',
+        alignItems: 'center',
+    });
+
+    const btnStyle = style({
+        width: '100%',
+        maxWidth: px(280),
+        margin: px(5),
     });
 
     return (
@@ -64,20 +86,32 @@ export const ListViewImportModal: Component<ListViewImportModalProps> = ({ actio
             <div key="mdl-list-view-import" datatest="mdl-list-view-import"
                  className="modal" oncreate={oncreate}>
                 <div key="modal-content" className="modal-content" style={contentStyle}>
-                    <h4 key="import-label">{i18n.ListViewImport.Title()}</h4>
+                    <h4 key="import-label" style={style({ marginTop: '0px', marginBottom: px(10), fontSize: px(22) })}>
+                        {i18n.ListViewImport.Title()}
+                    </h4>
+
+                    <div style={buttonsStyle}>
+                        <a href="#" key="btn-add" datatest="btn-add"
+                           style={btnStyle}
+                           className="waves-effect waves-light btn red" onclick={doAdd}>
+                            {i18n.ListViewImport.Buttons.Add()}
+                        </a>
+
+                        <a href="#" key="btn-import" datatest="btn-import"
+                           style={btnStyle}
+                           className="waves-effect waves-light btn red" onclick={doImport}>
+                            {i18n.ListViewImport.Buttons.Import()}
+                        </a>
+
+                        <a href="#" key="btn-export-image" datatest="btn-export-image"
+                           style={btnStyle}
+                           className="waves-effect waves-light btn red" onclick={doExportImage}>
+                            {i18n.ListViewImport.Buttons.Image()}
+                        </a>
+                    </div>
                 </div>
 
                 <div key="modal-footer" className="modal-footer">
-                    <a href="#" key="btn-add" datatest="btn-add"
-                       className="waves-effect waves-light btn red" onclick={doAdd}>
-                        {i18n.ListViewImport.Buttons.Add()}
-                    </a>
-
-                    <a href="#" key="btn-import" datatest="btn-import"
-                       className="waves-effect waves-light btn red" onclick={doImport}>
-                        {i18n.ListViewImport.Buttons.Import()}
-                    </a>
-
                     <a href="#" key="btn-cancel" datatest="btn-cancel"
                        className="waves-effect waves-teal btn-flat" onclick={cancel}>
                         {i18n.ListViewImport.Buttons.Cancel()}
