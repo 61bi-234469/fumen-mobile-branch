@@ -106,6 +106,7 @@ export class Pages {
                 colorize: prev.flags.colorize,
                 rise: prev.flags.lock ? false : prev.flags.rise,
                 quiz: prev.flags.quiz,
+                srs: prev.flags.srs,
             },
             piece: prev.flags.lock ? undefined : prev.piece,
         };
@@ -155,6 +156,7 @@ export class Pages {
                 colorize: prev.flags.colorize,
                 rise: prev.flags.lock ? false : prev.flags.rise,
                 quiz: prev.flags.quiz,
+                srs: prev.flags.srs,
             },
             piece: prev.flags.lock ? undefined : prev.piece,
         };

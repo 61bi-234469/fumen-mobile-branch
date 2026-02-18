@@ -5,13 +5,14 @@ import { VNode } from 'hyperapp';
 import { parsePieceName, parseRotationName, Piece, Rotation } from '../lib/enums';
 import { BlockIcon } from '../components/atomics/icons';
 
-export const colorButton = ({ layout, piece, highlight, colorize, onclick, onlongpress, shortcutLabel }: {
+export const colorButton = ({ layout, piece, highlight, colorize, srs, onclick, onlongpress, shortcutLabel }: {
     layout: EditorLayout,
     piece: Piece,
     highlight: boolean,
     colorize: boolean,
+    srs?: boolean,
     onclick: (data: { piece: Piece }) => void,
-    onlongpress?: (data: { piece: Piece, guideline: boolean }) => void,
+    onlongpress?: (data: { piece: Piece, srs: boolean }) => void,
     shortcutLabel?: string,
 }) => {
     const borderWidth = highlight ? 3 : 1;
@@ -28,7 +29,7 @@ export const colorButton = ({ layout, piece, highlight, colorize, onclick, onlon
         datatest: `btn-piece-${pieceName.toLowerCase()}`,
         key: `btn-piece-${pieceName.toLowerCase()}`,
         onclick: () => onclick({ piece }),
-        onlongpress: onlongpress ? () => onlongpress({ piece, guideline: colorize }) : undefined,
+        onlongpress: onlongpress ? () => onlongpress({ piece, srs: srs ?? true }) : undefined,
     });
 };
 

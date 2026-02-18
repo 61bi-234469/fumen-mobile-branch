@@ -24,6 +24,7 @@ export const pieceMode = ({
     move,
     pages,
     existInferences,
+    srs,
     flags,
     pieceShortcuts,
     shortcutLabelVisible,
@@ -36,6 +37,7 @@ export const pieceMode = ({
     move?: Move;
     pages: Page[],
     existInferences: boolean,
+    srs: boolean,
     flags: {
         lock: boolean;
     },
@@ -47,8 +49,8 @@ export const pieceMode = ({
         changeToMovePieceMode: () => void;
         changeToSelectPieceMode: () => void;
         clearPiece: () => void;
-        rotateToLeft: () => void;
-        rotateToRight: () => void;
+        rotateToLeft: (data?: { srs?: boolean }) => void;
+        rotateToRight: (data?: { srs?: boolean }) => void;
         moveToLeft: () => void;
         moveToLeftEnd: () => void;
         moveToRight: () => void;
@@ -197,7 +199,7 @@ export const pieceMode = ({
                 datatest: 'btn-rotate-to-left',
                 key: 'btn-rotate-to-left',
                 enable: operate,
-                onclick: () => actions.rotateToLeft(),
+                onclick: () => actions.rotateToLeft({ srs }),
                 shortcutLabel: getShortcutLabel('RotateLeft'),
                 shortcutLabelColor: '#666',
             }, iconContents({
@@ -215,7 +217,7 @@ export const pieceMode = ({
                 datatest: 'btn-rotate-to-right',
                 key: 'btn-rotate-to-right',
                 enable: operate,
-                onclick: () => actions.rotateToRight(),
+                onclick: () => actions.rotateToRight({ srs }),
                 shortcutLabel: getShortcutLabel('RotateRight'),
                 shortcutLabelColor: '#666',
             }, iconContents({

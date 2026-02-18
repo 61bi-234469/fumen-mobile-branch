@@ -209,6 +209,7 @@ export const initState: Readonly<State> = {
                 mirror: false,
                 quiz: false,
                 rise: false,
+                srs: true,
             },
         }],
         value: undefined,

@@ -10,6 +10,7 @@ export const flagsMode = ({ layout, currentIndex, keyPage, flags, actions }: {
         lock: boolean;
         mirror: boolean;
         rise: boolean;
+        srs: boolean;
     },
     actions: {
         removePage: (data: { index: number }) => void;
@@ -19,6 +20,7 @@ export const flagsMode = ({ layout, currentIndex, keyPage, flags, actions }: {
         changeLockFlag: (data: { index: number, enable: boolean }) => void;
         changeRiseFlag: (data: { index: number, enable: boolean }) => void;
         changeMirrorFlag: (data: { index: number, enable: boolean }) => void;
+        changeSrsFlag: (data: { enable: boolean }) => void;
     };
 }) => {
     const toolButtonMargin = 5;
@@ -84,6 +86,22 @@ export const flagsMode = ({ layout, currentIndex, keyPage, flags, actions }: {
             description: 'mirror',
             iconSize: 22,
             enable: flags.mirror,
+        })),
+        switchButton({
+            borderWidth: 1,
+            width: layout.buttons.size.width,
+            margin: toolButtonMargin,
+            backgroundColorClass: 'red',
+            textColor: '#333',
+            borderColor: '#f44336',
+            datatest: 'btn-srs-flag',
+            key: 'btn-srs-flag',
+            onclick: () => actions.changeSrsFlag({ enable: !flags.srs }),
+            enable: flags.srs,
+        }, switchIconContents({
+            description: 'srs',
+            iconSize: 22,
+            enable: flags.srs,
         })),
     ]);
 };

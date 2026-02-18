@@ -8,6 +8,7 @@ import { toPrimitivePage, toSinglePageTask } from '../history_task';
 import { movePieceActions } from './move_piece';
 import { PageFieldOperation, Pages } from '../lib/pages';
 import { testLeftRotation, testRightRotation } from '../lib/srs';
+import { classicTestLeftRotation, classicTestRightRotation } from '../lib/classic_rotation';
 import { fillRowActions } from './fill_row';
 import { ViewError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
@@ -49,15 +50,15 @@ export interface FieldEditorActions {
 
     selectInferencePieceColor(): action;
 
-    spawnPiece(data: { piece: Piece, guideline: boolean }): action;
+    spawnPiece(data: { piece: Piece, srs: boolean }): action;
 
     clearPiece(): action;
 
     clearFieldAndPiece(): action;
 
-    rotateToLeft(): action;
+    rotateToLeft(data?: { srs?: boolean }): action;
 
-    rotateToRight(): action;
+    rotateToRight(data?: { srs?: boolean }): action;
 
     moveToLeft(): action;
 
@@ -252,7 +253,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             }),
         ]);
     },
-    spawnPiece: ({ piece, guideline }) => (state): NextState => {
+    spawnPiece: ({ piece, srs }) => (state): NextState => {
         if (piece === Piece.Gray || piece === Piece.Empty) {
             throw new ViewError(`Unsupported piece: ${piece}`);
         }
@@ -265,7 +266,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         }
 
         let next;
-        if (guideline) {
+        if (srs) {
             next = { type: piece, rotation: Rotation.Spawn, coordinate: { x: 4, y: 20 } };
         } else if (piece === Piece.I) {
             next = { type: piece, rotation: Rotation.Reverse, coordinate: { x: 5, y: 20 } };
@@ -323,7 +324,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             fieldEditorActions.clearPiece(),
         ]);
     },
-    rotateToLeft: () => (state): NextState => {
+    rotateToLeft: (data = {}) => (state): NextState => {
         const pages = state.fumen.pages;
         const pageIndex = state.fumen.currentIndex;
         const page = pages[pageIndex];
@@ -339,15 +340,16 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         const pagesObj = new Pages(pages);
         const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
 
-        const testObj = testLeftRotation(piece.type, piece.rotation);
+        const useSrs = data.srs ?? (pages[0]?.flags.srs ?? true);
+        const testObj = useSrs
+            ? testLeftRotation(piece.type, piece.rotation)
+            : classicTestLeftRotation(piece.type, piece.rotation, field, piece.coordinate.x, piece.coordinate.y);
         const nextRotation = testObj.rotation;
         const test = testCallback(field, piece.type, nextRotation);
 
         const coordinate = piece.coordinate;
         const testPositions = testObj.test.map((value) => {
-            value[0] += coordinate.x;
-            value[1] += coordinate.y;
-            return value;
+            return [value[0] + coordinate.x, value[1] + coordinate.y];
         });
 
         const element = testPositions.find(position => test(position[0], position[1]));
@@ -371,7 +373,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
             actions.reopenCurrentPage(),
         ]);
     },
-    rotateToRight: () => (state): NextState => {
+    rotateToRight: (data = {}) => (state): NextState => {
         const pages = state.fumen.pages;
         const pageIndex = state.fumen.currentIndex;
         const page = pages[pageIndex];
@@ -387,15 +389,16 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         const pagesObj = new Pages(pages);
         const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
 
-        const testObj = testRightRotation(piece.type, piece.rotation);
+        const useSrs = data.srs ?? (pages[0]?.flags.srs ?? true);
+        const testObj = useSrs
+            ? testRightRotation(piece.type, piece.rotation)
+            : classicTestRightRotation(piece.type, piece.rotation, field, piece.coordinate.x, piece.coordinate.y);
         const nextRotation = testObj.rotation;
         const test = testCallback(field, piece.type, nextRotation);
 
         const coordinate = piece.coordinate;
         const testPositions = testObj.test.map((value) => {
-            value[0] += coordinate.x;
-            value[1] += coordinate.y;
-            return value;
+            return [value[0] + coordinate.x, value[1] + coordinate.y];
         });
 
         const element = testPositions.find(position => test(position[0], position[1]));

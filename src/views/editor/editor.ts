@@ -188,7 +188,10 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
     const keyPage = page === undefined || page.field.obj !== undefined;
 
     // テト譜の仕様により、最初のページのフラグが全体に反映される
-    const guideLineColor = state.fumen.pages[0] !== undefined ? state.fumen.pages[0].flags.colorize : true;
+    // SRS OFF 時はクラシック色を優先する（ct 相当の挙動）
+    const globalFlags = state.fumen.pages[0]?.flags;
+    const srsFlag = globalFlags?.srs ?? true;
+    const guideLineColor = srsFlag && (globalFlags?.colorize ?? true);
 
     const getGradientPattern = (piece: Piece | 'inference') => {
         if (piece === 'inference') {
@@ -214,6 +217,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     currentIndex: state.fumen.currentIndex,
                     modePiece: state.mode.piece,
                     colorize: guideLineColor,
+                    srs: srsFlag,
                     paletteShortcuts: state.mode.paletteShortcuts,
                     editShortcuts: state.mode.editShortcuts,
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,
@@ -226,6 +230,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     actions,
                     move: page !== undefined ? page.piece : undefined,
                     existInferences: 0 < state.events.inferences.length,
+                    srs: srsFlag,
                     pages: state.fumen.pages,
                     flags: page.flags,
                     touchType: state.mode.touch,
@@ -240,7 +245,10 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     layout,
                     actions,
                     keyPage,
-                    flags: page.flags,
+                    flags: {
+                        ...page.flags,
+                        srs: state.fumen.pages[0]?.flags.srs ?? true,
+                    },
                     currentIndex: state.fumen.currentIndex,
                 });
             }
@@ -290,6 +298,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     actions,
                     currentIndex: state.fumen.currentIndex,
                     colorize: guideLineColor,
+                    srs: srsFlag,
                     paletteShortcuts: state.mode.paletteShortcuts,
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,
                 });
@@ -304,6 +313,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     currentIndex: state.fumen.currentIndex,
                     modePiece: state.mode.piece,
                     colorize: guideLineColor,
+                    srs: srsFlag,
                     paletteShortcuts: state.mode.paletteShortcuts,
                     editShortcuts: state.mode.editShortcuts,
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,

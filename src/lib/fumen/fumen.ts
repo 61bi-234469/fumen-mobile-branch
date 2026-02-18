@@ -268,6 +268,8 @@ export async function innerDecode(
                 mirror: action.mirror,
                 colorize: action.colorize,
                 rise: action.rise,
+                // SRS flag is not encoded in fumen. Keep it synchronized with decoded color mode.
+                srs: action.colorize,
             },
         };
         pages.push(page);

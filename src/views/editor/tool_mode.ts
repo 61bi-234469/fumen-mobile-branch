@@ -20,6 +20,7 @@ export const toolMode = ({
     touchType,
     modePiece,
     colorize,
+    srs,
     paletteShortcuts,
     editShortcuts,
     shortcutLabelVisible,
@@ -31,6 +32,7 @@ export const toolMode = ({
     touchType: TouchTypes;
     modePiece: Piece | undefined;
     colorize: boolean;
+    srs: boolean;
     paletteShortcuts: PaletteShortcuts;
     editShortcuts: EditShortcuts;
     shortcutLabelVisible: boolean;
@@ -45,7 +47,7 @@ export const toolMode = ({
         selectPieceColor: (data: { piece: Piece }) => void;
         selectInferencePieceColor: () => void;
         changeToMovePieceMode: () => void;
-        spawnPiece: (data: { piece: Piece, guideline: boolean }) => void;
+        spawnPiece: (data: { piece: Piece, srs: boolean }) => void;
         clearFieldAndPiece: () => void;
         convertToGray: () => void;
         copyCurrentPageToClipboard: () => void;
@@ -218,6 +220,7 @@ export const toolMode = ({
             layout,
             piece,
             colorize,
+            srs,
             onclick: actions.selectPieceColor,
             highlight: modePiece === piece,
             onlongpress: piece === Piece.Empty ? () => {

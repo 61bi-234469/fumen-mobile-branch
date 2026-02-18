@@ -22,6 +22,7 @@ describe('fumen', () => {
                     colorize: true,
                     rise: false,
                     quiz: false,
+                    srs: true,
                 },
                 field: {
                     obj: new Field({}),
@@ -129,6 +130,7 @@ describe('fumen', () => {
                     colorize: true,
                     rise: false,
                     quiz: false,
+                    srs: true,
                 },
                 field: {
                     obj: new Field({}),
@@ -360,6 +362,20 @@ describe('fumen', () => {
                     }),
                 },
             });
+        });
+
+        test('sync srs flag with decoded classic color mode', async () => {
+            const pages = await decode(
+                'v115@lfh0AtGeg0BtDeglRpg0AtCeilRpC8AeR4G8R4G8yw?C8UpwwYpAeYpAeYpwhYpwhYpwhYpwhTpJeAAA',
+            );
+
+            expect(pages.length).toBeGreaterThan(0);
+            pages.forEach((page) => {
+                expect(page.flags.srs).toBe(page.flags.colorize);
+            });
+
+            expect(pages[0].flags.colorize).toBe(false);
+            expect(pages[0].flags.srs).toBe(false);
         });
     });
 

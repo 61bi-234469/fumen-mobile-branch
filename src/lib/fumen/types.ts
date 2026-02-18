@@ -48,6 +48,7 @@ export interface Page {
         colorize: boolean;
         rise: boolean;
         quiz: boolean;
+        srs: boolean;
     };
 }
 

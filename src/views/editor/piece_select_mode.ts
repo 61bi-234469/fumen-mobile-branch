@@ -9,6 +9,7 @@ export const pieceSelectMode = ({
     layout,
     currentIndex,
     colorize,
+    srs,
     paletteShortcuts,
     shortcutLabelVisible,
     actions,
@@ -16,10 +17,11 @@ export const pieceSelectMode = ({
     layout: EditorLayout;
     currentIndex: number;
     colorize: boolean;
+    srs: boolean;
     paletteShortcuts: PaletteShortcuts;
     shortcutLabelVisible: boolean;
     actions: {
-        spawnPiece: (data: { piece: Piece, guideline: boolean }) => void;
+        spawnPiece: (data: { piece: Piece, srs: boolean }) => void;
         changeToPieceMode: () => void;
         changeToMovePieceMode: () => void;
     };
@@ -49,8 +51,9 @@ export const pieceSelectMode = ({
             layout,
             piece,
             colorize,
+            srs,
             onclick: ({ piece }) => {
-                actions.spawnPiece({ piece, guideline: colorize });
+                actions.spawnPiece({ piece, srs });
                 actions.changeToMovePieceMode();
                 actions.changeToPieceMode();
             },

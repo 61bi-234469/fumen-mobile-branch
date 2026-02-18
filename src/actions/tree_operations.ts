@@ -443,7 +443,11 @@ export const createSnapshot = (
     };
 };
 
-const rebuildPageRefsForOrder = (pages: Page[], originalFirstPageColorize: boolean): Page[] => {
+const rebuildPageRefsForOrder = (
+    pages: Page[],
+    originalFirstPageColorize: boolean,
+    originalFirstPageSrs: boolean,
+): Page[] => {
     const oldIndexToNewIndex = new Map<number, number>();
     pages.forEach((page, newIndex) => {
         oldIndexToNewIndex.set(page.index, newIndex);
@@ -453,7 +457,11 @@ const rebuildPageRefsForOrder = (pages: Page[], originalFirstPageColorize: boole
         const newPage = { ...page, index: newIndex };
 
         if (newIndex === 0) {
-            newPage.flags = { ...page.flags, colorize: originalFirstPageColorize };
+            newPage.flags = {
+                ...page.flags,
+                colorize: originalFirstPageColorize,
+                srs: originalFirstPageSrs,
+            };
         }
 
         if (page.field.ref !== undefined) {
@@ -537,7 +545,12 @@ const normalizeTreeAndPages = (
 
     const reorderedPages = order.map(oldIndex => pages[oldIndex]);
     const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
-    const newPages = rebuildPageRefsForOrder(reorderedPages, originalFirstPageColorize);
+    const originalFirstPageSrs = pages[0]?.flags.srs ?? true;
+    const newPages = rebuildPageRefsForOrder(
+        reorderedPages,
+        originalFirstPageColorize,
+        originalFirstPageSrs,
+    );
 
     const newTree = updateTreePageIndices(tree, indexMap);
     const activeNode = activeNodeId ? findNode(newTree, activeNodeId) : undefined;

@@ -177,7 +177,7 @@ const executePaletteShortPress = (palette: PaletteKey, state: State, actions: Ac
     // Empty/Gray は changeToDrawingToolMode + selectPieceColor
     case ModeTypes.SelectPiece:
         if (isMino(palette)) {
-            actions.spawnPiece({ piece, guideline: colorize });
+            actions.spawnPiece({ piece, srs: state.fumen.pages[0]?.flags.srs ?? true });
             actions.changeToMovePieceMode();
             actions.changeToPieceMode();
         } else {
@@ -214,7 +214,7 @@ const executePaletteLongPress = (palette: PaletteKey, state: State, actions: Act
     if (isMino(palette)) {
         const piece = paletteToPiece(palette);
         if (piece !== null) {
-            actions.spawnPiece({ piece, guideline: colorize });
+            actions.spawnPiece({ piece, srs: state.fumen.pages[0]?.flags.srs ?? true });
             actions.changeToMovePieceMode();
         }
     }

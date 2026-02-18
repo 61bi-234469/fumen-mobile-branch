@@ -264,6 +264,7 @@ function reorderPagesInternal(pages: Page[], fromIndex: number, toIndex: number)
 
     // 元の最初のページのcolorizeフラグを保存
     const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
+    const originalFirstPageSrs = pages[0]?.flags.srs ?? true;
 
     const [movedPage] = pages.splice(fromIndex, 1);
 
@@ -271,7 +272,7 @@ function reorderPagesInternal(pages: Page[], fromIndex: number, toIndex: number)
     // so no additional adjustment is needed here
     pages.splice(toIndex, 0, movedPage);
 
-    return rebuildPageRefs(pages, originalFirstPageColorize);
+    return rebuildPageRefs(pages, originalFirstPageColorize, originalFirstPageSrs);
 }
 
 const buildReorderIndexMap = (pageCount: number, fromIndex: number, toIndex: number): Map<number, number> => {
@@ -304,7 +305,11 @@ const buildReorderIndexMap = (pageCount: number, fromIndex: number, toIndex: num
     return indexMap;
 };
 
-function rebuildPageRefs(pages: Page[], originalFirstPageColorize: boolean): Page[] {
+function rebuildPageRefs(
+    pages: Page[],
+    originalFirstPageColorize: boolean,
+    originalFirstPageSrs: boolean,
+): Page[] {
     const oldIndexToNewIndex = new Map<number, number>();
     pages.forEach((page, newIndex) => {
         oldIndexToNewIndex.set(page.index, newIndex);
@@ -316,7 +321,11 @@ function rebuildPageRefs(pages: Page[], originalFirstPageColorize: boolean): Pag
         // 最初のページのcolorizeフラグを元の値に維持する
         // （テト譜の仕様により、最初のページのflagsが全体に反映されるため）
         if (newIndex === 0) {
-            newPage.flags = { ...page.flags, colorize: originalFirstPageColorize };
+            newPage.flags = {
+                ...page.flags,
+                colorize: originalFirstPageColorize,
+                srs: originalFirstPageSrs,
+            };
         }
 
         if (page.field.ref !== undefined) {
@@ -682,12 +691,15 @@ export const listViewActions: Readonly<ListViewActions> = {
                     });
                 }
 
-                // 4. Re-index pages 0..N-1 and preserve first page colorize
+                // 4. Re-index pages 0..N-1 and preserve first-page global flags
                 const originalFirstColorize = extractedPages[0]?.flags.colorize ?? true;
+                const originalFirstSrs = extractedPages[0]?.flags.srs ?? true;
                 const reindexedPages: Page[] = extractedPages.map((page, i) => ({
                     ...page,
                     index: i,
-                    flags: i === 0 ? { ...page.flags, colorize: originalFirstColorize } : page.flags,
+                    flags: i === 0
+                        ? { ...page.flags, colorize: originalFirstColorize, srs: originalFirstSrs }
+                        : page.flags,
                 }));
 
                 // 5. Remove tree data from comments

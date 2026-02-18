@@ -274,6 +274,7 @@ export interface PrimitivePage {
         colorize: boolean;
         rise: boolean;
         quiz: boolean;
+        srs: boolean;
     };
 }
 
@@ -311,6 +312,7 @@ export const toPrimitivePage = (page: Page): PrimitivePage => {
             colorize: page.flags.colorize,
             rise: page.flags.rise,
             quiz: page.flags.quiz,
+            srs: page.flags.srs,
         },
     };
 };
@@ -343,6 +345,7 @@ export const toPage = (page: PrimitivePage): Page => {
             colorize: page.flags.colorize,
             rise: page.flags.rise,
             quiz: page.flags.quiz,
+            srs: page.flags.srs ?? true,
         },
     };
 };
