@@ -47,13 +47,27 @@ const isClassicTwoStatePiece = (piece: Piece): boolean => {
     return piece === Piece.I || piece === Piece.S || piece === Piece.Z;
 };
 
+const isClassicTwoStateI = (piece: Piece): boolean => {
+    return piece === Piece.I;
+};
+
+const isClassicTwoStateSZ = (piece: Piece): boolean => {
+    return piece === Piece.S || piece === Piece.Z;
+};
+
 const normalizeClassicRotation = (piece: Piece, rotation: Rotation): Rotation => {
     if (!isClassicTwoStatePiece(piece)) {
         return rotation;
     }
 
-    if (rotation === Rotation.Reverse) {
-        return Rotation.Spawn;
+    if (isClassicTwoStateI(piece)) {
+        if (rotation === Rotation.Reverse) {
+            return Rotation.Spawn;
+        }
+    } else if (isClassicTwoStateSZ(piece)) {
+        if (rotation === Rotation.Spawn) {
+            return Rotation.Reverse;
+        }
     }
 
     if (rotation === Rotation.Left) {
@@ -64,8 +78,12 @@ const normalizeClassicRotation = (piece: Piece, rotation: Rotation): Rotation =>
 };
 
 const nextClassicRotation = (piece: Piece, rotation: Rotation, clockwise: boolean): Rotation => {
-    if (isClassicTwoStatePiece(piece)) {
+    if (isClassicTwoStateI(piece)) {
         return rotation === Rotation.Spawn ? Rotation.Right : Rotation.Spawn;
+    }
+
+    if (isClassicTwoStateSZ(piece)) {
+        return rotation === Rotation.Reverse ? Rotation.Right : Rotation.Reverse;
     }
 
     return clockwise ? nextRotationToRight(rotation) : nextRotationToLeft(rotation);

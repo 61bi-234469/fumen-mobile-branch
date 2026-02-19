@@ -156,17 +156,15 @@ describe('classicTestLeftRotation (CCW)', () => {
 });
 
 describe('classic two-state pieces', () => {
-    const targets = [Piece.I, Piece.S, Piece.Z];
-
-    const expectations = [
+    const iExpectations = [
         { current: Rotation.Spawn, next: Rotation.Right },
         { current: Rotation.Right, next: Rotation.Spawn },
         { current: Rotation.Reverse, next: Rotation.Right },
         { current: Rotation.Left, next: Rotation.Spawn },
     ];
 
-    targets.forEach((piece) => {
-        expectations.forEach(({ current, next }) => {
+    [Piece.I].forEach((piece) => {
+        iExpectations.forEach(({ current, next }) => {
             it(`CW: ${piece} ${current} -> ${next}`, () => {
                 const result = classicTestRightRotation(piece, current, emptyField(), 4, 10);
                 expect(result.rotation).toBe(next);
@@ -176,6 +174,44 @@ describe('classic two-state pieces', () => {
                 const result = classicTestLeftRotation(piece, current, emptyField(), 4, 10);
                 expect(result.rotation).toBe(next);
             });
+        });
+    });
+
+    const szExpectations = [
+        { current: Rotation.Spawn, next: Rotation.Right },
+        { current: Rotation.Right, next: Rotation.Reverse },
+        { current: Rotation.Reverse, next: Rotation.Right },
+        { current: Rotation.Left, next: Rotation.Reverse },
+    ];
+
+    [Piece.S, Piece.Z].forEach((piece) => {
+        szExpectations.forEach(({ current, next }) => {
+            it(`CW: ${piece} ${current} -> ${next}`, () => {
+                const result = classicTestRightRotation(piece, current, emptyField(), 4, 10);
+                expect(result.rotation).toBe(next);
+            });
+
+            it(`CCW: ${piece} ${current} -> ${next}`, () => {
+                const result = classicTestLeftRotation(piece, current, emptyField(), 4, 10);
+                expect(result.rotation).toBe(next);
+            });
+        });
+
+        it(`CW twice keeps ${piece} in the same cells from classic spawn state`, () => {
+            const field = emptyField();
+            const start = { x: 4, y: 21, rotation: Rotation.Reverse };
+
+            const first = classicTestRightRotation(piece, start.rotation, field, start.x, start.y);
+            const second = classicTestRightRotation(piece, first.rotation, field, start.x, start.y);
+
+            const startPositions = getBlockPositions(piece, start.rotation, start.x, start.y)
+                .map(([x, y]) => `${x},${y}`)
+                .sort();
+            const afterTwoPositions = getBlockPositions(piece, second.rotation, start.x, start.y)
+                .map(([x, y]) => `${x},${y}`)
+                .sort();
+
+            expect(afterTwoPositions).toEqual(startPositions);
         });
     });
 });
