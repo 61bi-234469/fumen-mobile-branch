@@ -102,7 +102,32 @@ describe('classicTestRightRotation (CW)', () => {
         const field = emptyField();
         const result = classicTestRightRotation(Piece.O, Rotation.Spawn, field, 4, 10);
         expect(result.test).toHaveLength(1);
-        expect(result.test[0]).toEqual([0, 0]);
+        expect(result.test[0]).toEqual([0, 1]);
+    });
+
+    it('O piece keeps same occupied cells after repeated CW rotations', () => {
+        const field = emptyField();
+        const start = { x: 5, y: 21, rotation: Rotation.Reverse };
+        const startPositions = getBlockPositions(Piece.O, start.rotation, start.x, start.y)
+            .map(([x, y]) => `${x},${y}`)
+            .sort();
+
+        let currentRotation = start.rotation;
+        let currentX = start.x;
+        let currentY = start.y;
+        for (let i = 0; i < 4; i += 1) {
+            const result = classicTestRightRotation(Piece.O, currentRotation, field, currentX, currentY);
+            const [dx, dy] = result.test[0];
+            currentRotation = result.rotation;
+            currentX += dx;
+            currentY += dy;
+        }
+
+        const afterPositions = getBlockPositions(Piece.O, currentRotation, currentX, currentY)
+            .map(([x, y]) => `${x},${y}`)
+            .sort();
+
+        expect(afterPositions).toEqual(startPositions);
     });
 });
 
@@ -146,10 +171,10 @@ describe('classicTestLeftRotation (CCW)', () => {
         });
     });
 
-    it('S piece: Spawn -> Right and has fallback candidates in empty field', () => {
+    it('S piece: Spawn -> Left and has fallback candidates in empty field', () => {
         const field = emptyField();
         const result = classicTestLeftRotation(Piece.S, Rotation.Spawn, field, 4, 10);
-        expect(result.rotation).toBe(Rotation.Right);
+        expect(result.rotation).toBe(Rotation.Left);
         expect(result.test[0]).toEqual([0, 0]);
         expect(result.test.length).toBeGreaterThan(1);
     });
@@ -177,15 +202,53 @@ describe('classic two-state pieces', () => {
         });
     });
 
-    const szExpectations = [
+    const zExpectations = [
         { current: Rotation.Spawn, next: Rotation.Right },
         { current: Rotation.Right, next: Rotation.Reverse },
         { current: Rotation.Reverse, next: Rotation.Right },
         { current: Rotation.Left, next: Rotation.Reverse },
     ];
 
-    [Piece.S, Piece.Z].forEach((piece) => {
-        szExpectations.forEach(({ current, next }) => {
+    [Piece.Z].forEach((piece) => {
+        zExpectations.forEach(({ current, next }) => {
+            it(`CW: ${piece} ${current} -> ${next}`, () => {
+                const result = classicTestRightRotation(piece, current, emptyField(), 4, 10);
+                expect(result.rotation).toBe(next);
+            });
+
+            it(`CCW: ${piece} ${current} -> ${next}`, () => {
+                const result = classicTestLeftRotation(piece, current, emptyField(), 4, 10);
+                expect(result.rotation).toBe(next);
+            });
+        });
+
+        it(`CW twice keeps ${piece} in the same cells from classic spawn state`, () => {
+            const field = emptyField();
+            const start = { x: 4, y: 21, rotation: Rotation.Reverse };
+
+            const first = classicTestRightRotation(piece, start.rotation, field, start.x, start.y);
+            const second = classicTestRightRotation(piece, first.rotation, field, start.x, start.y);
+
+            const startPositions = getBlockPositions(piece, start.rotation, start.x, start.y)
+                .map(([x, y]) => `${x},${y}`)
+                .sort();
+            const afterTwoPositions = getBlockPositions(piece, second.rotation, start.x, start.y)
+                .map(([x, y]) => `${x},${y}`)
+                .sort();
+
+            expect(afterTwoPositions).toEqual(startPositions);
+        });
+    });
+
+    const sExpectations = [
+        { current: Rotation.Spawn, next: Rotation.Left },
+        { current: Rotation.Right, next: Rotation.Reverse },
+        { current: Rotation.Reverse, next: Rotation.Left },
+        { current: Rotation.Left, next: Rotation.Reverse },
+    ];
+
+    [Piece.S].forEach((piece) => {
+        sExpectations.forEach(({ current, next }) => {
             it(`CW: ${piece} ${current} -> ${next}`, () => {
                 const result = classicTestRightRotation(piece, current, emptyField(), 4, 10);
                 expect(result.rotation).toBe(next);

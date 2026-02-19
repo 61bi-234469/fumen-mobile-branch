@@ -26,6 +26,14 @@ const ltjOffsetsByHtml: HtmlRotationOffsets = {
     3: makeAll([0, 0], [0, -1]),
 };
 
+// O piece keeps the same occupied cells in legacy classic mode.
+const oOffsetsByHtml: HtmlRotationOffsets = {
+    0: makeAll([-1, 0], [0, -1]),
+    1: makeAll([0, -1], [1, 0]),
+    2: makeAll([1, 0], [0, 1]),
+    3: makeAll([0, 1], [-1, 0]),
+};
+
 const zeroOffsetsByHtml: HtmlRotationOffsets = {
     0: makeZero(),
     1: makeZero(),
@@ -36,7 +44,7 @@ const zeroOffsetsByHtml: HtmlRotationOffsets = {
 const CLASSIC_OFFSETS_BY_HTML: { [p in Piece]?: HtmlRotationOffsets } = {
     [Piece.I]: iOffsetsByHtml,
     [Piece.L]: ltjOffsetsByHtml,
-    [Piece.O]: zeroOffsetsByHtml,
+    [Piece.O]: oOffsetsByHtml,
     [Piece.Z]: zeroOffsetsByHtml,
     [Piece.T]: ltjOffsetsByHtml,
     [Piece.J]: ltjOffsetsByHtml,
@@ -51,8 +59,12 @@ const isClassicTwoStateI = (piece: Piece): boolean => {
     return piece === Piece.I;
 };
 
-const isClassicTwoStateSZ = (piece: Piece): boolean => {
-    return piece === Piece.S || piece === Piece.Z;
+const isClassicTwoStateS = (piece: Piece): boolean => {
+    return piece === Piece.S;
+};
+
+const isClassicTwoStateZ = (piece: Piece): boolean => {
+    return piece === Piece.Z;
 };
 
 const normalizeClassicRotation = (piece: Piece, rotation: Rotation): Rotation => {
@@ -64,14 +76,28 @@ const normalizeClassicRotation = (piece: Piece, rotation: Rotation): Rotation =>
         if (rotation === Rotation.Reverse) {
             return Rotation.Spawn;
         }
-    } else if (isClassicTwoStateSZ(piece)) {
+        if (rotation === Rotation.Left) {
+            return Rotation.Right;
+        }
+        return rotation;
+    }
+
+    if (isClassicTwoStateZ(piece)) {
         if (rotation === Rotation.Spawn) {
             return Rotation.Reverse;
         }
+        if (rotation === Rotation.Left) {
+            return Rotation.Right;
+        }
+        return rotation;
     }
 
-    if (rotation === Rotation.Left) {
-        return Rotation.Right;
+    // S piece vertical state is represented by Rotation.Left in the legacy classic editor.
+    if (rotation === Rotation.Spawn) {
+        return Rotation.Reverse;
+    }
+    if (rotation === Rotation.Right) {
+        return Rotation.Left;
     }
 
     return rotation;
@@ -82,8 +108,12 @@ const nextClassicRotation = (piece: Piece, rotation: Rotation, clockwise: boolea
         return rotation === Rotation.Spawn ? Rotation.Right : Rotation.Spawn;
     }
 
-    if (isClassicTwoStateSZ(piece)) {
+    if (isClassicTwoStateZ(piece)) {
         return rotation === Rotation.Reverse ? Rotation.Right : Rotation.Reverse;
+    }
+
+    if (isClassicTwoStateS(piece)) {
+        return rotation === Rotation.Reverse ? Rotation.Left : Rotation.Reverse;
     }
 
     return clockwise ? nextRotationToRight(rotation) : nextRotationToLeft(rotation);

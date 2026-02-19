@@ -269,7 +269,7 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         if (srs) {
             next = { type: piece, rotation: Rotation.Spawn, coordinate: { x: 4, y: 20 } };
         } else if (piece === Piece.I) {
-            next = { type: piece, rotation: Rotation.Reverse, coordinate: { x: 5, y: 20 } };
+            next = { type: piece, rotation: Rotation.Spawn, coordinate: { x: 4, y: 21 } };
         } else if (piece === Piece.O) {
             next = { type: piece, rotation: Rotation.Reverse, coordinate: { x: 5, y: 21 } };
         } else {
