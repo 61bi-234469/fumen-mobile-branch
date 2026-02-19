@@ -310,14 +310,17 @@ const executeEditLongPress = (key: EditShortcutKey, state: State, actions: Actio
     case 'Cut':
         actions.cutAllPages();
         break;
-    // InsertPage, Menu, TreeView, Undo, Redo, Add は長押し動作なし
+    case 'Menu':
+        actions.executeNewFumen();
+        break;
+    // InsertPage, TreeView, Undo, Redo, Add は長押し動作なし
     }
 };
 
 // 長押し動作があるかどうか
 const hasEditLongPress = (key: EditShortcutKey): boolean => {
     return key === 'PrevPage' || key === 'NextPage' || key === 'ListView'
-        || key === 'Insert' || key === 'Copy' || key === 'Cut';
+        || key === 'Insert' || key === 'Copy' || key === 'Cut' || key === 'Menu';
 };
 
 // ピースショートカットをコードで検索（修飾キーなし）

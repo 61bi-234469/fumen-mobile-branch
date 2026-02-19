@@ -21,6 +21,7 @@ interface Props {
     actions: {
         openFumenModal: () => void;
         openMenuModal: () => void;
+        executeNewFumen: () => void;
         changeToListViewScreen: (data?: { lockNav?: boolean }) => void;
         changeToTreeViewScreen: (data?: { lockNav?: boolean }) => void;
         startAnimation: () => void;
@@ -146,7 +147,10 @@ export const EditorTools: Component<Props> = (
                 <ToolButton iconName="menu" datatest="btn-open-menu" sticky={true} stickyOffset={3}
                             key="btn-open-menu" width={40} height={height - 10} fontSize={32} colors={colors}
                             shortcutLabel={getLabel('Menu')}
-                            actions={{ onclick: () => actions.openMenuModal() }}/>
+                            actions={{
+                                onclick: () => actions.openMenuModal(),
+                                onlongpress: () => actions.executeNewFumen(),
+                            }}/>
             </div>
         </nav>
     );

@@ -45,6 +45,7 @@ export interface UtilsActions {
         screenParam?: Screens,
     }) => action;
     appendPages: (data: { pages: Page[], pageIndex: number }) => action;
+    executeNewFumen: () => action;
     refresh: () => action;
     openInPC: () => action;
     openInExternalSite: () => action;
@@ -155,6 +156,13 @@ export const utilsActions: Readonly<UtilsActions> = {
     },
     loadNewFumen: () => (state): NextState => {
         return utilsActions.loadFumen({ fumen: 'v115@vhAAgH' })(state);
+    },
+    executeNewFumen: () => (state): NextState => {
+        return sequence(state, [
+            actions.removeUnsettledItems(),
+            actions.loadNewFumen(),
+            actions.changeToDrawerScreen({ refresh: true }),
+        ]);
     },
     loadPages: ({ pages, loadedFumen, treeEnabledParam, treeViewModeParam, screenParam }) => (state): NextState => {
         const hasTreeData = state.tree.rootId !== null && state.tree.nodes.length > 0;
