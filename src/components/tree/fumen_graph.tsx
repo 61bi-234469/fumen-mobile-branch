@@ -207,6 +207,17 @@ const renderNode = (
     });
     const dragOpacity = isDragSource ? 0.5 : 1;
     const hideBranchButton = isParentOfDragSource && node.childrenIds.length <= 1;
+    const handleButtonTouchStart = (e: TouchEvent) => {
+        if (e.cancelable) {
+            e.preventDefault();
+        }
+        if (e.touches.length === 1 && typeof window !== 'undefined') {
+            (window as any).__treeTouchStartPosition = {
+                x: e.touches[0].clientX,
+                y: e.touches[0].clientY,
+            };
+        }
+    };
 
     // Determine node background and stroke based on drag state
     let fillColor = '#fff';
@@ -313,6 +324,7 @@ const renderNode = (
                 actions.onDrop();
             }}
             ontouchstart={(e: TouchEvent) => {
+                if (e.defaultPrevented) return;
                 e.preventDefault();
                 // Store touch position for button detection in list_view.ts
                 if (e.touches.length === 1 && typeof window !== 'undefined') {
@@ -528,6 +540,7 @@ const renderNode = (
                                 actions.onDrop();
                             }
                         }}
+                        ontouchstart={handleButtonTouchStart}
                         style={style({ cursor: 'pointer' })}
                     >
                         <circle
@@ -586,6 +599,7 @@ const renderNode = (
                                 actions.onDrop();
                             }
                         }}
+                        ontouchstart={handleButtonTouchStart}
                         style={style({ cursor: 'pointer' })}
                     >
                         <circle
@@ -644,6 +658,7 @@ const renderNode = (
                             actions.onDrop();
                         }
                     }}
+                    ontouchstart={handleButtonTouchStart}
                     style={style({ cursor: 'pointer' })}
                 >
                     <circle
