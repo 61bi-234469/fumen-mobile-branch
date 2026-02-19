@@ -193,8 +193,9 @@ const executePaletteShortPress = (palette: PaletteKey, state: State, actions: Ac
 const executePaletteLongPress = (palette: PaletteKey, state: State, actions: Actions) => {
     const colorize = state.fumen.guideLineColor;
 
-    // Comp は長押し動作なし
+    // Comp: convertToBlack
     if (palette === 'Comp') {
+        actions.convertToBlack();
         return;
     }
 

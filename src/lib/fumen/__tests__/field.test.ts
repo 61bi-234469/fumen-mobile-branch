@@ -1,4 +1,4 @@
-import { PlayField } from '../field';
+import { Field, PlayField } from '../field';
 import { Piece, Rotation } from '../../enums';
 import { FumenError } from '../../errors';
 
@@ -187,5 +187,72 @@ describe('field', () => {
         });
         expect(array).toHaveLength(230);
         expect(array.every(value => value === Piece.Empty)).toBeTruthy();
+    });
+
+    describe('convertNonGrayToEmpty', () => {
+        test('PlayField: converts all colored pieces to Empty, keeps Gray and Empty', () => {
+            const field = PlayField.load(
+                'XX________',
+                'ILTSZOJ___',
+            );
+
+            field.convertNonGrayToEmpty();
+
+            // カラーブロックはすべて Empty に変換される
+            expect(field.get(0, 0)).toEqual(Piece.Empty); // I
+            expect(field.get(1, 0)).toEqual(Piece.Empty); // L
+            expect(field.get(2, 0)).toEqual(Piece.Empty); // T
+            expect(field.get(3, 0)).toEqual(Piece.Empty); // S
+            expect(field.get(4, 0)).toEqual(Piece.Empty); // Z
+            expect(field.get(5, 0)).toEqual(Piece.Empty); // O
+            expect(field.get(6, 0)).toEqual(Piece.Empty); // J
+            // Gray は残る
+            expect(field.get(0, 1)).toEqual(Piece.Gray);  // X
+            expect(field.get(1, 1)).toEqual(Piece.Gray);  // X
+            // Empty はそのまま
+            expect(field.get(7, 0)).toEqual(Piece.Empty);
+            expect(field.get(2, 1)).toEqual(Piece.Empty);
+        });
+
+        test('PlayField: no change when already all Empty', () => {
+            const field = new PlayField({});
+            const before = field.toArray().slice();
+
+            field.convertNonGrayToEmpty();
+
+            expect(field.toArray()).toEqual(before);
+        });
+
+        test('PlayField: no change when already all Gray', () => {
+            const field = PlayField.load('XXXXXXXXXX');
+
+            field.convertNonGrayToEmpty();
+
+            for (let x = 0; x < 10; x += 1) {
+                expect(field.get(x, 0)).toEqual(Piece.Gray);
+            }
+        });
+
+        test('Field: convertNonGrayToEmpty also applies to sentLine', () => {
+            const field = new Field({});
+            // playField に I ブロックを置く
+            field.setToPlayField(0, Piece.I);
+            // sentLine に T ブロックを置く
+            field.setToSentLine(0, Piece.T);
+            // Gray を playField と sentLine に置く
+            field.setToPlayField(1, Piece.Gray);
+            field.setToSentLine(1, Piece.Gray);
+
+            field.convertNonGrayToEmpty();
+
+            // playField のカラーは Empty に
+            expect(field.get(0, 0)).toEqual(Piece.Empty);
+            // sentLine のカラーは Empty に（y=-1 が sentLine の row 0）
+            expect(field.get(0, -1)).toEqual(Piece.Empty);
+            // playField の Gray は残る
+            expect(field.get(1, 0)).toEqual(Piece.Gray);
+            // sentLine の Gray は残る
+            expect(field.get(1, -1)).toEqual(Piece.Gray);
+        });
     });
 });

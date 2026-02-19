@@ -50,6 +50,7 @@ export const toolMode = ({
         spawnPiece: (data: { piece: Piece, srs: boolean }) => void;
         clearFieldAndPiece: () => void;
         convertToGray: () => void;
+        convertToBlack: () => void;
         copyCurrentPageToClipboard: () => void;
         insertPageFromClipboard: () => void;
         copyAllPagesToClipboard: () => void;
@@ -241,6 +242,7 @@ export const toolMode = ({
             shortcutLabel: shortcutLabelVisible && paletteShortcuts.Comp
                 ? displayShortcut(paletteShortcuts.Comp)
                 : undefined,
+            onlongpress: () => actions.convertToBlack(),
         }),
     ]));
 };

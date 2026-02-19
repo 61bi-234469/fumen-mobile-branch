@@ -102,13 +102,14 @@ export const svgButton = ({
     }, contents);
 };
 
-export const inferenceButton = ({ layout, highlight, actions, shortcutLabel }: {
+export const inferenceButton = ({ layout, highlight, actions, shortcutLabel, onlongpress }: {
     layout: EditorLayout,
     highlight: boolean,
     actions: {
         selectInferencePieceColor: () => void;
     },
     shortcutLabel?: string,
+    onlongpress?: () => void,
 }) => {
     const contents: (string | VNode<{}>)[] = [
         ...iconContents({
@@ -133,6 +134,7 @@ export const inferenceButton = ({ layout, highlight, actions, shortcutLabel }: {
 
     return toolButton({
         borderWidth,
+        onlongpress,
         width: layout.buttons.size.width,
         margin: 5,
         backgroundColorClass: 'white',

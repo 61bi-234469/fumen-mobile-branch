@@ -22,6 +22,7 @@ export interface ConvertActions {
     shiftToUpWithGray: () => action;
     shiftToBottom: () => action;
     convertToGray: () => action;
+    convertToBlack: () => action;
     clearField: () => action;
     convertToMirror: () => action;
     convertAllToMirror: () => action;
@@ -241,6 +242,17 @@ export const convertActions: Readonly<ConvertActions> = {
                 copy.convertToGray();
                 return copy;
             }),
+        ]);
+    },
+    convertToBlack: () => (state): NextState => {
+        return sequence(state, [
+            actions.removeUnsettledItems(),
+            convertToGoalField((field) => {
+                const copy = field.copy();
+                copy.convertNonGrayToEmpty();
+                return copy;
+            }),
+            actions.clearPiece(),
         ]);
     },
     clearField: () => (state): NextState => {

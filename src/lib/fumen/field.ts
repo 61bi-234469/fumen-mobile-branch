@@ -113,6 +113,11 @@ export class Field {
         this.playField.convertToGray();
         this.sentLine.convertToGray();
     }
+
+    convertNonGrayToEmpty() {
+        this.playField.convertNonGrayToEmpty();
+        this.sentLine.convertNonGrayToEmpty();
+    }
 }
 
 export class PlayField {
@@ -282,5 +287,11 @@ export class PlayField {
 
     convertToGray() {
         this.pieces = this.pieces.map(piece => piece !== Piece.Empty ? Piece.Gray : Piece.Empty);
+    }
+
+    convertNonGrayToEmpty() {
+        this.pieces = this.pieces.map(
+            piece => (piece !== Piece.Empty && piece !== Piece.Gray) ? Piece.Empty : piece,
+        );
     }
 }
