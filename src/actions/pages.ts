@@ -553,7 +553,11 @@ export const pageActions: Readonly<PageActions> = {
                         ? pages[currentPage.comment.ref].comment.text
                         : ''),
             },
-            flags: { ...currentPage.flags, colorize: pages[0]?.flags.colorize ?? true, srs: pages[0]?.flags.srs ?? true },
+            flags: {
+                ...currentPage.flags,
+                colorize: pages[0]?.flags.colorize ?? true,
+                srs: pages[0]?.flags.srs ?? true,
+            },
             piece: currentPage.piece, // ピースも含める（ライン消去前の状態）
         };
 
@@ -1352,7 +1356,10 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
             tasks.push(toFreezeCommentTask(nextPageIndex));
         }
 
-        if (index === 0 && (currentPage.flags.colorize !== nextPage.flags.colorize || currentPage.flags.srs !== nextPage.flags.srs)) {
+        if (
+            index === 0 &&
+            (currentPage.flags.colorize !== nextPage.flags.colorize || currentPage.flags.srs !== nextPage.flags.srs)
+        ) {
             const primitiveNextPage = toPrimitivePage(nextPage);
             nextPage.flags.colorize = currentPage.flags.colorize;
             nextPage.flags.srs = currentPage.flags.srs;

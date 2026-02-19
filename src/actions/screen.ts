@@ -57,7 +57,7 @@ export const modeActions: Readonly<ScreenActions> = {
             refresh ? actions.changeToDrawingToolMode() : undefined,
         ]);
     },
-    changeToListViewScreen: (data) => (state): NextState => {
+    changeToListViewScreen: data => (state): NextState => {
         // Lock undo/redo buttons for 500ms only when transitioning from
         // the bottom-left button in READ/EDIT view, to prevent accidental
         // presses from screen transition touch events (buttons are at same coordinates)
@@ -92,7 +92,7 @@ export const modeActions: Readonly<ScreenActions> = {
             }),
         ]);
     },
-    changeToTreeViewScreen: (data) => (state): NextState => {
+    changeToTreeViewScreen: data => (state): NextState => {
         const ensureTreeEnabled = state.tree.enabled ? undefined : actions.toggleTreeMode();
         const rebuildTree = state.tree.enabled && (state.tree.nodes.length === 0 || state.tree.rootId === null)
             ? (currentState: State): NextState => {
