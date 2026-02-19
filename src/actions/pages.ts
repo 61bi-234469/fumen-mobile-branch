@@ -32,6 +32,7 @@ import { toTreeOperationTask, createSnapshot } from './tree_operations';
 import { mementoActions } from './memento';
 import { parseClipboard } from '../lib/clipboard_parser';
 import { i18n } from '../locales/keys';
+import { syncSrsAndColorizeFlags } from '../lib/fumen/flag_sync';
 
 declare const M: any;
 const safeDecodeClipboardFumen = (value: string): string => {
@@ -498,7 +499,11 @@ export const pageActions: Readonly<PageActions> = {
         const page0 = pages[0];
         const primitivePrev = toPrimitivePage(page0);
 
-        page0.flags.srs = enable;
+        page0.flags = syncSrsAndColorizeFlags({
+            ...page0.flags,
+            colorize: enable,
+            srs: enable,
+        });
 
         const task = toSinglePageTask(0, primitivePrev, page0);
 
@@ -543,6 +548,10 @@ export const pageActions: Readonly<PageActions> = {
 
         // 現在のページを独立したKeyPageとして構築
         const currentPage = pages[currentIndex];
+        const normalizedGlobalFlags = syncSrsAndColorizeFlags({
+            colorize: pages[0]?.flags.colorize ?? true,
+            srs: pages[0]?.flags.srs ?? true,
+        });
         const singlePage: Page = {
             index: 0,
             field: { obj: field.copy() },
@@ -555,8 +564,8 @@ export const pageActions: Readonly<PageActions> = {
             },
             flags: {
                 ...currentPage.flags,
-                colorize: pages[0]?.flags.colorize ?? true,
-                srs: pages[0]?.flags.srs ?? true,
+                colorize: normalizedGlobalFlags.colorize,
+                srs: normalizedGlobalFlags.srs,
             },
             piece: currentPage.piece, // ピースも含める（ライン消去前の状態）
         };
@@ -604,8 +613,10 @@ export const pageActions: Readonly<PageActions> = {
         // 現在のページを独立したKeyPageとして構築
         const currentPage = pages[currentIndex];
         // 元のfumenの最初のページのcolorizeフラグを継承
-        const originalFirstPageColorize = pages[0]?.flags.colorize ?? true;
-        const originalFirstPageSrs = pages[0]?.flags.srs ?? true;
+        const normalizedGlobalFlags = syncSrsAndColorizeFlags({
+            colorize: pages[0]?.flags.colorize ?? true,
+            srs: pages[0]?.flags.srs ?? true,
+        });
         const singlePage: Page = {
             index: 0,
             field: { obj: field.copy() },
@@ -616,7 +627,11 @@ export const pageActions: Readonly<PageActions> = {
                         ? pages[currentPage.comment.ref].comment.text
                         : ''),
             },
-            flags: { ...currentPage.flags, colorize: originalFirstPageColorize, srs: originalFirstPageSrs },
+            flags: {
+                ...currentPage.flags,
+                colorize: normalizedGlobalFlags.colorize,
+                srs: normalizedGlobalFlags.srs,
+            },
             piece: currentPage.piece,
         };
 

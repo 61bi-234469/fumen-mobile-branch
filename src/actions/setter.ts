@@ -6,6 +6,7 @@ import { Move, Page } from '../lib/fumen/types';
 import { inferPiece } from '../lib/inference';
 import { generateKey } from '../lib/random';
 import { getBlockPositions } from '../lib/piece';
+import { normalizePagesFlags } from '../lib/fumen/flag_sync';
 
 export interface SetterActions {
     setPages: (data: { pages: Page[], open?: boolean }) => action;
@@ -35,6 +36,7 @@ export const setterActions: Readonly<SetterActions> = {
         if (pages.length < 1) {
             return undefined;
         }
+        const normalizedPages = normalizePagesFlags(pages);
 
         if (open) {
             setTimeout(() => {
@@ -45,8 +47,8 @@ export const setterActions: Readonly<SetterActions> = {
         return {
             fumen: {
                 ...state.fumen,
-                pages,
-                maxPage: pages.length,
+                pages: normalizedPages,
+                maxPage: normalizedPages.length,
             },
         };
     },
