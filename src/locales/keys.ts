@@ -190,5 +190,7 @@ export const i18n = {
         UsageHint: () => t('ColdClear.UsageHint'),
         TreeModeRequired: () => t('ColdClear.TreeModeRequired'),
         TopBranchesAdded: (count: number) => t('ColdClear.TopBranchesAdded', { count }),
+        ShortPressTopBranches: (count: number) => t('ColdClear.ShortPressTopBranches', { count }),
+        LongPressSequenceSearch: () => t('ColdClear.LongPressSequenceSearch'),
     },
 };

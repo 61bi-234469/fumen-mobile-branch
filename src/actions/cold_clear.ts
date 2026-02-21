@@ -72,7 +72,7 @@ let currentSession: RunSession | null = null;
 
 const THINK_MS = 1000;
 const INIT_TIMEOUT_MS = 10000;
-const TOP_BRANCH_COUNT = 3;
+const TOP_BRANCH_COUNT = 5;
 
 // Action reference (set after Hyperapp mounts)
 let appActions: ColdClearRuntimeActions | null = null;

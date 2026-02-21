@@ -90,6 +90,14 @@ export const toolMode = ({
     };
     const toolButtonMargin = 3;
     const pieces = [Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray];
+    const topBranchCount = 5;
+    const showColdClearModeFeedback = (message: string) => {
+        (M as any).toast({
+            html: message,
+            classes: 'top-toast',
+            displayLength: 1200,
+        });
+    };
 
     return div({ style: toolStyle(layout) }, [
         switchButton({
@@ -251,7 +259,9 @@ export const toolMode = ({
                         });
                         return;
                     }
-                    actions.startColdClearSearch();
+
+                    showColdClearModeFeedback(i18n.ColdClear.ShortPressTopBranches(topBranchCount));
+                    actions.startColdClearTopThreeSearch();
                 },
                 onlongpress: () => {
                     if (coldClear.isRunning) {
@@ -268,7 +278,8 @@ export const toolMode = ({
                         return;
                     }
 
-                    actions.startColdClearTopThreeSearch();
+                    showColdClearModeFeedback(i18n.ColdClear.LongPressSequenceSearch());
+                    actions.startColdClearSearch();
                 },
             }, iconContents({
                 description: coldClear.isRunning

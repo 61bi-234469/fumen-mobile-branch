@@ -365,7 +365,7 @@ describe('coldClearActions run isolation', () => {
         expect(cc.isRunning).toBe(true);
     });
 
-    test('top3 initDone requests top 3 moves', () => {
+    test('top3 initDone requests top 5 moves', () => {
         const state = makeColdClearState({ treeEnabled: true, commentText: 'IOTL' });
         const startResult = coldClearActions.startColdClearTopThreeSearch()(state);
         const runId = getColdClear(startResult).runId;
@@ -381,7 +381,7 @@ describe('coldClearActions run isolation', () => {
 
         const wrapperCtor = ColdClearWrapper as any as jest.Mock;
         const wrapperInstance = wrapperCtor.mock.results[0].value;
-        expect(wrapperInstance.requestTopMoves).toHaveBeenCalledWith(3);
+        expect(wrapperInstance.requestTopMoves).toHaveBeenCalledWith(5);
     });
 
     test('top3 completion transitions to tree view after finish', () => {

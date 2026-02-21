@@ -180,7 +180,9 @@ export const resources = {
         InitTimeout: 'AI: Initialization timeout',
         PopupBlocked: 'AI: Popup blocked. URL copied to clipboard.',
         UsageHint: 'Set pieces in comment (e.g. IOTLJSZ, T:IOSL) and enable Lock flag.',
-        TreeModeRequired: 'Enable Tree mode to use top-3 branch search.',
+        TreeModeRequired: 'Enable Tree mode to use top-5 branch search.',
         TopBranchesAdded: 'AI: Added {{count}} branch(es)',
+        ShortPressTopBranches: 'CC short press: search top {{count}} branches',
+        LongPressSequenceSearch: 'CC long press: search full sequence',
     },
 };
