@@ -916,7 +916,6 @@ const insertRefPage = ({ index }: { index: number }) => (state: Readonly<State>)
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
 
         return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -930,6 +929,7 @@ const insertRefPage = ({ index }: { index: number }) => (state: Readonly<State>)
                     activeNodeId: currentNode?.id ?? null,
                 },
             }),
+            mementoActions.registerHistoryTask({ task }),
         ]);
     }
 
@@ -987,7 +987,6 @@ const insertKeyPage = ({ index }: { index: number }) => (state: Readonly<State>)
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
 
         return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -1001,6 +1000,7 @@ const insertKeyPage = ({ index }: { index: number }) => (state: Readonly<State>)
                     activeNodeId: currentNode?.id ?? null,
                 },
             }),
+            mementoActions.registerHistoryTask({ task }),
         ]);
     }
 
@@ -1231,7 +1231,6 @@ const duplicatePage = ({ index }: { index: number }) => (state: Readonly<State>)
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
 
         return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -1245,6 +1244,7 @@ const duplicatePage = ({ index }: { index: number }) => (state: Readonly<State>)
                     activeNodeId: currentNode?.id ?? null,
                 },
             }),
+            mementoActions.registerHistoryTask({ task }),
         ]);
     }
 
@@ -1334,7 +1334,6 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
 
         return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -1349,6 +1348,7 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
                     activeNodeId: currentNode?.id ?? null,
                 },
             }),
+            mementoActions.registerHistoryTask({ task }),
         ]);
     }
 
@@ -1393,7 +1393,6 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
     const nextIndex = index < newPages.length ? index : newPages.length - 1;
 
     return sequence(state, [
-        actions.registerHistoryTask({ task: toPageTaskStack(tasks, index) }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -1402,6 +1401,7 @@ const removePage = ({ index }: { index: number }) => (state: Readonly<State>): N
                 currentIndex: nextIndex,
             },
         }),
+        actions.registerHistoryTask({ task: toPageTaskStack(tasks, index) }),
     ]);
 };
 
@@ -1449,7 +1449,6 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
 
         return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -1464,6 +1463,7 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
                     activeNodeId: currentNode?.id ?? null,
                 },
             }),
+            mementoActions.registerHistoryTask({ task }),
         ]);
     }
 
@@ -1479,7 +1479,6 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
     const nextIndex = pageIndex < newPages.length ? pageIndex : newPages.length - 1;
 
     return sequence(state, [
-        actions.registerHistoryTask({ task }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -1488,6 +1487,7 @@ const clearToEnd = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<St
                 currentIndex: nextIndex,
             },
         }),
+        actions.registerHistoryTask({ task }),
     ]);
 };
 
@@ -1560,7 +1560,6 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
 
         return sequence(state, [
-            mementoActions.registerHistoryTask({ task }),
             () => ({
                 fumen: {
                     ...state.fumen,
@@ -1575,6 +1574,7 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
                     activeNodeId: currentNode?.id ?? null,
                 },
             }),
+            mementoActions.registerHistoryTask({ task }),
             actions.reopenCurrentPage(),
         ]);
     }
@@ -1614,7 +1614,6 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
     const newPages = pagesObj.pages;
 
     return sequence(state, [
-        actions.registerHistoryTask({ task: toPageTaskStack(tasks, pageIndex) }),
         () => ({
             fumen: {
                 ...state.fumen,
@@ -1623,6 +1622,7 @@ const clearPast = ({ pageIndex }: { pageIndex: number }) => (state: Readonly<Sta
                 currentIndex: 0,
             },
         }),
+        actions.registerHistoryTask({ task: toPageTaskStack(tasks, pageIndex) }),
         actions.reopenCurrentPage(),
     ]);
 };
