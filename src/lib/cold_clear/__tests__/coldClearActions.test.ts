@@ -1,5 +1,7 @@
 import { coldClearActions, initColdClearActions, resetForTesting } from '../../../actions/cold_clear';
 import { Piece } from '../../enums';
+import { Field } from '../../fumen/field';
+import { ColdClearWrapper } from '../ColdClearWrapper';
 
 // Mock ColdClearWrapper to avoid actual Worker creation
 jest.mock('../ColdClearWrapper', () => ({
@@ -62,6 +64,7 @@ function makeColdClearState(overrides: {
     flags?: { lock: boolean; mirror: boolean; rise: boolean; quiz: boolean; colorize: boolean; srs: boolean };
 } = {}) {
     const flags = overrides.flags || { lock: true, mirror: false, rise: false, quiz: false, colorize: true, srs: true };
+    const initialField = new Field({});
     return {
         coldClear: {
             isRunning: overrides.isRunning || false,
@@ -73,7 +76,7 @@ function makeColdClearState(overrides: {
             currentIndex: 0,
             pages: [{
                 flags,
-                field: { obj: undefined },
+                field: { obj: initialField.copy() },
                 piece: undefined,
                 comment: { text: overrides.commentText || 'IOTLJSZ' },
                 index: 0,
@@ -83,14 +86,7 @@ function makeColdClearState(overrides: {
         },
         comment: { text: overrides.commentText || 'IOTLJSZ', changeKey: 0 },
         cache: {
-            currentInitField: {
-                copy: jest.fn().mockReturnValue({
-                    get: () => Piece.Empty,
-                    copy: jest.fn().mockReturnThis(),
-                    put: jest.fn(),
-                    clearLine: jest.fn(),
-                }),
-            },
+            currentInitField: new Field({}),
         },
     } as any;
 }
@@ -117,6 +113,31 @@ describe('coldClearActions run isolation', () => {
         expect(cc).toBeDefined();
         expect(cc.runId).toBe(1);
         expect(cc.isRunning).toBe(true);
+    });
+
+    test('startColdClearSearch does not pre-open tab', () => {
+        const state = makeColdClearState({ commentText: 'I' });
+        coldClearActions.startColdClearSearch()(state);
+
+        expect((global as any).window.open).not.toHaveBeenCalled();
+    });
+
+    test('startColdClearSearch uses command-applied field', () => {
+        const state = makeColdClearState({ commentText: 'I' });
+        state.fumen.pages[0].commands = {
+            pre: {
+                'block-0': { type: 'block', x: 0, y: 0, piece: Piece.I },
+            },
+        };
+
+        const result = coldClearActions.startColdClearSearch()(state);
+        expect(getColdClear(result).isRunning).toBe(true);
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapperInstance = wrapperCtor.mock.results[0].value;
+        const initMsg = wrapperInstance.start.mock.calls[0][0];
+
+        expect(initMsg.field[0]).toBe(1);
     });
 
     test('startColdClearSearch increments runId on each call', () => {

@@ -5,6 +5,7 @@ import { State } from '../states';
 import { Page, Move } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
 import { encode } from '../lib/fumen/fumen';
+import { PageFieldOperation, Pages } from '../lib/pages';
 import { parseQueueComment, buildQueueComment } from '../lib/cold_clear/queueParser';
 import { fieldToCC } from '../lib/cold_clear/fieldConverter';
 import {
@@ -30,7 +31,6 @@ interface RunSession {
     hold: Piece | null;
     queue: Piece[];
     totalMoves: number;
-    preOpenedTab: Window | null;
     colorize: boolean;
     srs: boolean;
 }
@@ -75,9 +75,6 @@ async function finishSearch(runId: number) {
     terminateSession(session);
 
     if (session.resultPages.length === 0) {
-        if (session.preOpenedTab) {
-            try { session.preOpenedTab.close(); } catch (e) { /* ignore */ }
-        }
         M.toast({ html: i18n.ColdClear.NoMoveFound(), classes: 'top-toast', displayLength: 1500 });
     } else {
         try {
@@ -87,16 +84,12 @@ async function finishSearch(runId: number) {
             params.set('screen', 'list');
             const url = `${window.location.origin}${window.location.pathname}#?${params.toString()}`;
 
-            if (session.preOpenedTab) {
-                session.preOpenedTab.location.href = url;
-            } else {
+            const openedTab = window.open(url, '_blank');
+            if (!openedTab) {
                 await navigator.clipboard.writeText(url);
                 M.toast({ html: i18n.ColdClear.PopupBlocked(), classes: 'top-toast', displayLength: 3000 });
             }
         } catch (error) {
-            if (session.preOpenedTab) {
-                try { session.preOpenedTab.close(); } catch (e) { /* ignore */ }
-            }
             M.toast({ html: i18n.ColdClear.WorkerError(), classes: 'top-toast', displayLength: 1500 });
         }
     }
@@ -156,15 +149,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const runId = nextRunId;
         nextRunId += 1;
 
-        // Pre-open tab (must be in user click context)
-        const preOpenedTab = window.open('', '_blank');
-
         // Build session
-        const field = state.cache.currentInitField.copy();
+        const pages = new Pages(state.fumen.pages);
+        const field = pages.getField(state.fumen.currentIndex, PageFieldOperation.Command);
         const session: RunSession = {
             runId,
             field,
-            preOpenedTab,
             wrapper: new ColdClearWrapper(),
             resultPages: [],
             hold: parsed.hold,
@@ -194,9 +184,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const initTimeoutId = setTimeout(() => {
             if (currentSession && currentSession.runId === runId && currentSession.resultPages.length === 0) {
                 M.toast({ html: i18n.ColdClear.InitTimeout(), classes: 'top-toast', displayLength: 1500 });
-                if (currentSession.preOpenedTab) {
-                    try { currentSession.preOpenedTab.close(); } catch (e) { /* ignore */ }
-                }
                 terminateSession(currentSession);
                 currentSession = null;
                 if (appActions) {
@@ -356,9 +343,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         console.error('Cold Clear error:', error);
 
         if (currentSession && currentSession.runId === runId) {
-            if (currentSession.preOpenedTab) {
-                try { currentSession.preOpenedTab.close(); } catch (e) { /* ignore */ }
-            }
             terminateSession(currentSession);
             currentSession = null;
         }
