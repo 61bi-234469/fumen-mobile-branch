@@ -4,6 +4,7 @@ dist/
 yarn-*.log
 docs/
 .tmp_compare/
+GEMINI.md
 src/**/*.js
 !src/lib/cold_clear_wasm/*.js
 src/**/*.js.map
