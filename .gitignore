@@ -5,6 +5,9 @@ yarn-*.log
 docs/
 .tmp_compare/
 GEMINI.md
+AGENTS.md
+CLAUDE.md
+.claude/
 src/**/*.js
 !src/lib/cold_clear_wasm/*.js
 src/**/*.js.map
