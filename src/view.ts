@@ -89,6 +89,7 @@ export const view: View<State, Actions> = (state, actions) => {
 
         state.modal.listViewImport ? ListViewImportModal({
             actions,
+            isTreeView: state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree,
         }) : undefined as any,
 
         state.modal.listViewExport ? ListViewExportModal({

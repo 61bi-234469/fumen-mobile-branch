@@ -168,6 +168,7 @@ export const i18n = {
             Import: () => t('ListViewImport.Buttons.Import'),
             Add: () => t('ListViewImport.Buttons.Add'),
             Image: () => t('ListViewImport.Buttons.Image'),
+            ImageLeftToActive: () => t('ListViewImport.Buttons.ImageLeftToActive'),
             Cancel: () => t('ListViewImport.Buttons.Cancel'),
         },
     },

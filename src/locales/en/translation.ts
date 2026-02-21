@@ -151,7 +151,7 @@ export const resources = {
         Buttons: {
             Fumen: 'Copy Fumen to Clipboard',
             Url: 'Open Share URL',
-            UrlLeftToActive: 'Open URL (Root to Active)',
+            UrlLeftToActive: 'Share URL (to Active Node)',
             Image: 'Download PNG Image',
             Cancel: 'Cancel',
         },
@@ -163,6 +163,7 @@ export const resources = {
             Import: 'IMPORT',
             Add: 'INSERT',
             Image: 'Download PNG Image',
+            ImageLeftToActive: 'Share PNG (to Active Node)',
             Cancel: 'Cancel',
         },
     },

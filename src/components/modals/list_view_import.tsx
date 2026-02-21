@@ -6,14 +6,16 @@ import { i18n } from '../../locales/keys';
 declare const M: any;
 
 interface ListViewImportModalProps {
+    isTreeView: boolean;
     actions: {
         closeListViewImportModal: () => void;
         importPagesFromClipboard: (data: { mode: 'import' | 'add' }) => void;
         exportListViewAsImage: () => void;
+        exportLeftSegmentAsImage: () => void;
     };
 }
 
-export const ListViewImportModal: Component<ListViewImportModalProps> = ({ actions }) => {
+export const ListViewImportModal: Component<ListViewImportModalProps> = ({ isTreeView, actions }) => {
     const close = () => {
         const modal = resources.modals.listViewImport;
         if (modal !== undefined) {
@@ -57,6 +59,12 @@ export const ListViewImportModal: Component<ListViewImportModalProps> = ({ actio
 
     const doExportImage = () => {
         actions.exportListViewAsImage();
+        close();
+        destroy();
+    };
+
+    const doExportLeftSegmentImage = () => {
+        actions.exportLeftSegmentAsImage();
         close();
         destroy();
     };
@@ -108,6 +116,15 @@ export const ListViewImportModal: Component<ListViewImportModalProps> = ({ actio
                            className="waves-effect waves-light btn red" onclick={doExportImage}>
                             {i18n.ListViewImport.Buttons.Image()}
                         </a>
+
+                        {isTreeView ? (
+                            <a href="#" key="btn-export-left-segment-image"
+                               datatest="btn-export-left-segment-image"
+                               style={btnStyle}
+                               className="waves-effect waves-light btn red" onclick={doExportLeftSegmentImage}>
+                                {i18n.ListViewImport.Buttons.ImageLeftToActive()}
+                            </a>
+                        ) : undefined}
                     </div>
                 </div>
 

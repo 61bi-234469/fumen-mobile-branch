@@ -126,7 +126,7 @@ export const resources = {
         Buttons: {
             Fumen: 'Fumenをコピー',
             Url: '共有URLを開く',
-            UrlLeftToActive: 'ルートから現在ノードまでのURLを開く',
+            UrlLeftToActive: '共有URL(アクティブノードまで)',
             Image: 'PNG画像をダウンロード',
             Cancel: 'キャンセル',
         },
@@ -138,6 +138,7 @@ export const resources = {
             Import: 'IMPORT',
             Add: 'INSERT',
             Image: 'PNG画像をダウンロード',
+            ImageLeftToActive: 'PNG画像(アクティブノードまで)',
             Cancel: 'キャンセル',
         },
     },
