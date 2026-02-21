@@ -2,6 +2,8 @@ node_modules/
 .idea/
 dist/
 yarn-*.log
+docs/
+.tmp_compare/
 src/**/*.js
 !src/lib/cold_clear_wasm/*.js
 src/**/*.js.map
