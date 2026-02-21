@@ -12,12 +12,15 @@ const cacheId = 'fumen-for-mobile';
 const destDirectory = path.join(__dirname, 'dest')
 
 module.exports = {
-    entry: [
-        './src/actions.ts',
-    ],
+    entry: {
+        main: './src/actions.ts',
+    },
     output: {
         filename: '[name].bundle.js',
         path: destDirectory,
+    },
+    experiments: {
+        asyncWebAssembly: true,
     },
     module: {
         rules: [
@@ -38,8 +41,13 @@ module.exports = {
                 }
             },
             {
+                test: /cold_clear[\\/](ColdClearWrapper|cold_clear\.worker)\.ts$/,
+                use: [{ loader: 'ts-loader', options: { instance: 'worker', configFile: 'tsconfig.worker.json' } }],
+            },
+            {
                 test: /\.tsx?$/,
-                use: 'ts-loader',
+                exclude: /cold_clear[\\/](ColdClearWrapper|cold_clear\.worker)\.ts$/,
+                use: [{ loader: 'ts-loader', options: { ignoreDiagnostics: [1343] } }],
             },
             {
                 test: /\.css$/i,
@@ -50,7 +58,7 @@ module.exports = {
     optimization: {
         splitChunks: {
             name: 'vendor',
-            chunks: 'initial',
+            chunks: 'all',
         },
     },
     resolve: {
@@ -83,6 +91,7 @@ module.exports = {
             clientsClaim: true,
             skipWaiting: true,
             offlineGoogleAnalytics: true,
+            maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB for WASM files
         }),
     ]
 };

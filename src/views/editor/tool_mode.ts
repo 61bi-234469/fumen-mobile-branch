@@ -10,8 +10,10 @@ import {
     toolSpace,
 } from '../editor_buttons';
 import { EditorLayout, toolStyle } from './editor';
-import { EditShortcuts, PaletteShortcuts } from '../../states';
+import { EditShortcuts, PaletteShortcuts, State } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
+import { parseQueueComment } from '../../lib/cold_clear/queueParser';
+import { i18n } from '../../locales/keys';
 
 export const toolMode = ({
     layout,
@@ -24,6 +26,9 @@ export const toolMode = ({
     paletteShortcuts,
     editShortcuts,
     shortcutLabelVisible,
+    commentText,
+    flags,
+    coldClear,
     actions,
 }: {
     layout: EditorLayout;
@@ -36,6 +41,9 @@ export const toolMode = ({
     paletteShortcuts: PaletteShortcuts;
     editShortcuts: EditShortcuts;
     shortcutLabelVisible: boolean;
+    commentText: string;
+    flags: { lock: boolean; mirror: boolean; rise: boolean; quiz: boolean };
+    coldClear: State['coldClear'];
     actions: {
         cutCurrentPage: () => void;
         insertNewPage: (data: { index: number }) => void;
@@ -56,6 +64,8 @@ export const toolMode = ({
         copyAllPagesToClipboard: () => void;
         cutAllPages: () => void;
         replaceAllFromClipboard: () => void;
+        startColdClearSearch: () => void;
+        stopColdClearSearch: () => void;
     };
 }) => {
     const getShortcutLabel = (piece: Piece): string | undefined => {
@@ -210,6 +220,38 @@ export const toolMode = ({
             iconSize: 20,
             iconName: 'extension',
         })),
+        (() => {
+            const ccEnabled = coldClear.isRunning || (
+                flags.lock && !flags.mirror && !flags.rise && !flags.quiz
+                && parseQueueComment(commentText) !== null
+            );
+            return toolButton({
+                borderWidth: 1,
+                width: layout.buttons.size.width,
+                margin: toolButtonMargin,
+                backgroundColorClass: coldClear.isRunning ? 'red' : 'white',
+                textColor: coldClear.isRunning ? '#fff' : '#333',
+                borderColor: coldClear.isRunning ? '#f44336' : '#333',
+                datatest: coldClear.isRunning ? 'btn-cold-clear-stop' : 'btn-cold-clear',
+                key: 'btn-cold-clear',
+                enable: ccEnabled,
+                onclick: () => {
+                    if (coldClear.isRunning) {
+                        actions.stopColdClearSearch();
+                    } else {
+                        actions.startColdClearSearch();
+                    }
+                },
+            }, iconContents({
+                description: coldClear.isRunning
+                    ? (coldClear.progress
+                        ? i18n.ColdClear.Progress(coldClear.progress.current, coldClear.progress.total)
+                        : i18n.ColdClear.StopLabel())
+                    : i18n.ColdClear.ButtonLabel(),
+                iconSize: 18,
+                iconName: coldClear.isRunning ? 'stop' : 'auto_fix_high',
+            }));
+        })(),
         toolSpace({
             flexGrow: 100,
             width: layout.buttons.size.width,

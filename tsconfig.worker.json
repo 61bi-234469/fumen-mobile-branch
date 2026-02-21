@@ -1,0 +1,7 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "module": "esnext",
+        "lib": ["dom", "es2015", "webworker"]
+    }
+}

@@ -166,6 +166,12 @@ export interface State {
         trimTopBlank: boolean;
     };
     tree: TreeState;
+    coldClear: {
+        isRunning: boolean;
+        abortRequested: boolean;
+        runId: number;
+        progress: { current: number; total: number } | null;
+    };
     version: string;
     platform: Platforms;
 }
@@ -280,6 +286,12 @@ export const initState: Readonly<State> = {
         trimTopBlank: false,
     },
     tree: initialTreeState,
+    coldClear: {
+        isRunning: false,
+        abortRequested: false,
+        runId: 0,
+        progress: null,
+    },
     version: VERSION,
     platform: getPlatform(),
 };

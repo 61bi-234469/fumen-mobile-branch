@@ -1,0 +1,131 @@
+import { Piece } from '../../enums';
+import { buildQueueComment, parseQueueComment } from '../queueParser';
+
+describe('parseQueueComment', () => {
+    test('parse queue without hold', () => {
+        const result = parseQueueComment('IOTLJSZ');
+        expect(result).toEqual({
+            hold: null,
+            queue: [Piece.I, Piece.O, Piece.T, Piece.L, Piece.J, Piece.S, Piece.Z],
+        });
+    });
+
+    test('parse queue with hold', () => {
+        const result = parseQueueComment('T:IOSL');
+        expect(result).toEqual({
+            hold: Piece.T,
+            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+        });
+    });
+
+    test('parse single piece', () => {
+        const result = parseQueueComment('I');
+        expect(result).toEqual({
+            hold: null,
+            queue: [Piece.I],
+        });
+    });
+
+    test('parse hold with single queue piece', () => {
+        const result = parseQueueComment('T:I');
+        expect(result).toEqual({
+            hold: Piece.T,
+            queue: [Piece.I],
+        });
+    });
+
+    test('return null for empty string', () => {
+        expect(parseQueueComment('')).toBeNull();
+    });
+
+    test('return null for non-piece characters', () => {
+        expect(parseQueueComment('hello')).toBeNull();
+    });
+
+    test('return null for multiple colons', () => {
+        expect(parseQueueComment('T:I:O')).toBeNull();
+    });
+
+    test('return null for quiz format', () => {
+        expect(parseQueueComment('#Q=[]()')).toBeNull();
+    });
+
+    test('return null for lowercase', () => {
+        expect(parseQueueComment('iot')).toBeNull();
+    });
+
+    test('return null for leading space', () => {
+        expect(parseQueueComment(' IOTL')).toBeNull();
+    });
+
+    test('return null for trailing space', () => {
+        expect(parseQueueComment('IOTL ')).toBeNull();
+    });
+
+    test('return null for mixed case', () => {
+        expect(parseQueueComment('IoTl')).toBeNull();
+    });
+
+    test('return null for colon only', () => {
+        expect(parseQueueComment(':')).toBeNull();
+    });
+
+    test('return null for hold with empty queue (colon at end)', () => {
+        expect(parseQueueComment('T:')).toBeNull();
+    });
+});
+
+describe('buildQueueComment', () => {
+    test('build with hold and queue', () => {
+        expect(buildQueueComment(Piece.T, [Piece.I, Piece.O, Piece.S])).toBe('T:IOS');
+    });
+
+    test('build without hold', () => {
+        expect(buildQueueComment(null, [Piece.I, Piece.O, Piece.T])).toBe('IOT');
+    });
+
+    test('return empty string when queue is empty (with hold)', () => {
+        expect(buildQueueComment(Piece.T, [])).toBe('');
+    });
+
+    test('return empty string when queue is empty (without hold)', () => {
+        expect(buildQueueComment(null, [])).toBe('');
+    });
+
+    test('build single piece queue without hold', () => {
+        expect(buildQueueComment(null, [Piece.Z])).toBe('Z');
+    });
+
+    test('build single piece queue with hold', () => {
+        expect(buildQueueComment(Piece.I, [Piece.Z])).toBe('I:Z');
+    });
+});
+
+describe('hold swap logic', () => {
+    test('no hold used: consume front of queue', () => {
+        // Input: T:IOSL, place I (no hold)
+        const parsed = parseQueueComment('T:IOSL')!;
+        // I is placed from queue front, hold stays T
+        const newHold = parsed.hold; // T
+        const newQueue = parsed.queue.slice(1); // [O, S, L]
+        expect(buildQueueComment(newHold, newQueue)).toBe('T:OSL');
+    });
+
+    test('hold used: swap hold and queue front', () => {
+        // Input: T:IOSL, place T (hold used), I goes to hold
+        const parsed = parseQueueComment('T:IOSL')!;
+        // Hold T is placed, queue front I moves to hold
+        const newHold = parsed.queue[0]; // I
+        const newQueue = parsed.queue.slice(1); // [O, S, L]
+        expect(buildQueueComment(newHold, newQueue)).toBe('I:OSL');
+    });
+
+    test('no hold, hold used: first piece becomes hold, second is placed', () => {
+        // Input: IOTLJSZ, hold empty, hold is used
+        // I goes to hold, O is placed
+        const parsed = parseQueueComment('IOTLJSZ')!;
+        const newHold = parsed.queue[0]; // I
+        const newQueue = parsed.queue.slice(2); // [T, L, J, S, Z]
+        expect(buildQueueComment(newHold, newQueue)).toBe('I:TLJSZ');
+    });
+});

@@ -170,4 +170,13 @@ export const resources = {
         OpenInPC: 'Open in Hard Drop',
         ExternalFumenURL: 'https://harddrop.com/fumen/?{{data}}',
     },
+    ColdClear: {
+        ButtonLabel: 'CC',
+        StopLabel: 'STOP',
+        Progress: 'Searching... {{current}}/{{total}}',
+        NoMoveFound: 'AI: No move found',
+        WorkerError: 'AI: Engine error',
+        InitTimeout: 'AI: Initialization timeout',
+        PopupBlocked: 'AI: Popup blocked. URL copied to clipboard.',
+    },
 };

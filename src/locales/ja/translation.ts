@@ -145,4 +145,13 @@ export const resources = {
         OpenInPC: 'PC版で開く',
         ExternalFumenURL: 'https://fumen.zui.jp/?{{data}}',
     },
+    ColdClear: {
+        ButtonLabel: 'CC',
+        StopLabel: 'STOP',
+        Progress: '探索中... {{current}}/{{total}}',
+        NoMoveFound: 'AI: 手が見つかりませんでした',
+        WorkerError: 'AI: エンジンエラー',
+        InitTimeout: 'AI: 初期化タイムアウト',
+        PopupBlocked: 'AI: ポップアップがブロックされました。URLをコピーしました。',
+    },
 };

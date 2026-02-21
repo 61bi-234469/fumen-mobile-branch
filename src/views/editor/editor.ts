@@ -209,6 +209,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         const getMode = () => {
             switch (state.mode.type) {
             case ModeTypes.DrawingTool: {
+                const dtPage = state.fumen.pages[state.fumen.currentIndex];
                 return toolMode({
                     layout,
                     actions,
@@ -221,6 +222,9 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     paletteShortcuts: state.mode.paletteShortcuts,
                     editShortcuts: state.mode.editShortcuts,
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,
+                    commentText: state.comment.text,
+                    flags: dtPage ? dtPage.flags : { lock: true, mirror: false, rise: false, quiz: false },
+                    coldClear: state.coldClear,
                 });
             }
             case ModeTypes.Piece: {
@@ -305,6 +309,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             }
             default: {
                 // ModeTypes.Drawing等の未対応モードはtoolModeにフォールバック
+                const dfPage = state.fumen.pages[state.fumen.currentIndex];
                 return toolMode({
                     layout,
                     actions,
@@ -317,6 +322,9 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     paletteShortcuts: state.mode.paletteShortcuts,
                     editShortcuts: state.mode.editShortcuts,
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,
+                    commentText: state.comment.text,
+                    flags: dfPage ? dfPage.flags : { lock: true, mirror: false, rise: false, quiz: false },
+                    coldClear: state.coldClear,
                 });
             }
             }

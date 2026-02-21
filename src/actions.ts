@@ -30,6 +30,7 @@ import { convertActions, ConvertActions } from './actions/convert';
 import { userSettingsActions, UserSettingsActions } from './actions/user_settings';
 import { listViewActions, ListViewActions } from './actions/list_view';
 import { treeOperationActions, TreeOperationActions } from './actions/tree_operations';
+import { coldClearActions, ColdClearActions, initColdClearActions } from './actions/cold_clear';
 import { i18n } from './locales/keys';
 import { getURLQuery, Query } from './params';
 import { localStorageWrapper } from './memento';
@@ -50,7 +51,8 @@ export type Actions = AnimationActions
     & ConvertActions
     & UserSettingsActions
     & ListViewActions
-    & TreeOperationActions;
+    & TreeOperationActions
+    & ColdClearActions;
 
 export const actions: Readonly<Actions> = {
     ...animationActions,
@@ -66,6 +68,7 @@ export const actions: Readonly<Actions> = {
     ...userSettingsActions,
     ...listViewActions,
     ...treeOperationActions,
+    ...coldClearActions,
 };
 
 // Current state getter for shortcut handlers
@@ -90,6 +93,9 @@ initShortcutHandlers(
     () => currentState,
     () => main,
 );
+
+// Initialize Cold Clear actions reference
+initColdClearActions(main as any);
 
 // Track last loaded URL parameters to avoid duplicate loads
 let lastUrlParams: {
