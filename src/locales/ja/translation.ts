@@ -155,5 +155,7 @@ export const resources = {
         InitTimeout: 'AI: 初期化タイムアウト',
         PopupBlocked: 'AI: ポップアップがブロックされました。URLをコピーしました。',
         UsageHint: 'コメントにミノを指定してください (例: IOTLJSZ, T:IOSL)。Lock flagをONにしてください。',
+        TreeModeRequired: '上位3手探索を使うにはTreeモードを有効にしてください。',
+        TopBranchesAdded: 'AI: {{count}}件の分岐を追加しました',
     },
 };

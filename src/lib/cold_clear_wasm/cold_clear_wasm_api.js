@@ -152,6 +152,20 @@ export class ColdClearBot {
         const ret = wasm.coldclearbot_suggest_move_sync(this.__wbg_ptr, think_ms);
         return ret === 0 ? undefined : CCMove.__wrap(ret);
     }
+    /**
+     * Run the think loop for up to think_ms milliseconds,
+     * then return up to `count` top-ranked next-move candidates.
+     * This does not advance bot state.
+     * @param {number} think_ms
+     * @param {number} count
+     * @returns {CCMove[]}
+     */
+    suggest_top_moves_sync(think_ms, count) {
+        const ret = wasm.coldclearbot_suggest_top_moves_sync(this.__wbg_ptr, think_ms, count);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
 }
 if (Symbol.dispose) ColdClearBot.prototype[Symbol.dispose] = ColdClearBot.prototype.free;
 
@@ -186,6 +200,10 @@ function __wbg_get_imports() {
         __wbg_addEventListener_efd4886fba5bd716: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
             arg0.addEventListener(getStringFromWasm0(arg1, arg2), arg3, arg4);
         }, arguments); },
+        __wbg_ccmove_new: function(arg0) {
+            const ret = CCMove.__wrap(arg0);
+            return ret;
+        },
         __wbg_crypto_b501cd47f5fc84cc: function(arg0) {
             const ret = arg0.crypto;
             return ret;
@@ -386,6 +404,17 @@ function debugString(val) {
     }
     // TODO we could test for more things here, like `Set`s and `Map`s.
     return className;
+}
+
+function getArrayJsValueFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    const mem = getDataViewMemory0();
+    const result = [];
+    for (let i = ptr; i < ptr + 4 * len; i += 4) {
+        result.push(wasm.__wbindgen_externrefs.get(mem.getUint32(i, true)));
+    }
+    wasm.__externref_drop_slice(ptr, len);
+    return result;
 }
 
 function getArrayU8FromWasm0(ptr, len) {

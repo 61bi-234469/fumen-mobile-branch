@@ -67,6 +67,7 @@ export const toolMode = ({
         cutAllPages: () => void;
         replaceAllFromClipboard: () => void;
         startColdClearSearch: () => void;
+        startColdClearTopThreeSearch: () => void;
         stopColdClearSearch: () => void;
     };
 }) => {
@@ -223,7 +224,7 @@ export const toolMode = ({
             iconName: 'extension',
         })),
         (() => {
-            const ccEnabled = coldClear.isRunning || (
+            const ccReady = (
                 flags.lock && !flags.mirror && !flags.rise && !flags.quiz
                 && parseQueueComment(commentText) !== null
             );
@@ -232,12 +233,17 @@ export const toolMode = ({
                 width: layout.buttons.size.width,
                 margin: toolButtonMargin,
                 backgroundColorClass: coldClear.isRunning ? 'red' : 'white',
-                textColor: coldClear.isRunning ? '#fff' : (ccEnabled ? '#333' : '#9e9e9e'),
-                borderColor: coldClear.isRunning ? '#f44336' : (ccEnabled ? '#333' : '#9e9e9e'),
+                textColor: coldClear.isRunning ? '#fff' : (ccReady ? '#333' : '#9e9e9e'),
+                borderColor: coldClear.isRunning ? '#f44336' : (ccReady ? '#333' : '#9e9e9e'),
                 datatest: coldClear.isRunning ? 'btn-cold-clear-stop' : 'btn-cold-clear',
                 key: 'btn-cold-clear',
                 onclick: () => {
-                    if (!ccEnabled) {
+                    if (coldClear.isRunning) {
+                        actions.stopColdClearSearch();
+                        return;
+                    }
+
+                    if (!ccReady) {
                         (M as any).toast({
                             html: i18n.ColdClear.UsageHint(),
                             classes: 'top-toast',
@@ -245,11 +251,24 @@ export const toolMode = ({
                         });
                         return;
                     }
+                    actions.startColdClearSearch();
+                },
+                onlongpress: () => {
                     if (coldClear.isRunning) {
                         actions.stopColdClearSearch();
-                    } else {
-                        actions.startColdClearSearch();
+                        return;
                     }
+
+                    if (!ccReady) {
+                        (M as any).toast({
+                            html: i18n.ColdClear.UsageHint(),
+                            classes: 'top-toast',
+                            displayLength: 3000,
+                        });
+                        return;
+                    }
+
+                    actions.startColdClearTopThreeSearch();
                 },
             }, iconContents({
                 description: coldClear.isRunning

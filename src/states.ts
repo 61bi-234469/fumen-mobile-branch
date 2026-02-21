@@ -170,6 +170,8 @@ export interface State {
         isRunning: boolean;
         abortRequested: boolean;
         runId: number;
+        runType: 'single' | 'top3';
+        targetNodeId: string | null;
         progress: { current: number; total: number } | null;
     };
     version: string;
@@ -290,6 +292,8 @@ export const initState: Readonly<State> = {
         isRunning: false,
         abortRequested: false,
         runId: 0,
+        runType: 'single',
+        targetNodeId: null,
         progress: null,
     },
     version: VERSION,

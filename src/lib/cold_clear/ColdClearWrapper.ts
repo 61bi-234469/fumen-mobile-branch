@@ -26,6 +26,12 @@ export class ColdClearWrapper {
         }
     }
 
+    requestTopMoves(count: number): void {
+        if (this.worker) {
+            this.worker.postMessage({ count, type: 'requestTopMoves' } as WorkerMessage);
+        }
+    }
+
     terminate(): void {
         if (this.worker) {
             this.worker.terminate();

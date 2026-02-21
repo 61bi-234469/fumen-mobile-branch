@@ -8,6 +8,7 @@ jest.mock('../ColdClearWrapper', () => ({
     ColdClearWrapper: jest.fn().mockImplementation(() => ({
         start: jest.fn(),
         requestMove: jest.fn(),
+        requestTopMoves: jest.fn(),
         terminate: jest.fn(),
     })),
 }));
@@ -45,6 +46,8 @@ jest.mock('../../../locales/keys', () => ({
             WorkerError: () => 'Worker error',
             InitTimeout: () => 'Init timeout',
             PopupBlocked: () => 'Popup blocked',
+            TreeModeRequired: () => 'Enable tree mode',
+            TopBranchesAdded: (count: number) => `${count} branches added`,
         },
     },
 }));
@@ -59,17 +62,28 @@ function makeColdClearState(overrides: {
     isRunning?: boolean;
     abortRequested?: boolean;
     runId?: number;
+    runType?: 'single' | 'top3';
+    targetNodeId?: string | null;
     progress?: { current: number; total: number } | null;
     commentText?: string;
     flags?: { lock: boolean; mirror: boolean; rise: boolean; quiz: boolean; colorize: boolean; srs: boolean };
+    treeEnabled?: boolean;
+    activeNodeId?: string | null;
 } = {}) {
     const flags = overrides.flags || { lock: true, mirror: false, rise: false, quiz: false, colorize: true, srs: true };
     const initialField = new Field({});
+    const treeEnabled = overrides.treeEnabled || false;
+    const treeNodes = treeEnabled ? [
+        { id: 'root', parentId: null, pageIndex: -1, childrenIds: ['n0'] },
+        { id: 'n0', parentId: 'root', pageIndex: 0, childrenIds: [] },
+    ] : [];
     return {
         coldClear: {
             isRunning: overrides.isRunning || false,
             abortRequested: overrides.abortRequested || false,
             runId: overrides.runId || 0,
+            runType: overrides.runType || 'single',
+            targetNodeId: overrides.targetNodeId !== undefined ? overrides.targetNodeId : null,
             progress: overrides.progress || null,
         },
         fumen: {
@@ -87,6 +101,12 @@ function makeColdClearState(overrides: {
         comment: { text: overrides.commentText || 'IOTLJSZ', changeKey: 0 },
         cache: {
             currentInitField: new Field({}),
+        },
+        tree: {
+            enabled: treeEnabled,
+            nodes: treeNodes,
+            rootId: treeEnabled ? 'root' : null,
+            activeNodeId: treeEnabled ? (overrides.activeNodeId || 'n0') : null,
         },
     } as any;
 }
@@ -324,5 +344,81 @@ describe('coldClearActions run isolation', () => {
         const result = coldClearActions.startColdClearSearch()(state);
         const cc = getColdClear(result);
         expect(cc.progress).toEqual({ current: 0, total: 2 });
+    });
+
+    test('startColdClearTopThreeSearch auto-enables tree mode when disabled', () => {
+        const state = makeColdClearState({ treeEnabled: false, commentText: 'IOTL' });
+        const result = coldClearActions.startColdClearTopThreeSearch()(state);
+        expect(result).toBeDefined();
+        const nextState = result as any;
+        expect(nextState.tree.enabled).toBe(true);
+        expect(nextState.tree.nodes.length).toBeGreaterThan(0);
+    });
+
+    test('startColdClearTopThreeSearch sets runType and target node', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IOTL' });
+        const result = coldClearActions.startColdClearTopThreeSearch()(state);
+        const cc = getColdClear(result);
+        expect(cc).toBeDefined();
+        expect(cc.runType).toBe('top3');
+        expect(cc.targetNodeId).toBe('n0');
+        expect(cc.isRunning).toBe(true);
+    });
+
+    test('top3 initDone requests top 3 moves', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IOTL' });
+        const startResult = coldClearActions.startColdClearTopThreeSearch()(state);
+        const runId = getColdClear(startResult).runId;
+
+        const runningState = makeColdClearState({
+            runId,
+            treeEnabled: true,
+            isRunning: true,
+            runType: 'top3',
+            targetNodeId: 'n0',
+        });
+        coldClearActions.onColdClearInitDone({ runId })(runningState);
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapperInstance = wrapperCtor.mock.results[0].value;
+        expect(wrapperInstance.requestTopMoves).toHaveBeenCalledWith(3);
+    });
+
+    test('top3 completion transitions to tree view after finish', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IOTL' });
+        const startResult = coldClearActions.startColdClearTopThreeSearch()(state);
+        const runId = getColdClear(startResult).runId;
+
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+        };
+        initColdClearActions(mockActions);
+
+        const runningState = makeColdClearState({
+            runId,
+            treeEnabled: true,
+            isRunning: true,
+            runType: 'top3',
+            targetNodeId: 'n0',
+            commentText: 'IOTL',
+        });
+
+        const result = coldClearActions.onColdClearTopMovesResult({
+            runId,
+            results: [{ hold: false, piece: 0, rotation: 0, x: 4, y: 0 }],
+        })(runningState);
+
+        expect(result).toBeDefined();
+        expect(mockActions.addColdClearBranches).toHaveBeenCalledTimes(1);
+        expect(mockActions.coldClearFinishSearch).toHaveBeenCalledWith(runId);
+        expect(mockActions.changeToTreeViewScreen).toHaveBeenCalledTimes(1);
+
+        const addOrder = mockActions.addColdClearBranches.mock.invocationCallOrder[0];
+        const finishOrder = mockActions.coldClearFinishSearch.mock.invocationCallOrder[0];
+        const treeOrder = mockActions.changeToTreeViewScreen.mock.invocationCallOrder[0];
+        expect(addOrder).toBeLessThan(finishOrder);
+        expect(finishOrder).toBeLessThan(treeOrder);
     });
 });

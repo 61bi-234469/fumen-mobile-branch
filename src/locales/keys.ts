@@ -188,5 +188,7 @@ export const i18n = {
         InitTimeout: () => t('ColdClear.InitTimeout'),
         PopupBlocked: () => t('ColdClear.PopupBlocked'),
         UsageHint: () => t('ColdClear.UsageHint'),
+        TreeModeRequired: () => t('ColdClear.TreeModeRequired'),
+        TopBranchesAdded: (count: number) => t('ColdClear.TopBranchesAdded', { count }),
     },
 };

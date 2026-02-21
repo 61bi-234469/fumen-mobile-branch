@@ -43,6 +43,12 @@ export class ColdClearBot {
      * Returns None if no move can be found (game over, etc.)
      */
     suggest_move_sync(think_ms: number): CCMove | undefined;
+    /**
+     * Run the think loop for up to think_ms milliseconds,
+     * then return up to `count` top-ranked next-move candidates.
+     * This does not advance bot state.
+     */
+    suggest_top_moves_sync(think_ms: number, count: number): CCMove[];
 }
 
 export function _web_worker_entry_point(scope: DedicatedWorkerGlobalScope): void;
@@ -68,6 +74,7 @@ export interface InitOutput {
     readonly coldclearbot_add_next_piece: (a: number, b: number) => void;
     readonly coldclearbot_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
     readonly coldclearbot_suggest_move_sync: (a: number, b: number) => number;
+    readonly coldclearbot_suggest_top_moves_sync: (a: number, b: number, c: number) => [number, number];
     readonly init_panic_hook: () => void;
     readonly _web_worker_entry_point: (a: any) => void;
     readonly wasm_bindgen__closure__destroy__h469194238f790361: (a: number, b: number) => void;
@@ -78,6 +85,7 @@ export interface InitOutput {
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+    readonly __externref_drop_slice: (a: number, b: number) => void;
     readonly __wbindgen_start: () => void;
 }
 

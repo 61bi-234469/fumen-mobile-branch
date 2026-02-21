@@ -281,6 +281,7 @@ export interface TreeOperationActions {
 
     // Add page respecting tree mode
     addPageInTreeMode: (data?: { parentNodeId?: TreeNodeId }) => action;
+    addColdClearBranches: (data: { parentNodeId: TreeNodeId; pages: Page[] }) => action;
 
     // Tree initialization and sync
     initializeTreeFromPages: () => action;
@@ -563,6 +564,34 @@ const normalizeTreeAndPages = (
         pages: newPages,
         currentIndex: nextCurrentIndex,
         changed: true,
+    };
+};
+
+const clonePageForAppend = (page: Page, index: number): Page => {
+    const clonedField = page.field.obj !== undefined
+        ? { obj: page.field.obj.copy() }
+        : page.field.ref !== undefined
+            ? { ref: page.field.ref }
+            : { obj: new Field({}) };
+    const clonedComment = page.comment.text !== undefined
+        ? { text: page.comment.text }
+        : page.comment.ref !== undefined
+            ? { ref: page.comment.ref }
+            : { text: '' };
+
+    return {
+        ...page,
+        index,
+        field: clonedField,
+        comment: clonedComment,
+        flags: { ...page.flags },
+        piece: page.piece !== undefined ? {
+            type: page.piece.type,
+            rotation: page.piece.rotation,
+            coordinate: {
+                ...page.piece.coordinate,
+            },
+        } : undefined,
     };
 };
 
@@ -891,6 +920,55 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                     nodes: normalized.tree.nodes,
                     rootId: normalized.tree.rootId,
                     activeNodeId: newNodeId,
+                },
+            }),
+        ]);
+    },
+
+    addColdClearBranches: ({ parentNodeId, pages }) => (state): NextState => {
+        if (!state.tree.enabled || pages.length === 0) return undefined;
+
+        const tree = getOrCreateTree(state);
+        const parentNode = findNode(tree, parentNodeId);
+        if (!parentNode || isVirtualNode(parentNode)) return undefined;
+
+        const prevSnapshot = createSnapshot(tree, state.fumen.pages, state.fumen.currentIndex);
+
+        let newTree = tree;
+        const newPages = [...state.fumen.pages];
+
+        pages.forEach((page) => {
+            const newPageIndex = newPages.length;
+            newPages.push(clonePageForAppend(page, newPageIndex));
+            const added = addBranchNode(newTree, parentNodeId, newPageIndex);
+            newTree = added.tree;
+        });
+
+        const normalized = normalizeTreeAndPages(
+            newTree,
+            newPages,
+            state.fumen.currentIndex,
+            state.tree.activeNodeId,
+        );
+        const nextActiveNodeId = resolveActiveNodeId(normalized.tree, state.tree.activeNodeId);
+        const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
+        const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
+        const { mementoActions } = require('./memento');
+
+        return sequence(state, [
+            mementoActions.registerHistoryTask({ task }),
+            () => ({
+                fumen: {
+                    ...state.fumen,
+                    pages: normalized.pages,
+                    maxPage: normalized.pages.length,
+                    currentIndex: normalized.currentIndex,
+                },
+                tree: {
+                    ...state.tree,
+                    nodes: normalized.tree.nodes,
+                    rootId: normalized.tree.rootId,
+                    activeNodeId: nextActiveNodeId,
                 },
             }),
         ]);

@@ -16,17 +16,30 @@ export interface CCRequestMoveMessage {
     type: 'requestMove';
 }
 
-export type WorkerMessage = CCInitMessage | CCRequestMoveMessage;
+export interface CCRequestTopMovesMessage {
+    type: 'requestTopMoves';
+    count: number;
+}
+
+export type WorkerMessage = CCInitMessage | CCRequestMoveMessage | CCRequestTopMovesMessage;
 
 // === Worker Response Types (Worker → Main) ===
 
-export interface CCMoveResult {
-    type: 'moveResult';
+export interface CCMove {
     hold: boolean;      // Whether hold was used
     piece: number;      // CC piece value (0-6)
     rotation: number;   // CC rotation value (0-3)
     x: number;          // Rotation center X (left=0)
     y: number;          // Rotation center Y (bottom=0)
+}
+
+export interface CCMoveResult extends CCMove {
+    type: 'moveResult';
+}
+
+export interface CCTopMovesResult {
+    type: 'topMovesResult';
+    moves: CCMove[];
 }
 
 export interface CCInitDone {
@@ -42,7 +55,7 @@ export interface CCNoMove {
     type: 'noMove';
 }
 
-export type WorkerResponse = CCMoveResult | CCInitDone | CCError | CCNoMove;
+export type WorkerResponse = CCMoveResult | CCTopMovesResult | CCInitDone | CCError | CCNoMove;
 
 // === Piece Mapping Tables ===
 // CC C-API order: I=0, O=1, T=2, L=3, J=4, S=5, Z=6
