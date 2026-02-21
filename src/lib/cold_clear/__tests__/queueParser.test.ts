@@ -50,8 +50,12 @@ describe('parseQueueComment', () => {
         expect(parseQueueComment('#Q=[]()')).toBeNull();
     });
 
-    test('return null for lowercase', () => {
-        expect(parseQueueComment('iot')).toBeNull();
+    test('parse lowercase queue', () => {
+        const result = parseQueueComment('iot');
+        expect(result).toEqual({
+            hold: null,
+            queue: [Piece.I, Piece.O, Piece.T],
+        });
     });
 
     test('return null for leading space', () => {
@@ -62,8 +66,28 @@ describe('parseQueueComment', () => {
         expect(parseQueueComment('IOTL ')).toBeNull();
     });
 
-    test('return null for mixed case', () => {
-        expect(parseQueueComment('IoTl')).toBeNull();
+    test('parse mixed case queue', () => {
+        const result = parseQueueComment('IoTl');
+        expect(result).toEqual({
+            hold: null,
+            queue: [Piece.I, Piece.O, Piece.T, Piece.L],
+        });
+    });
+
+    test('parse lowercase hold with lowercase queue', () => {
+        const result = parseQueueComment('t:iosl');
+        expect(result).toEqual({
+            hold: Piece.T,
+            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+        });
+    });
+
+    test('parse mixed case hold and queue', () => {
+        const result = parseQueueComment('T:iosl');
+        expect(result).toEqual({
+            hold: Piece.T,
+            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+        });
     });
 
     test('return null for colon only', () => {

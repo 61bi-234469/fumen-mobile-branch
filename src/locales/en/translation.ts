@@ -178,5 +178,6 @@ export const resources = {
         WorkerError: 'AI: Engine error',
         InitTimeout: 'AI: Initialization timeout',
         PopupBlocked: 'AI: Popup blocked. URL copied to clipboard.',
+        UsageHint: 'Set pieces in comment (e.g. IOTLJSZ, T:IOSL) and enable Lock flag.',
     },
 };

@@ -15,6 +15,8 @@ import { displayShortcut } from '../../lib/shortcuts';
 import { parseQueueComment } from '../../lib/cold_clear/queueParser';
 import { i18n } from '../../locales/keys';
 
+declare const M: any;
+
 export const toolMode = ({
     layout,
     currentIndex,
@@ -230,12 +232,19 @@ export const toolMode = ({
                 width: layout.buttons.size.width,
                 margin: toolButtonMargin,
                 backgroundColorClass: coldClear.isRunning ? 'red' : 'white',
-                textColor: coldClear.isRunning ? '#fff' : '#333',
-                borderColor: coldClear.isRunning ? '#f44336' : '#333',
+                textColor: coldClear.isRunning ? '#fff' : (ccEnabled ? '#333' : '#9e9e9e'),
+                borderColor: coldClear.isRunning ? '#f44336' : (ccEnabled ? '#333' : '#9e9e9e'),
                 datatest: coldClear.isRunning ? 'btn-cold-clear-stop' : 'btn-cold-clear',
                 key: 'btn-cold-clear',
-                enable: ccEnabled,
                 onclick: () => {
+                    if (!ccEnabled) {
+                        (M as any).toast({
+                            html: i18n.ColdClear.UsageHint(),
+                            classes: 'top-toast',
+                            displayLength: 3000,
+                        });
+                        return;
+                    }
                     if (coldClear.isRunning) {
                         actions.stopColdClearSearch();
                     } else {

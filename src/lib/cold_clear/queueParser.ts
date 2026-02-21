@@ -5,7 +5,7 @@ export interface ParsedQueue {
     queue: Piece[];
 }
 
-const QUEUE_REGEX = /^([IOTLJSZ]:)?[IOTLJSZ]+$/;
+const QUEUE_REGEX = /^([IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]+$/;
 
 const CHAR_TO_PIECE: Record<string, Piece> = {
     I: Piece.I,
@@ -15,6 +15,13 @@ const CHAR_TO_PIECE: Record<string, Piece> = {
     J: Piece.J,
     S: Piece.S,
     Z: Piece.Z,
+    i: Piece.I,
+    o: Piece.O,
+    t: Piece.T,
+    l: Piece.L,
+    j: Piece.J,
+    s: Piece.S,
+    z: Piece.Z,
 };
 
 const PIECE_TO_CHAR: Record<number, string> = {

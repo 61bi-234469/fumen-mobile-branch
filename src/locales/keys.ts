@@ -186,5 +186,6 @@ export const i18n = {
         WorkerError: () => t('ColdClear.WorkerError'),
         InitTimeout: () => t('ColdClear.InitTimeout'),
         PopupBlocked: () => t('ColdClear.PopupBlocked'),
+        UsageHint: () => t('ColdClear.UsageHint'),
     },
 };
