@@ -8,6 +8,9 @@ GEMINI.md
 AGENTS.md
 CLAUDE.md
 .claude/
+.vscode/
+package-lock.json
+deploy.yml
 src/**/*.js
 !src/lib/cold_clear_wasm/*.js
 src/**/*.js.map
