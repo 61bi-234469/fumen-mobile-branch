@@ -3,6 +3,7 @@ node_modules/
 dist/
 yarn-*.log
 src/**/*.js
+!src/lib/cold_clear_wasm/*.js
 src/**/*.js.map
 dest/
 coverage/

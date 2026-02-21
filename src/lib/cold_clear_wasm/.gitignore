@@ -1,0 +1,2 @@
+# Ignore wasm-bindgen generated files except the ones we need
+*.wasm.d.ts

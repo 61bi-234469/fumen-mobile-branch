@@ -95,6 +95,11 @@ export const MenuModal: Component<MenuProps> = (
                         <span style={style({ color: '#999', fontSize: '50%' })}>[{i18n.Menu.Build(version)}]</span>
                     </h4>
 
+                    <p key="third-party-notice" style={style({ fontSize: px(11), color: '#999', margin: '0 0 8px 0' })}>
+                        AI: <a href="https://github.com/MinusKelvin/cold-clear" target="_blank"
+                               style={style({ color: '#999' })}>Cold Clear</a> (MPL-2.0)
+                    </p>
+
                     <div key="menu-top" style={divProperties}>
                         {screen === Screens.Editor ?
                             <SettingButton key="btn-readonly" datatest="btn-readonly" href="#"

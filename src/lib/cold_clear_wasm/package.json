@@ -1,0 +1,15 @@
+{
+  "name": "cold-clear-wasm-api",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "cold_clear_wasm_api_bg.wasm",
+    "cold_clear_wasm_api.js",
+    "cold_clear_wasm_api.d.ts"
+  ],
+  "main": "cold_clear_wasm_api.js",
+  "types": "cold_clear_wasm_api.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
