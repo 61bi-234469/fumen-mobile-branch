@@ -31,6 +31,7 @@ export interface CCMove {
     rotation: number;   // CC rotation value (0-3)
     x: number;          // Rotation center X (left=0)
     y: number;          // Rotation center Y (bottom=0)
+    score?: number;     // Move evaluation score from Cold Clear (optional)
 }
 
 export interface CCMoveResult extends CCMove {

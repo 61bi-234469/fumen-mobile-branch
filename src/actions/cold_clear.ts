@@ -73,6 +73,7 @@ let currentSession: RunSession | null = null;
 const THINK_MS = 1000;
 const INIT_TIMEOUT_MS = 10000;
 const TOP_BRANCH_COUNT = 5;
+const MAX_PRINTABLE_SCORE = 1000000;
 
 // Action reference (set after Hyperapp mounts)
 let appActions: ColdClearRuntimeActions | null = null;
@@ -191,8 +192,31 @@ const applyQueueAfterMove = (
     };
 };
 
-const createBranchComment = (hold: Piece | null, queue: Piece[]): string => {
-    return buildQueueComment(hold, queue);
+const isScorePrintable = (score: number | undefined): score is number => {
+    return typeof score === 'number'
+        && Number.isFinite(score)
+        && Math.abs(score) <= MAX_PRINTABLE_SCORE;
+};
+
+const formatScore = (score: number): string => {
+    if (Object.is(score, -0)) {
+        return '-0.00';
+    }
+    return score.toFixed(2);
+};
+
+const buildScoredQueueComment = (score: number | undefined, hold: Piece | null, queue: Piece[]): string => {
+    const queueComment = buildQueueComment(hold, queue);
+    if (!isScorePrintable(score)) {
+        return queueComment;
+    }
+
+    const scoreComment = `score=${formatScore(score)}`;
+    if (!queueComment) {
+        return scoreComment;
+    }
+
+    return `${scoreComment} | ${queueComment}`;
 };
 
 const emitFinish = (runId: number) => {
@@ -515,7 +539,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         session.hold = queueState.hold;
         session.queue = queueState.queue;
 
-        const nextComment = buildQueueComment(session.hold, session.queue);
+        const nextComment = buildScoredQueueComment(result.score, session.hold, session.queue);
 
         const resultPage: Page = {
             index: session.resultPages.length,
@@ -611,7 +635,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 index: 0,
                 field: { obj: nextField },
                 comment: {
-                    text: createBranchComment(queueState.hold, queueState.queue),
+                    text: buildScoredQueueComment(result.score, queueState.hold, queueState.queue),
                 },
                 flags: {
                     ...parentPage.flags,

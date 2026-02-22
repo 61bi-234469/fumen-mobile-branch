@@ -1,6 +1,7 @@
 import { coldClearActions, initColdClearActions, resetForTesting } from '../../../actions/cold_clear';
 import { Piece } from '../../enums';
 import { Field } from '../../fumen/field';
+import { encode } from '../../fumen/fumen';
 import { ColdClearWrapper } from '../ColdClearWrapper';
 
 // Mock ColdClearWrapper to avoid actual Worker creation
@@ -420,5 +421,150 @@ describe('coldClearActions run isolation', () => {
         const treeOrder = mockActions.changeToTreeViewScreen.mock.invocationCallOrder[0];
         expect(addOrder).toBeLessThan(finishOrder);
         expect(finishOrder).toBeLessThan(treeOrder);
+    });
+
+    test('onColdClearMoveResult generates scored comments for single run', async () => {
+        const state = makeColdClearState({ commentText: 'IO' });
+        const startResult = coldClearActions.startColdClearSearch()(state);
+        const runId = getColdClear(startResult).runId;
+        const runningState = makeColdClearState({ runId, isRunning: true, commentText: 'IO' });
+
+        coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: false, piece: 0, rotation: 0, x: 4, y: 0, score: 123.45 },
+        })(runningState);
+
+        coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: false, piece: 1, rotation: 0, x: 4, y: 0, score: 50 },
+        })(runningState);
+
+        await Promise.resolve();
+
+        const encodeMock = encode as jest.Mock;
+        expect(encodeMock).toHaveBeenCalled();
+        const pages = encodeMock.mock.calls[0][0];
+        expect(pages[0].comment.text).toBe('score=123.45 | O');
+        expect(pages[1].comment.text).toBe('score=50.00');
+    });
+
+    test('onColdClearMoveResult falls back to queue-only when score is missing', async () => {
+        const state = makeColdClearState({ commentText: 'IO' });
+        const startResult = coldClearActions.startColdClearSearch()(state);
+        const runId = getColdClear(startResult).runId;
+        const runningState = makeColdClearState({ runId, isRunning: true, commentText: 'IO' });
+
+        coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: false, piece: 0, rotation: 0, x: 4, y: 0 },
+        })(runningState);
+
+        coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: false, piece: 1, rotation: 0, x: 4, y: 0 },
+        })(runningState);
+
+        await Promise.resolve();
+
+        const encodeMock = encode as jest.Mock;
+        const pages = encodeMock.mock.calls[0][0];
+        expect(pages[0].comment.text).toBe('O');
+        expect(pages[1].comment.text).toBe('');
+    });
+
+    test('onColdClearMoveResult falls back to queue-only for non-finite or out-of-range score', async () => {
+        const state = makeColdClearState({ commentText: 'IO' });
+        const startResult = coldClearActions.startColdClearSearch()(state);
+        const runId = getColdClear(startResult).runId;
+        const runningState = makeColdClearState({ runId, isRunning: true, commentText: 'IO' });
+
+        coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: false, piece: 0, rotation: 0, x: 4, y: 0, score: Number.NaN },
+        })(runningState);
+
+        coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: false, piece: 1, rotation: 0, x: 4, y: 0, score: 1000000.01 },
+        })(runningState);
+
+        await Promise.resolve();
+
+        const encodeMock = encode as jest.Mock;
+        const pages = encodeMock.mock.calls[0][0];
+        expect(pages[0].comment.text).toBe('O');
+        expect(pages[1].comment.text).toBe('');
+    });
+
+    test('startColdClearSearch rejects score-only comment', () => {
+        const state = makeColdClearState({ commentText: 'score=12.34' });
+        const result = coldClearActions.startColdClearSearch()(state);
+        expect(result).toBeUndefined();
+    });
+
+    test('startColdClearTopThreeSearch rejects score-only comment', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'score=12.34' });
+        const result = coldClearActions.startColdClearTopThreeSearch()(state);
+        expect(result).toBeUndefined();
+    });
+
+    test('onColdClearTopMovesResult generates scored branch comments', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IOTL' });
+        const startResult = coldClearActions.startColdClearTopThreeSearch()(state);
+        const runId = getColdClear(startResult).runId;
+
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+        };
+        initColdClearActions(mockActions);
+
+        const runningState = makeColdClearState({
+            runId,
+            treeEnabled: true,
+            isRunning: true,
+            runType: 'top3',
+            targetNodeId: 'n0',
+            commentText: 'IOTL',
+        });
+
+        coldClearActions.onColdClearTopMovesResult({
+            runId,
+            results: [{ hold: false, piece: 0, rotation: 0, x: 4, y: 0, score: 1.2 }],
+        })(runningState);
+
+        const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
+        expect(pages[0].comment.text).toBe('score=1.20 | OTL');
+    });
+
+    test('onColdClearTopMovesResult falls back to queue-only when score is invalid', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IOTL' });
+        const startResult = coldClearActions.startColdClearTopThreeSearch()(state);
+        const runId = getColdClear(startResult).runId;
+
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+        };
+        initColdClearActions(mockActions);
+
+        const runningState = makeColdClearState({
+            runId,
+            treeEnabled: true,
+            isRunning: true,
+            runType: 'top3',
+            targetNodeId: 'n0',
+            commentText: 'IOTL',
+        });
+
+        coldClearActions.onColdClearTopMovesResult({
+            runId,
+            results: [{ hold: false, piece: 0, rotation: 0, x: 4, y: 0, score: Number.POSITIVE_INFINITY }],
+        })(runningState);
+
+        const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
+        expect(pages[0].comment.text).toBe('OTL');
     });
 });

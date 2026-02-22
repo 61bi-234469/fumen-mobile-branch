@@ -1,0 +1,232 @@
+diff --git a/bot/src/evaluation/standard.rs b/bot/src/evaluation/standard.rs
+index 17f3504..bc8e50a 100644
+--- a/bot/src/evaluation/standard.rs
++++ b/bot/src/evaluation/standard.rs
+@@ -688,6 +688,12 @@ pub struct Value {
+     spike: i32,
+ }
+ 
++impl Value {
++    pub fn score(self) -> f64 {
++        self.value as f64
++    }
++}
++
+ impl std::ops::Add for Value {
+     type Output = Self;
+     fn add(self, rhs: Self) -> Self {
+diff --git a/bot/src/modes/normal.rs b/bot/src/modes/normal.rs
+index a858b0d..88449ae 100644
+--- a/bot/src/modes/normal.rs
++++ b/bot/src/modes/normal.rs
+@@ -4,7 +4,7 @@ use opening_book::Book;
+ use serde::{Deserialize, Serialize};
+ 
+ // use crate::tree::{ ChildData, TreeState, NodeId };
+-use crate::dag::{ChildData, DagState, NodeId};
++use crate::dag::{ChildData, DagState, MoveCandidate, NodeId};
+ use crate::evaluation::Evaluator;
+ use crate::Options;
+ 
+@@ -167,27 +167,23 @@ impl<E: Evaluator> BotState<E> {
+             })
+         };
+ 
+-        let inputs = find_moves(
+-            self.tree.board(),
+-            self.options
+-                .spawn_rule
+-                .spawn(child.mv.kind.0, self.tree.board())
+-                .unwrap(),
+-            self.options.mode,
+-        )
+-        .into_iter()
+-        .find(|p| p.location == child.mv)
+-        .unwrap()
+-        .inputs;
+-        let mv = Move {
+-            hold: child.hold,
+-            inputs: inputs.movements,
+-            expected_location: child.mv,
+-        };
+-
++        let mv = self.to_move(&child)?;
+         return Some((mv, info));
+     }
+ 
++    pub fn suggest_top_moves(&self, count: usize) -> Vec<Move> {
++        if count == 0 || !self.min_thinking_reached() {
++            return vec![];
++        }
++
++        self.tree
++            .get_next_candidates()
++            .into_iter()
++            .take(count)
++            .filter_map(|candidate| self.to_move(&candidate))
++            .collect()
++    }
++
+     pub fn advance_move(&mut self, mv: FallingPiece) {
+         self.tree.advance_move(mv);
+     }
+@@ -195,6 +191,105 @@ impl<E: Evaluator> BotState<E> {
+     pub fn force_analysis_line(&mut self, path: Vec<FallingPiece>) {
+         self.forced_analysis_lines.push(path);
+     }
++
++    fn to_move(&self, candidate: &MoveCandidate<E::Value>) -> Option<Move> {
++        let spawned = self
++            .options
++            .spawn_rule
++            .spawn(candidate.mv.kind.0, self.tree.board())?;
++        let inputs = find_moves(self.tree.board(), spawned, self.options.mode)
++            .into_iter()
++            .find(|placement| placement.location == candidate.mv)?
++            .inputs;
++
++        Some(Move {
++            hold: candidate.hold,
++            inputs: inputs.movements,
++            expected_location: candidate.mv,
++        })
++    }
++}
++
++impl BotState<crate::evaluation::Standard> {
++    pub fn suggest_move_with_score(
++        &mut self,
++        eval: &crate::evaluation::Standard,
++        book: Option<&Book>,
++        incoming: u32,
++    ) -> Option<(Move, crate::Info, f64)> {
++        if !self.min_thinking_reached() {
++            return None;
++        }
++
++        let candidates = self.tree.get_next_candidates();
++        if candidates.is_empty() {
++            return None;
++        }
++        let mut book_move = None;
++        if let Some(book) = book {
++            if self.tree.board().column_heights().iter().all(|&h| h <= 10) {
++                book_move = book.suggest_move(self.tree.board());
++            }
++        }
++        let mut picked = None;
++        if let Some(book_move) = book_move {
++            for mv in &candidates {
++                if mv.mv.same_location(&book_move) {
++                    picked = Some(mv.clone());
++                    break;
++                }
++            }
++        }
++        if picked.is_none() && book_move.is_some() {
++            dbg!("book picked a move we can't do?");
++        }
++        let child = picked.unwrap_or_else(|| eval.pick_move(candidates, incoming));
++
++        let plan = if book_move.is_none() {
++            self.tree.get_plan()
++        } else {
++            vec![]
++        };
++
++        let info = if book_move.is_some() {
++            crate::Info::Book
++        } else {
++            crate::Info::Normal(Info {
++                nodes: if book_move.is_some() {
++                    0
++                } else {
++                    self.tree.nodes()
++                },
++                depth: if book_move.is_some() {
++                    6
++                } else {
++                    self.tree.depth() as u32
++                },
++                original_rank: child.original_rank,
++                plan,
++            })
++        };
++
++        let score = child.evaluation.score();
++        let mv = self.to_move(&child)?;
++        Some((mv, info, score))
++    }
++
++    pub fn suggest_top_moves_with_score(&self, count: usize) -> Vec<(Move, f64)> {
++        if count == 0 || !self.min_thinking_reached() {
++            return vec![];
++        }
++
++        self.tree
++            .get_next_candidates()
++            .into_iter()
++            .take(count)
++            .filter_map(|candidate| {
++                self.to_move(&candidate)
++                    .map(|mv| (mv, candidate.evaluation.score()))
++            })
++            .collect()
++    }
+ }
+ 
+ impl Thinker {
+diff --git a/wasm-api/src/lib.rs b/wasm-api/src/lib.rs
+index a6d3a53..8308b2f 100644
+--- a/wasm-api/src/lib.rs
++++ b/wasm-api/src/lib.rs
+@@ -17,6 +17,7 @@ pub struct CCMove {
+     pub rotation: u8,
+     pub x: i8,
+     pub y: i8,
++    pub score: f64,
+ }
+ 
+ /// Cold Clear bot wrapper for WASM.
+@@ -66,7 +67,7 @@ fn rotation_to_u8(r: RotationState) -> u8 {
+     }
+ }
+ 
+-fn convert_move(mv: libtetris::Move) -> CCMove {
++fn convert_move(mv: libtetris::Move, score: f64) -> CCMove {
+     let loc = mv.expected_location;
+     CCMove {
+         hold: mv.hold,
+@@ -74,6 +75,7 @@ fn convert_move(mv: libtetris::Move) -> CCMove {
+         rotation: rotation_to_u8(loc.kind.1),
+         x: loc.x as i8,
+         y: loc.y as i8,
++        score,
+     }
+ }
+ 
+@@ -156,9 +158,12 @@ impl ColdClearBot {
+     pub fn suggest_move_sync(&mut self, think_ms: u32) -> Option<CCMove> {
+         self.run_think_loop(think_ms);
+ 
+-        let (mv, _info) = self.bot_state.suggest_move(&self.evaluator, None, 0)?;
++        let (mv, _info, score) = self
++            .bot_state
++            .suggest_move_with_score(&self.evaluator, None, 0)?;
+         self.bot_state.advance_move(mv.expected_location);
+-        Some(convert_move(mv))
++        Some(convert_move(mv, score))
+     }
+ 
+     /// Run the think loop for up to think_ms milliseconds,
+@@ -172,8 +177,8 @@ impl ColdClearBot {
+ 
+         self.bot_state
+-            .suggest_top_moves(count as usize)
++            .suggest_top_moves_with_score(count as usize)
+             .into_iter()
+-            .map(convert_move)
++            .map(|(mv, score)| convert_move(mv, score))
+             .collect()
+     }
+ }

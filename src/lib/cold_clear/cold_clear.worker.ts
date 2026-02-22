@@ -15,6 +15,7 @@ const toMove = (result: any): CCMove => ({
     rotation: result.rotation,
     x: result.x,
     y: result.y,
+    score: typeof result.score === 'number' ? result.score : undefined,
 });
 
 (self as any).onmessage = async (event: MessageEvent<WorkerMessage>) => {

@@ -1,5 +1,13 @@
 # fumen-for-mobile
 
+## Third-Party Source Availability
+
+For Cold Clear wasm artifacts included in `src/lib/cold_clear_wasm/`, corresponding
+MPL-2.0 source information is provided in:
+
+- `THIRD_PARTY_LICENSES.md`
+- `third_party/cold-clear/README.md`
+
 ### Memo
 
 #### Bookmarklet Code: Load fumen from official page

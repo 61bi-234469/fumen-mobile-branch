@@ -11,6 +11,7 @@ export class CCMove {
     hold: boolean;
     piece: number;
     rotation: number;
+    score: number;
     x: number;
     y: number;
 }
@@ -64,11 +65,13 @@ export interface InitOutput {
     readonly __wbg_get_ccmove_hold: (a: number) => number;
     readonly __wbg_get_ccmove_piece: (a: number) => number;
     readonly __wbg_get_ccmove_rotation: (a: number) => number;
+    readonly __wbg_get_ccmove_score: (a: number) => number;
     readonly __wbg_get_ccmove_x: (a: number) => number;
     readonly __wbg_get_ccmove_y: (a: number) => number;
     readonly __wbg_set_ccmove_hold: (a: number, b: number) => void;
     readonly __wbg_set_ccmove_piece: (a: number, b: number) => void;
     readonly __wbg_set_ccmove_rotation: (a: number, b: number) => void;
+    readonly __wbg_set_ccmove_score: (a: number, b: number) => void;
     readonly __wbg_set_ccmove_x: (a: number, b: number) => void;
     readonly __wbg_set_ccmove_y: (a: number, b: number) => void;
     readonly coldclearbot_add_next_piece: (a: number, b: number) => void;

@@ -83,6 +83,18 @@ module.exports = {
                     from: path.join(__dirname, 'node_modules/material-icons/iconfont'),
                     to: path.join(destDirectory, 'material-iconfont'),
                 },
+                {
+                    from: path.join(__dirname, 'LICENSE'),
+                    to: destDirectory,
+                },
+                {
+                    from: path.join(__dirname, 'THIRD_PARTY_LICENSES.md'),
+                    to: destDirectory,
+                },
+                {
+                    from: path.join(__dirname, 'third_party'),
+                    to: path.join(destDirectory, 'third_party'),
+                },
             ],
         }),
         new GenerateSW({

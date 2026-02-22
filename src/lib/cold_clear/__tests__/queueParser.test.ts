@@ -97,6 +97,36 @@ describe('parseQueueComment', () => {
     test('return null for hold with empty queue (colon at end)', () => {
         expect(parseQueueComment('T:')).toBeNull();
     });
+
+    test('parse scored queue without hold', () => {
+        const result = parseQueueComment('score=123.45 | IOTL');
+        expect(result).toEqual({
+            hold: null,
+            queue: [Piece.I, Piece.O, Piece.T, Piece.L],
+        });
+    });
+
+    test('parse scored queue with hold', () => {
+        const result = parseQueueComment('score=-8.30 | T:IOL');
+        expect(result).toEqual({
+            hold: Piece.T,
+            queue: [Piece.I, Piece.O, Piece.L],
+        });
+    });
+
+    test('return null for invalid score format', () => {
+        expect(parseQueueComment('score=abc | IOTL')).toBeNull();
+    });
+
+    test('return null for score-only text', () => {
+        expect(parseQueueComment('score=12.34')).toBeNull();
+    });
+
+    test('return null for invalid scored queue grammar', () => {
+        expect(parseQueueComment('score=12.3 | IOTL')).toBeNull();
+        expect(parseQueueComment('score=12.34|IOTL')).toBeNull();
+        expect(parseQueueComment('Score=12.34 | IOTL')).toBeNull();
+    });
 });
 
 describe('buildQueueComment', () => {

@@ -45,6 +45,13 @@ export class CCMove {
     /**
      * @returns {number}
      */
+    get score() {
+        const ret = wasm.__wbg_get_ccmove_score(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
     get x() {
         const ret = wasm.__wbg_get_ccmove_x(this.__wbg_ptr);
         return ret;
@@ -73,6 +80,12 @@ export class CCMove {
      */
     set rotation(arg0) {
         wasm.__wbg_set_ccmove_rotation(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set score(arg0) {
+        wasm.__wbg_set_ccmove_score(this.__wbg_ptr, arg0);
     }
     /**
      * @param {number} arg0

@@ -6,6 +6,7 @@ export interface ParsedQueue {
 }
 
 const QUEUE_REGEX = /^([IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]+$/;
+const SCORED_QUEUE_REGEX = /^score=(-?(?:0|[1-9]\d*)\.\d{2}) \| ((?:[IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]+)$/;
 
 const CHAR_TO_PIECE: Record<string, Piece> = {
     I: Piece.I,
@@ -35,6 +36,20 @@ const PIECE_TO_CHAR: Record<number, string> = {
 };
 
 export function parseQueueComment(text: string): ParsedQueue | null {
+    const queueOnly = parseQueueOnlyComment(text);
+    if (queueOnly) {
+        return queueOnly;
+    }
+
+    const scoredMatch = SCORED_QUEUE_REGEX.exec(text);
+    if (!scoredMatch) {
+        return null;
+    }
+
+    return parseQueueOnlyComment(scoredMatch[2]);
+}
+
+function parseQueueOnlyComment(text: string): ParsedQueue | null {
     if (!text || !QUEUE_REGEX.test(text)) {
         return null;
     }
