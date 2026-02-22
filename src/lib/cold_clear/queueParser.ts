@@ -7,6 +7,7 @@ export interface ParsedQueue {
 
 const QUEUE_REGEX = /^([IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]+$/;
 const SCORED_QUEUE_REGEX = /^score=(-?(?:0|[1-9]\d*)\.\d{2}) \| ((?:[IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]+)$/;
+const OUTSIDE_TOP_QUEUE_REGEX = /^outsideTop=(\d+) \| ((?:[IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]+)$/;
 
 const CHAR_TO_PIECE: Record<string, Piece> = {
     I: Piece.I,
@@ -42,11 +43,16 @@ export function parseQueueComment(text: string): ParsedQueue | null {
     }
 
     const scoredMatch = SCORED_QUEUE_REGEX.exec(text);
-    if (!scoredMatch) {
-        return null;
+    if (scoredMatch) {
+        return parseQueueOnlyComment(scoredMatch[2]);
     }
 
-    return parseQueueOnlyComment(scoredMatch[2]);
+    const outsideTopMatch = OUTSIDE_TOP_QUEUE_REGEX.exec(text);
+    if (outsideTopMatch) {
+        return parseQueueOnlyComment(outsideTopMatch[2]);
+    }
+
+    return null;
 }
 
 function parseQueueOnlyComment(text: string): ParsedQueue | null {

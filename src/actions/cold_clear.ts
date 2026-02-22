@@ -6,6 +6,7 @@ import { State } from '../states';
 import { Page, Move } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
 import { PageFieldOperation, Pages } from '../lib/pages';
+import { getBlockPositions } from '../lib/piece';
 import { parseQueueComment, buildQueueComment } from '../lib/cold_clear/queueParser';
 import { fieldToCC } from '../lib/cold_clear/fieldConverter';
 import {
@@ -68,7 +69,6 @@ interface PlacedRunSession extends SessionBase {
     targetNodeId: TreeNodeId;
     targetPageIndex: number;
     placedPiece: Move;
-    inferredHoldUsed: boolean;
     field: Field;
     thinkMs: number;
     requestedCandidateCount: number;
@@ -83,7 +83,7 @@ type RunSession = SingleRunSession | Top3RunSession | PlacedRunSession;
 
 type ColdClearRuntimeActions = ColdClearActions
     & Pick<TreeOperationActions, 'addColdClearBranches'>
-    & Pick<ScreenActions, 'changeToTreeViewScreen'>
+    & Pick<ScreenActions, 'changeToTreeViewScreen' | 'changeToDrawerScreen' | 'changeToDrawPieceMode'>
     & Pick<CommentActions, 'setCommentText'>;
 
 let currentSession: RunSession | null = null;
@@ -98,6 +98,7 @@ const PLACED_SCORE_INITIAL_CANDIDATE_COUNT = 5000;
 const PLACED_SCORE_MAX_CANDIDATE_COUNT = 20000;
 const PLACED_SCORE_MAX_RETRY = 1;
 const MAX_PRINTABLE_SCORE = 1000000;
+const OUTSIDE_TOP_CANDIDATES_COMMENT_PREFIX = 'outsideTop';
 const ONE_BAG_PIECES: Piece[] = [Piece.I, Piece.O, Piece.T, Piece.J, Piece.L, Piece.S, Piece.Z];
 
 // Action reference (set after Hyperapp mounts)
@@ -249,32 +250,12 @@ type PlacedSpawnInput = {
     preLockField: Field;
     parsed: NonNullable<ReturnType<typeof parseQueueComment>>;
     placedPiece: Move;
-    inferredHoldUsed: boolean;
     target: { nodeId: TreeNodeId; pageIndex: number };
 };
 
 type PlacedSpawnInputResult = {
     input?: PlacedSpawnInput;
     error?: PlacedSpawnInputError;
-};
-
-const inferHoldUsedForPlacedSpawn = (
-    hold: Piece | null,
-    queue: Piece[],
-    placedPiece: Piece,
-): boolean => {
-    if (hold !== null && hold === placedPiece) {
-        return true;
-    }
-
-    if (hold === null
-        && queue.length >= 2
-        && queue[0] !== placedPiece
-        && queue[1] === placedPiece) {
-        return true;
-    }
-
-    return false;
 };
 
 const resolvePlacedSpawnInput = (
@@ -315,8 +296,6 @@ const resolvePlacedSpawnInput = (
     if (!preLockField.isOnGround(placedPiece.type, placedPiece.rotation, x, y)) {
         return { error: 'floatingPiece' };
     }
-    const inferredHoldUsed = inferHoldUsedForPlacedSpawn(parsed.hold, parsed.queue, placedPiece.type);
-
     return {
         input: {
             tree,
@@ -325,7 +304,6 @@ const resolvePlacedSpawnInput = (
             parsed,
             placedPiece,
             target,
-            inferredHoldUsed,
         },
     };
 };
@@ -333,10 +311,11 @@ const resolvePlacedSpawnInput = (
 const buildPlacedSpawnSearchState = (
     hold: Piece | null,
     queue: Piece[],
+    placedPiece: Piece,
 ): { hold: Piece | null; queue: Piece[] } => {
     return {
         hold,
-        queue: queue.slice(),
+        queue: [placedPiece, ...queue],
     };
 };
 
@@ -409,24 +388,36 @@ const isSameMove = (left: Move, right: Move): boolean => {
         && left.coordinate.y === right.coordinate.y;
 };
 
+const toOccupiedCellKey = (move: Move): string => {
+    return getBlockPositions(move.type, move.rotation, move.coordinate.x, move.coordinate.y)
+        .map(([x, y]) => `${x},${y}`)
+        .sort()
+        .join(';');
+};
+
 const findExactPlacedSpawnResult = (
     results: CCMove[],
     expectedMove: Move,
-    expectedHoldUsed: boolean,
 ): CCMove | null => {
+    const expectedCellKey = toOccupiedCellKey(expectedMove);
+    let sameCellsResult: CCMove | null = null;
+
     for (const result of results) {
-        if (result.hold !== expectedHoldUsed) {
-            continue;
-        }
         const move = toMove(result);
         if (!move) {
             continue;
         }
+
         if (isSameMove(move, expectedMove)) {
             return result;
         }
+
+        if (!sameCellsResult && toOccupiedCellKey(move) === expectedCellKey) {
+            sameCellsResult = result;
+        }
     }
-    return null;
+
+    return sameCellsResult;
 };
 
 const showPlacedSpawnValidationError = (error: PlacedSpawnInputError) => {
@@ -497,6 +488,21 @@ const buildPlacedSpawnScoredQueueComment = (
     return `${scoreComment} | ${queueComment}`;
 };
 
+const buildOutsideTopCandidatesQueueComment = (
+    candidateCount: number,
+    hold: Piece | null,
+    queue: Piece[],
+): string => {
+    const queueComment = buildQueueComment(hold, queue);
+    const normalizedCandidateCount = Math.max(0, Math.floor(candidateCount));
+    const outsideTopComment = `${OUTSIDE_TOP_CANDIDATES_COMMENT_PREFIX}=${normalizedCandidateCount}`;
+    if (!queueComment) {
+        return outsideTopComment;
+    }
+
+    return `${outsideTopComment} | ${queueComment}`;
+};
+
 const shufflePieces = (pieces: Piece[]): Piece[] => {
     const shuffled = pieces.slice();
     for (let i = shuffled.length - 1; i > 0; i -= 1) {
@@ -522,6 +528,13 @@ const buildCommentWithAppendedOneBag = (currentComment: string): string => {
 const emitFinish = (runId: number) => {
     if (appActions) {
         appActions.coldClearFinishSearch(runId);
+    }
+};
+
+const moveToEditorPieceMenu = () => {
+    if (appActions) {
+        appActions.changeToDrawerScreen({});
+        appActions.changeToDrawPieceMode();
     }
 };
 
@@ -565,7 +578,7 @@ function finishTop3Search(runId: number) {
 function finishPlacedSpawnEvaluation(
     runId: number,
     showNoResultToast: boolean,
-    moveToTreeView: boolean = true,
+    moveToPieceMenu: boolean = true,
 ) {
     const session = currentSession;
     if (!session || session.runId !== runId || session.runType !== 'placed') {
@@ -580,8 +593,8 @@ function finishPlacedSpawnEvaluation(
     }
 
     emitFinish(runId);
-    if (moveToTreeView && appActions) {
-        appActions.changeToTreeViewScreen();
+    if (moveToPieceMenu) {
+        moveToEditorPieceMenu();
     }
 }
 
@@ -835,7 +848,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             parsed,
             preLockField,
             placedPiece,
-            inferredHoldUsed,
         } = resolved.input;
 
         if (currentSession) {
@@ -849,12 +861,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const searchState = buildPlacedSpawnSearchState(
             parsed.hold,
             parsed.queue,
+            placedPiece.type,
         );
 
         const session: PlacedRunSession = {
             runId,
             placedPiece,
-            inferredHoldUsed,
             runType: 'placed',
             wrapper: new ColdClearWrapper(),
             targetNodeId: target.nodeId,
@@ -1057,14 +1069,32 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             const exactResult = findExactPlacedSpawnResult(
                 results,
                 session.placedPiece,
-                session.inferredHoldUsed,
             );
             if (!exactResult) {
                 if (retryPlacedSpawnEvaluation(session)) {
                     return undefined;
                 }
-                finishPlacedSpawnEvaluation(runId, true);
-                return undefined;
+
+                const outsideTopComment = buildOutsideTopCandidatesQueueComment(
+                    session.requestedCandidateCount,
+                    session.hold,
+                    session.queue,
+                );
+
+                terminateSession(session);
+                currentSession = null;
+
+                if (!appActions) {
+                    emitFinish(runId);
+                    return undefined;
+                }
+
+                return sequence(state, [
+                    appActions.setCommentText({ pageIndex: session.targetPageIndex, text: outsideTopComment }),
+                    appActions.coldClearFinishSearch(runId),
+                    appActions.changeToDrawerScreen({}),
+                    appActions.changeToDrawPieceMode(),
+                ]);
             }
 
             const nextComment = buildPlacedSpawnScoredQueueComment(
@@ -1088,7 +1118,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return sequence(state, [
                 appActions.setCommentText({ pageIndex: session.targetPageIndex, text: nextComment }),
                 appActions.coldClearFinishSearch(runId),
-                appActions.changeToTreeViewScreen(),
+                appActions.changeToDrawerScreen({}),
+                appActions.changeToDrawPieceMode(),
             ]);
         }
 

@@ -114,6 +114,14 @@ describe('parseQueueComment', () => {
         });
     });
 
+    test('parse outside-top queue with hold', () => {
+        const result = parseQueueComment('outsideTop=10000 | T:IOL');
+        expect(result).toEqual({
+            hold: Piece.T,
+            queue: [Piece.I, Piece.O, Piece.L],
+        });
+    });
+
     test('return null for invalid score format', () => {
         expect(parseQueueComment('score=abc | IOTL')).toBeNull();
     });
