@@ -196,5 +196,12 @@
         OneBagAddLabel: '1bag Add',
         OneBagAddDescription: 'Append shuffled IOTJLSZ to comment queue',
         OneBagAdded: 'ColdClear: Added 1bag to queue',
+        EvaluatePlacedSpawnScoreLabel: 'Placed Score',
+        EvaluatePlacedSpawnScoreDescription: 'Evaluate score for the currently placed piece',
+        InvalidPageFlags: 'AI: Unsupported page flags for this action',
+        InvalidQueueComment: 'AI: Queue comment is required',
+        PlacedPieceRequired: 'AI: Place a piece before running this action',
+        FloatingPieceUnsupported: 'AI: Floating piece is not supported',
+        CannotEvaluatePlacedSpawn: 'AI: Cannot evaluate current placement',
     },
 };

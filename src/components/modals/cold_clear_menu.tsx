@@ -15,6 +15,7 @@ interface ColdClearMenuModalProps {
         closeColdClearMenuModal: () => void;
         startColdClearSearch: () => void;
         startColdClearTopThreeSearch: () => void;
+        evaluatePlacedSpawnMinoScore: () => void;
         appendColdClearOneBagToComment: () => void;
         stopColdClearSearch: () => void;
     };
@@ -189,6 +190,17 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             enabled: !isRunning && canTopBranchesSearch,
             onclick: () => {
                 actions.startColdClearTopThreeSearch();
+            },
+        },
+        {
+            key: 'btn-cold-clear-evaluate-placed-spawn-score',
+            datatest: 'btn-cold-clear-evaluate-placed-spawn-score',
+            iconName: 'grade',
+            title: i18n.ColdClear.EvaluatePlacedSpawnScoreLabel(),
+            description: i18n.ColdClear.EvaluatePlacedSpawnScoreDescription(),
+            enabled: !isRunning,
+            onclick: () => {
+                actions.evaluatePlacedSpawnMinoScore();
             },
         },
         {

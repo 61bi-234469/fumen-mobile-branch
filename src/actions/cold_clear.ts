@@ -1,4 +1,4 @@
-import { Piece } from '../lib/enums';
+import { Piece, isMinoPiece } from '../lib/enums';
 import type { action } from '../actions';
 import type { TreeOperationActions } from './tree_operations';
 import { NextState, sequence } from './commons';
@@ -33,7 +33,7 @@ import type { CommentActions } from './comment';
 
 declare const M: any;
 
-type RunType = 'single' | 'top3';
+type RunType = 'single' | 'top3' | 'placed';
 
 interface SessionBase {
     runId: number;
@@ -63,7 +63,23 @@ interface Top3RunSession extends SessionBase {
     srs: boolean;
 }
 
-type RunSession = SingleRunSession | Top3RunSession;
+interface PlacedRunSession extends SessionBase {
+    runType: 'placed';
+    targetNodeId: TreeNodeId;
+    targetPageIndex: number;
+    placedPiece: Move;
+    inferredHoldUsed: boolean;
+    field: Field;
+    thinkMs: number;
+    requestedCandidateCount: number;
+    retryCount: number;
+    hold: Piece | null;
+    queue: Piece[];
+    searchHold: Piece | null;
+    searchQueue: Piece[];
+}
+
+type RunSession = SingleRunSession | Top3RunSession | PlacedRunSession;
 
 type ColdClearRuntimeActions = ColdClearActions
     & Pick<TreeOperationActions, 'addColdClearBranches'>
@@ -76,6 +92,11 @@ const THINK_MS = 1000;
 const INIT_TIMEOUT_MS = 10000;
 const TOP_BRANCH_COUNT = 5;
 export const COLD_CLEAR_TOP_BRANCH_COUNT = TOP_BRANCH_COUNT;
+const PLACED_SCORE_INITIAL_THINK_MS = THINK_MS;
+const PLACED_SCORE_MAX_THINK_MS = THINK_MS * 8;
+const PLACED_SCORE_INITIAL_CANDIDATE_COUNT = 5000;
+const PLACED_SCORE_MAX_CANDIDATE_COUNT = 20000;
+const PLACED_SCORE_MAX_RETRY = 1;
 const MAX_PRINTABLE_SCORE = 1000000;
 const ONE_BAG_PIECES: Piece[] = [Piece.I, Piece.O, Piece.T, Piece.J, Piece.L, Piece.S, Piece.Z];
 
@@ -89,6 +110,7 @@ export const initColdClearActions = (actions: ColdClearRuntimeActions) => {
 export interface ColdClearActions {
     startColdClearSearch: () => action;
     startColdClearTopThreeSearch: () => action;
+    evaluatePlacedSpawnMinoScore: () => action;
     appendColdClearOneBagToComment: () => action;
     stopColdClearSearch: () => action;
     onColdClearMoveResult: (data: { runId: number, result: CCMoveResult }) => action;
@@ -212,6 +234,123 @@ const resolveTopBranchSearchInput = (
     state: Readonly<State>,
 ) => resolveSingleSearchInput(state);
 
+type PlacedSpawnInputError =
+    | 'targetNotFound'
+    | 'unsupportedPageFlags'
+    | 'invalidQueueComment'
+    | 'missingPlacedPiece'
+    | 'invalidPlacedPiece'
+    | 'invalidPlacement'
+    | 'floatingPiece';
+
+type PlacedSpawnInput = {
+    tree: ReturnType<typeof getTreeForState>;
+    page: Page;
+    preLockField: Field;
+    parsed: NonNullable<ReturnType<typeof parseQueueComment>>;
+    placedPiece: Move;
+    inferredHoldUsed: boolean;
+    target: { nodeId: TreeNodeId; pageIndex: number };
+};
+
+type PlacedSpawnInputResult = {
+    input?: PlacedSpawnInput;
+    error?: PlacedSpawnInputError;
+};
+
+const inferHoldUsedForPlacedSpawn = (
+    hold: Piece | null,
+    queue: Piece[],
+    placedPiece: Piece,
+): boolean => {
+    if (hold !== null && hold === placedPiece) {
+        return true;
+    }
+
+    if (hold === null
+        && queue.length >= 2
+        && queue[0] !== placedPiece
+        && queue[1] === placedPiece) {
+        return true;
+    }
+
+    return false;
+};
+
+const resolvePlacedSpawnInput = (
+    state: Readonly<State>,
+): PlacedSpawnInputResult => {
+    const tree = getTreeForState(state);
+    const target = resolveTargetNode(state, tree);
+    if (!target) {
+        return { error: 'targetNotFound' };
+    }
+
+    const page = state.fumen.pages[target.pageIndex];
+    if (!isPageSupported(page)) {
+        return { error: 'unsupportedPageFlags' };
+    }
+
+    const parsed = parseQueueCommentFromPage(state.fumen.pages, target.pageIndex);
+    if (!parsed) {
+        return { error: 'invalidQueueComment' };
+    }
+
+    if (!page.piece) {
+        return { error: 'missingPlacedPiece' };
+    }
+    if (!isMinoPiece(page.piece.type)) {
+        return { error: 'invalidPlacedPiece' };
+    }
+
+    const pages = new Pages(state.fumen.pages);
+    const preLockField = pages.getField(target.pageIndex, PageFieldOperation.Command);
+    const placedPiece = page.piece;
+    const x = placedPiece.coordinate.x;
+    const y = placedPiece.coordinate.y;
+
+    if (!preLockField.canPut(placedPiece.type, placedPiece.rotation, x, y)) {
+        return { error: 'invalidPlacement' };
+    }
+    if (!preLockField.isOnGround(placedPiece.type, placedPiece.rotation, x, y)) {
+        return { error: 'floatingPiece' };
+    }
+    const inferredHoldUsed = inferHoldUsedForPlacedSpawn(parsed.hold, parsed.queue, placedPiece.type);
+
+    return {
+        input: {
+            tree,
+            page,
+            preLockField,
+            parsed,
+            placedPiece,
+            target,
+            inferredHoldUsed,
+        },
+    };
+};
+
+const buildPlacedSpawnSearchState = (
+    hold: Piece | null,
+    queue: Piece[],
+    placedPiece: Piece,
+    inferredHoldUsed: boolean,
+): { hold: Piece | null; queue: Piece[] } => {
+    // In this app many pages store "post-lock" queue comments.
+    // For no-hold evaluation, reconstruct pre-lock search queue by prepending current piece.
+    if (!inferredHoldUsed && queue.length > 0 && queue[0] !== placedPiece) {
+        return {
+            hold,
+            queue: [placedPiece, ...queue],
+        };
+    }
+
+    return {
+        hold,
+        queue: queue.slice(),
+    };
+};
+
 export const canStartColdClearSequenceSearch = (state: Readonly<State>): boolean => {
     return resolveSingleSearchInput(state) !== null;
 };
@@ -274,6 +413,89 @@ const applyQueueAfterMove = (
     };
 };
 
+const applyQueueAfterPlacedSpawnEvaluation = (
+    hold: Piece | null,
+    queue: Piece[],
+    usedHold: boolean,
+): { hold: Piece | null; queue: Piece[] } | null => {
+    if (!usedHold) {
+        return {
+            hold,
+            queue: queue.slice(),
+        };
+    }
+
+    if (hold === null) {
+        if (queue.length < 2) {
+            return null;
+        }
+        return {
+            hold: queue[0],
+            queue: queue.slice(2),
+        };
+    }
+
+    if (queue.length < 1) {
+        return null;
+    }
+
+    return {
+        hold: queue[0],
+        queue: queue.slice(),
+    };
+};
+
+const isSameMove = (left: Move, right: Move): boolean => {
+    return left.type === right.type
+        && left.rotation === right.rotation
+        && left.coordinate.x === right.coordinate.x
+        && left.coordinate.y === right.coordinate.y;
+};
+
+const findExactPlacedSpawnResult = (
+    results: CCMove[],
+    expectedMove: Move,
+    expectedHoldUsed: boolean,
+): CCMove | null => {
+    for (const result of results) {
+        if (result.hold !== expectedHoldUsed) {
+            continue;
+        }
+        const move = toMove(result);
+        if (!move) {
+            continue;
+        }
+        if (isSameMove(move, expectedMove)) {
+            return result;
+        }
+    }
+    return null;
+};
+
+const showPlacedSpawnValidationError = (error: PlacedSpawnInputError) => {
+    let message = i18n.ColdClear.CannotEvaluatePlacedSpawn();
+
+    switch (error) {
+    case 'unsupportedPageFlags':
+        message = i18n.ColdClear.InvalidPageFlags();
+        break;
+    case 'invalidQueueComment':
+        message = i18n.ColdClear.InvalidQueueComment();
+        break;
+    case 'missingPlacedPiece':
+    case 'invalidPlacedPiece':
+        message = i18n.ColdClear.PlacedPieceRequired();
+        break;
+    case 'floatingPiece':
+        message = i18n.ColdClear.FloatingPieceUnsupported();
+        break;
+    default:
+        break;
+    }
+
+    M.toast({ html: message, classes: 'top-toast', displayLength: 1500 });
+};
+
 const isScorePrintable = (score: number | undefined): score is number => {
     return typeof score === 'number'
         && Number.isFinite(score)
@@ -298,6 +520,23 @@ const buildScoredQueueComment = (score: number | undefined, hold: Piece | null, 
         return scoreComment;
     }
 
+    return `${scoreComment} | ${queueComment}`;
+};
+
+const buildPlacedSpawnScoredQueueComment = (
+    score: number | undefined,
+    hold: Piece | null,
+    queue: Piece[],
+): string | null => {
+    if (typeof score !== 'number' || !Number.isFinite(score)) {
+        return null;
+    }
+
+    const queueComment = buildQueueComment(hold, queue);
+    const scoreComment = `score=${formatScore(score)}`;
+    if (!queueComment) {
+        return scoreComment;
+    }
     return `${scoreComment} | ${queueComment}`;
 };
 
@@ -364,6 +603,68 @@ function finishTop3Search(runId: number) {
     currentSession = null;
     terminateSession(session);
     emitFinish(runId);
+}
+
+function finishPlacedSpawnEvaluation(
+    runId: number,
+    showNoResultToast: boolean,
+    moveToTreeView: boolean = true,
+) {
+    const session = currentSession;
+    if (!session || session.runId !== runId || session.runType !== 'placed') {
+        return;
+    }
+
+    currentSession = null;
+    terminateSession(session);
+
+    if (showNoResultToast) {
+        M.toast({ html: i18n.ColdClear.CannotEvaluatePlacedSpawn(), classes: 'top-toast', displayLength: 1500 });
+    }
+
+    emitFinish(runId);
+    if (moveToTreeView && appActions) {
+        appActions.changeToTreeViewScreen();
+    }
+}
+
+const buildPlacedSpawnInitMessage = (session: PlacedRunSession): CCInitMessage => {
+    const ccField = fieldToCC(session.field);
+    const ccHold = session.searchHold !== null ? PIECE_TO_CC[session.searchHold] : CC_HOLD_NONE;
+    const ccQueue = session.searchQueue.map(piece => PIECE_TO_CC[piece]);
+    return {
+        type: 'init',
+        field: ccField,
+        hold: ccHold,
+        b2b: false,
+        combo: 0,
+        queue: ccQueue,
+        thinkMs: session.thinkMs,
+    };
+};
+
+function retryPlacedSpawnEvaluation(session: PlacedRunSession): boolean {
+    if (session.retryCount >= PLACED_SCORE_MAX_RETRY) {
+        return false;
+    }
+
+    const nextThinkMs = Math.min(PLACED_SCORE_MAX_THINK_MS, session.thinkMs * 2);
+    const nextCandidateCount = Math.min(
+        PLACED_SCORE_MAX_CANDIDATE_COUNT,
+        session.requestedCandidateCount * 2,
+    );
+    if (nextThinkMs === session.thinkMs && nextCandidateCount === session.requestedCandidateCount) {
+        return false;
+    }
+
+    terminateSession(session);
+    session.wrapper = new ColdClearWrapper();
+    session.thinkMs = nextThinkMs;
+    session.requestedCandidateCount = nextCandidateCount;
+    session.retryCount += 1;
+
+    startWorkerSession(session, buildPlacedSpawnInitMessage(session), () => false);
+    return true;
 }
 
 function handleWorkerMessage(runId: number, msg: WorkerResponse) {
@@ -560,6 +861,86 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         };
     },
 
+    evaluatePlacedSpawnMinoScore: () => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const resolved = resolvePlacedSpawnInput(state);
+        if (!resolved.input) {
+            showPlacedSpawnValidationError(resolved.error ?? 'targetNotFound');
+            return undefined;
+        }
+
+        const {
+            tree,
+            target,
+            parsed,
+            preLockField,
+            placedPiece,
+            inferredHoldUsed,
+        } = resolved.input;
+
+        if (currentSession) {
+            terminateSession(currentSession);
+            currentSession = null;
+        }
+
+        const runId = nextRunId;
+        nextRunId += 1;
+
+        const searchState = buildPlacedSpawnSearchState(
+            parsed.hold,
+            parsed.queue,
+            placedPiece.type,
+            inferredHoldUsed,
+        );
+
+        const session: PlacedRunSession = {
+            runId,
+            placedPiece,
+            inferredHoldUsed,
+            runType: 'placed',
+            wrapper: new ColdClearWrapper(),
+            targetNodeId: target.nodeId,
+            targetPageIndex: target.pageIndex,
+            field: preLockField.copy(),
+            thinkMs: PLACED_SCORE_INITIAL_THINK_MS,
+            requestedCandidateCount: PLACED_SCORE_INITIAL_CANDIDATE_COUNT,
+            retryCount: 0,
+            hold: parsed.hold,
+            queue: parsed.queue.slice(),
+            searchHold: searchState.hold,
+            searchQueue: searchState.queue,
+        };
+        currentSession = session;
+
+        startWorkerSession(session, buildPlacedSpawnInitMessage(session), () => false);
+
+        return {
+            tree: state.tree.enabled
+                ? {
+                    ...state.tree,
+                    activeNodeId: target.nodeId,
+                }
+                : {
+                    ...state.tree,
+                    enabled: true,
+                    nodes: tree.nodes,
+                    rootId: tree.rootId,
+                    activeNodeId: target.nodeId,
+                },
+            coldClear: {
+                runId,
+                runType: 'placed',
+                targetNodeId: target.nodeId,
+                isRunning: true,
+                abortRequested: false,
+                progress: { current: 0, total: 1 },
+            },
+        };
+    },
+
     appendColdClearOneBagToComment: () => (state): NextState => {
         if (state.coldClear.isRunning) {
             return undefined;
@@ -598,8 +979,10 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (session && session.runId === runId) {
             if (session.runType === 'single') {
                 finishSingleSearch(runId);
-            } else {
+            } else if (session.runType === 'top3') {
                 finishTop3Search(runId);
+            } else {
+                finishPlacedSpawnEvaluation(runId, false, false);
             }
         }
 
@@ -624,8 +1007,10 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
         if (currentSession.runType === 'single') {
             currentSession.wrapper.requestMove();
-        } else {
+        } else if (currentSession.runType === 'top3') {
             currentSession.wrapper.requestTopMoves(TOP_BRANCH_COUNT);
+        } else {
+            currentSession.wrapper.requestTopMoves(currentSession.requestedCandidateCount);
         }
         return undefined;
     },
@@ -707,7 +1092,67 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        if (!currentSession || currentSession.runId !== runId || currentSession.runType !== 'top3') {
+        if (!currentSession || currentSession.runId !== runId) {
+            return undefined;
+        }
+
+        if (currentSession.runType === 'placed') {
+            const session = currentSession;
+
+            if (state.coldClear.abortRequested) {
+                finishPlacedSpawnEvaluation(runId, false, false);
+                return undefined;
+            }
+
+            const exactResult = findExactPlacedSpawnResult(
+                results,
+                session.placedPiece,
+                session.inferredHoldUsed,
+            );
+            if (!exactResult) {
+                if (retryPlacedSpawnEvaluation(session)) {
+                    return undefined;
+                }
+                finishPlacedSpawnEvaluation(runId, true);
+                return undefined;
+            }
+
+            const queueState = applyQueueAfterPlacedSpawnEvaluation(
+                session.hold,
+                session.queue,
+                session.inferredHoldUsed,
+            );
+            if (!queueState) {
+                finishPlacedSpawnEvaluation(runId, true);
+                return undefined;
+            }
+
+            const nextComment = buildPlacedSpawnScoredQueueComment(
+                exactResult.score,
+                queueState.hold,
+                queueState.queue,
+            );
+            if (nextComment === null) {
+                finishPlacedSpawnEvaluation(runId, true);
+                return undefined;
+            }
+
+            terminateSession(session);
+            currentSession = null;
+
+            if (!appActions) {
+                emitFinish(runId);
+                return undefined;
+            }
+
+            return sequence(state, [
+                appActions.setCommentText({ pageIndex: session.targetPageIndex, text: nextComment }),
+                appActions.coldClearFinishSearch(runId),
+                appActions.changeToTreeViewScreen(),
+            ]);
+        }
+
+        if (currentSession.runType !== 'top3') {
             return undefined;
         }
 
@@ -799,6 +1244,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
     onColdClearNoMove: ({ runId }) => (state): NextState => {
         if (!state.coldClear.isRunning || state.coldClear.runId !== runId) {
+            return undefined;
+        }
+
+        if (currentSession && currentSession.runId === runId && currentSession.runType === 'placed') {
+            finishPlacedSpawnEvaluation(runId, true);
             return undefined;
         }
 

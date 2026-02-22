@@ -204,5 +204,12 @@ export const i18n = {
         OneBagAddLabel: () => t('ColdClear.OneBagAddLabel'),
         OneBagAddDescription: () => t('ColdClear.OneBagAddDescription'),
         OneBagAdded: () => t('ColdClear.OneBagAdded'),
+        EvaluatePlacedSpawnScoreLabel: () => t('ColdClear.EvaluatePlacedSpawnScoreLabel'),
+        EvaluatePlacedSpawnScoreDescription: () => t('ColdClear.EvaluatePlacedSpawnScoreDescription'),
+        InvalidPageFlags: () => t('ColdClear.InvalidPageFlags'),
+        InvalidQueueComment: () => t('ColdClear.InvalidQueueComment'),
+        PlacedPieceRequired: () => t('ColdClear.PlacedPieceRequired'),
+        FloatingPieceUnsupported: () => t('ColdClear.FloatingPieceUnsupported'),
+        CannotEvaluatePlacedSpawn: () => t('ColdClear.CannotEvaluatePlacedSpawn'),
     },
 };

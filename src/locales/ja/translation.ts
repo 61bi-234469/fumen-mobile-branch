@@ -171,5 +171,12 @@ export const resources = {
         OneBagAddLabel: '1bag追加',
         OneBagAddDescription: 'コメントのキュー末尾にランダムIOTJLSZを追記',
         OneBagAdded: 'ColdClear: 1bagを追記しました',
+        EvaluatePlacedSpawnScoreLabel: '配置スコア評価',
+        EvaluatePlacedSpawnScoreDescription: '現在配置済みミノのスコアを評価',
+        InvalidPageFlags: 'AI: この操作ではページ設定が未対応です',
+        InvalidQueueComment: 'AI: キューコメントを設定してください',
+        PlacedPieceRequired: 'AI: 配置済みミノが必要です',
+        FloatingPieceUnsupported: 'AI: 浮遊ミノは未対応です',
+        CannotEvaluatePlacedSpawn: 'AI: 現在の配置は評価できません',
     },
 };

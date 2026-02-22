@@ -171,7 +171,7 @@ export interface State {
         isRunning: boolean;
         abortRequested: boolean;
         runId: number;
-        runType: 'single' | 'top3';
+        runType: 'single' | 'top3' | 'placed';
         targetNodeId: string | null;
         progress: { current: number; total: number } | null;
     };
