@@ -25,6 +25,10 @@ import {
     calculateTreeViewLayout,
     shouldShowDeleteBadge,
 } from '../lib/fumen/tree_view_layout';
+import {
+    canStartColdClearSequenceSearch,
+    canStartColdClearTopBranchesSearch,
+} from '../actions/cold_clear';
 
 const TOOLS_HEIGHT = 50;
 
@@ -622,8 +626,11 @@ export const view: View<State, Actions> = (state, actions) => {
     const treeToggleCount = isTreeView ? 3 : 0;
     const cornerOffset = 8;
     const treeRootAddButtonBottomOffset = cornerOffset - 20;
+    const treeAiButtonLeftOffset = 52;
     const bottomControlOpacity = 0.8;
     const bottomControlDisabledOpacity = 0.45;
+    const canRunColdClear = canStartColdClearSequenceSearch(state)
+        || canStartColdClearTopBranchesSearch(state);
     const treeRootAddButtonBottom = treeRootAddButtonBottomOffset
         + treeToggleCount * treeTogglePillHeight
         + Math.max(0, treeToggleCount - 1) * treeToggleGap;
@@ -667,6 +674,25 @@ export const view: View<State, Actions> = (state, actions) => {
         justifyContent: 'center',
         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
         opacity: bottomControlOpacity,
+        zIndex: 100,
+    });
+
+    const treeAiButtonStyle = style({
+        position: 'fixed',
+        bottom: px(treeRootAddButtonBottom),
+        right: px(cornerOffset + treeAiButtonLeftOffset),
+        width: px(44),
+        height: px(44),
+        borderRadius: '50%',
+        border: 'none',
+        backgroundColor: state.coldClear.isRunning ? '#f44336' : (canRunColdClear ? '#1565C0' : '#9E9E9E'),
+        color: '#fff',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        opacity: state.coldClear.isRunning || canRunColdClear ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
         zIndex: 100,
     });
 
@@ -1099,6 +1125,19 @@ export const view: View<State, Actions> = (state, actions) => {
                     grayAfterLineClear: !grayAfterLineClear,
                 }),
             ),
+        ])] : []),
+
+        // Add top-level page button (tree view only)
+        ...(isTreeView ? [h('button', {
+            key: 'tree-ai-menu',
+            datatest: 'btn-tree-ai-menu',
+            style: treeAiButtonStyle,
+            onclick: () => actions.openColdClearMenuModal(),
+        }, [
+            h('i', {
+                className: 'material-icons',
+                style: style({ fontSize: px(24) }),
+            }, state.coldClear.isRunning ? 'stop' : 'auto_fix_high'),
         ])] : []),
 
         // Add top-level page button (tree view only)

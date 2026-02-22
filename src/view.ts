@@ -1,4 +1,4 @@
-import { View } from 'hyperapp';
+﻿import { View } from 'hyperapp';
 import { div } from '@hyperapp/html';
 import { Actions } from './actions';
 import { State } from './states';
@@ -14,10 +14,19 @@ import { UserSettingsModal } from './components/modals/user_settings';
 import { ListViewReplaceModal } from './components/modals/list_view_replace';
 import { ListViewImportModal } from './components/modals/list_view_import';
 import { ListViewExportModal } from './components/modals/list_view_export';
+import { ColdClearMenuModal } from './components/modals/cold_clear_menu';
 import { embedTreeInPages } from './lib/fumen/tree_utils';
 import { SerializedTree, TreeViewMode } from './lib/fumen/tree_types';
+import {
+    canStartColdClearSequenceSearch,
+    canStartColdClearTopBranchesSearch,
+    COLD_CLEAR_TOP_BRANCH_COUNT,
+} from './actions/cold_clear';
 
 export const view: View<State, Actions> = (state, actions) => {
+    const canSequenceSearch = canStartColdClearSequenceSearch(state);
+    const canTopBranchesSearch = canStartColdClearTopBranchesSearch(state);
+
     const selectView = () => {
         const screens = state.mode.screen;
         switch (screens) {
@@ -97,7 +106,15 @@ export const view: View<State, Actions> = (state, actions) => {
             isTreeView: state.tree.enabled && state.tree.viewMode === TreeViewMode.Tree,
         }) : undefined as any,
 
-        // key付きの空のdivを置くことで、配列末尾の要素でも存在の有無を判定できるようにする
+        state.modal.coldClearMenu ? ColdClearMenuModal({
+            isRunning: state.coldClear.isRunning,
+            progress: state.coldClear.progress,
+            topBranchCount: COLD_CLEAR_TOP_BRANCH_COUNT,
+            canSequenceSearch,
+            canTopBranchesSearch,
+            actions,
+        }) : undefined as any,
+
         div({ key: 'view-end' }),
     ]);
 };

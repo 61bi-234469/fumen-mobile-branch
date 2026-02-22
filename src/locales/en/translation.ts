@@ -1,4 +1,4 @@
-export const resources = {
+﻿export const resources = {
     Top: {
         RestoreFromStorage: 'Restored to last state',
     },
@@ -172,6 +172,15 @@ export const resources = {
         ExternalFumenURL: 'https://harddrop.com/fumen/?{{data}}',
     },
     ColdClear: {
+        MenuTitle: 'ColdClear',
+        MenuButtonLabel: 'AI',
+        SequenceSearchLabel: 'Sequence Search',
+        SequenceSearchDescription: 'Search full sequence from current queue',
+        TopBranchesSearchLabel: 'Candidate Search',
+        TopBranchesSearchDescription: 'Search top {{count}} branches',
+        StopSearchLabel: 'Stop Search',
+        StopSearchDescription: 'Stop current AI search',
+        CloseButton: 'Close',
         ButtonLabel: 'CC',
         StopLabel: 'STOP',
         Progress: 'Searching... {{current}}/{{total}}',

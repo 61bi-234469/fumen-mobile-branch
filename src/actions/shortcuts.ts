@@ -52,7 +52,8 @@ const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = {
 const isAnyModalOpen = (state: State): boolean => {
     const { modal } = state;
     return modal.fumen || modal.menu || modal.append || modal.clipboard ||
-           modal.userSettings || modal.listViewReplace || modal.listViewImport || modal.listViewExport;
+           modal.userSettings || modal.listViewReplace || modal.listViewImport
+           || modal.listViewExport || modal.coldClearMenu;
 };
 
 // 入力フィールドにフォーカスしているかチェック

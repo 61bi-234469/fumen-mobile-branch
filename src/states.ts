@@ -113,6 +113,7 @@ export interface State {
         listViewReplace: boolean;
         listViewImport: boolean;
         listViewExport: boolean;
+        coldClearMenu: boolean;
     };
     temporary: {
         userSettings: {
@@ -237,6 +238,7 @@ export const initState: Readonly<State> = {
         listViewReplace: false,
         listViewImport: false,
         listViewExport: false,
+        coldClearMenu: false,
     },
     temporary: {
         userSettings: {
@@ -310,6 +312,7 @@ export const resources = {
         listViewReplace: undefined as any,
         listViewImport: undefined as any,
         listViewExport: undefined as any,
+        coldClearMenu: undefined as any,
     },
     konva: createKonvaObjects(),
     comment: undefined as ({ text: string, pageIndex: number } | undefined),

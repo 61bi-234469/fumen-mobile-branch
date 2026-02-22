@@ -12,10 +12,7 @@ import {
 import { EditorLayout, toolStyle } from './editor';
 import { EditShortcuts, PaletteShortcuts, State } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
-import { parseQueueComment } from '../../lib/cold_clear/queueParser';
 import { i18n } from '../../locales/keys';
-
-declare const M: any;
 
 export const toolMode = ({
     layout,
@@ -28,8 +25,7 @@ export const toolMode = ({
     paletteShortcuts,
     editShortcuts,
     shortcutLabelVisible,
-    commentText,
-    flags,
+    coldClearCanRun,
     coldClear,
     actions,
 }: {
@@ -43,8 +39,7 @@ export const toolMode = ({
     paletteShortcuts: PaletteShortcuts;
     editShortcuts: EditShortcuts;
     shortcutLabelVisible: boolean;
-    commentText: string;
-    flags: { lock: boolean; mirror: boolean; rise: boolean; quiz: boolean };
+    coldClearCanRun: boolean;
     coldClear: State['coldClear'];
     actions: {
         cutCurrentPage: () => void;
@@ -66,9 +61,7 @@ export const toolMode = ({
         copyAllPagesToClipboard: () => void;
         cutAllPages: () => void;
         replaceAllFromClipboard: () => void;
-        startColdClearSearch: () => void;
-        startColdClearTopThreeSearch: () => void;
-        stopColdClearSearch: () => void;
+        openColdClearMenuModal: () => void;
     };
 }) => {
     const getShortcutLabel = (piece: Piece): string | undefined => {
@@ -90,14 +83,6 @@ export const toolMode = ({
     };
     const toolButtonMargin = 3;
     const pieces = [Piece.I, Piece.L, Piece.O, Piece.Z, Piece.T, Piece.J, Piece.S, Piece.Empty, Piece.Gray];
-    const topBranchCount = 5;
-    const showColdClearModeFeedback = (message: string) => {
-        (M as any).toast({
-            html: message,
-            classes: 'top-toast',
-            displayLength: 1200,
-        });
-    };
 
     return div({ style: toolStyle(layout) }, [
         switchButton({
@@ -232,10 +217,7 @@ export const toolMode = ({
             iconName: 'extension',
         })),
         (() => {
-            const ccReady = (
-                flags.lock && !flags.mirror && !flags.rise && !flags.quiz
-                && parseQueueComment(commentText) !== null
-            );
+            const ccReady = coldClearCanRun;
             return toolButton({
                 borderWidth: 1,
                 width: layout.buttons.size.width,
@@ -246,47 +228,14 @@ export const toolMode = ({
                 datatest: coldClear.isRunning ? 'btn-cold-clear-stop' : 'btn-cold-clear',
                 key: 'btn-cold-clear',
                 onclick: () => {
-                    if (coldClear.isRunning) {
-                        actions.stopColdClearSearch();
-                        return;
-                    }
-
-                    if (!ccReady) {
-                        (M as any).toast({
-                            html: i18n.ColdClear.UsageHint(),
-                            classes: 'top-toast',
-                            displayLength: 3000,
-                        });
-                        return;
-                    }
-
-                    showColdClearModeFeedback(i18n.ColdClear.ShortPressTopBranches(topBranchCount));
-                    actions.startColdClearTopThreeSearch();
-                },
-                onlongpress: () => {
-                    if (coldClear.isRunning) {
-                        actions.stopColdClearSearch();
-                        return;
-                    }
-
-                    if (!ccReady) {
-                        (M as any).toast({
-                            html: i18n.ColdClear.UsageHint(),
-                            classes: 'top-toast',
-                            displayLength: 3000,
-                        });
-                        return;
-                    }
-
-                    showColdClearModeFeedback(i18n.ColdClear.LongPressSequenceSearch());
-                    actions.startColdClearSearch();
+                    actions.openColdClearMenuModal();
                 },
             }, iconContents({
                 description: coldClear.isRunning
                     ? (coldClear.progress
                         ? i18n.ColdClear.Progress(coldClear.progress.current, coldClear.progress.total)
                         : i18n.ColdClear.StopLabel())
-                    : i18n.ColdClear.ButtonLabel(),
+                    : i18n.ColdClear.MenuButtonLabel(),
                 iconSize: 18,
                 iconName: coldClear.isRunning ? 'stop' : 'auto_fix_high',
             }));

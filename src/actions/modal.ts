@@ -11,6 +11,7 @@ export interface ModalActions {
     openListViewReplaceModal: () => action;
     openListViewImportModal: () => action;
     openListViewExportModal: () => action;
+    openColdClearMenuModal: () => action;
     closeFumenModal: () => action;
     closeMenuModal: () => action;
     closeAppendModal: () => action;
@@ -19,6 +20,7 @@ export interface ModalActions {
     closeListViewReplaceModal: () => action;
     closeListViewImportModal: () => action;
     closeListViewExportModal: () => action;
+    closeColdClearMenuModal: () => action;
     closeAllModals: () => action;
 }
 
@@ -145,6 +147,14 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
+    openColdClearMenuModal: () => (state): NextState => {
+        return {
+            modal: {
+                ...state.modal,
+                coldClearMenu: true,
+            },
+        };
+    },
     closeListViewImportModal: () => (state): NextState => {
         return {
             modal: {
@@ -161,6 +171,14 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
+    closeColdClearMenuModal: () => (state): NextState => {
+        return {
+            modal: {
+                ...state.modal,
+                coldClearMenu: false,
+            },
+        };
+    },
     closeAllModals: () => (): NextState => {
         return {
             modal: {
@@ -172,6 +190,7 @@ export const modalActions: Readonly<ModalActions> = {
                 listViewReplace: false,
                 listViewImport: false,
                 listViewExport: false,
+                coldClearMenu: false,
             },
         };
     },

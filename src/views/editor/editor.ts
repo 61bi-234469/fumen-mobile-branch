@@ -22,6 +22,10 @@ import { fillRowMode } from './fill_row_mode';
 import { pieceSelectMode } from './piece_select_mode';
 import { navigatorElement } from '../navigator';
 import { commentMode } from './comment_mode';
+import {
+    canStartColdClearSequenceSearch,
+    canStartColdClearTopBranchesSearch,
+} from '../../actions/cold_clear';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -209,7 +213,8 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
         const getMode = () => {
             switch (state.mode.type) {
             case ModeTypes.DrawingTool: {
-                const dtPage = state.fumen.pages[state.fumen.currentIndex];
+                const coldClearCanRun = canStartColdClearSequenceSearch(state)
+                    || canStartColdClearTopBranchesSearch(state);
                 return toolMode({
                     layout,
                     actions,
@@ -222,8 +227,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     paletteShortcuts: state.mode.paletteShortcuts,
                     editShortcuts: state.mode.editShortcuts,
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                    commentText: state.comment.text,
-                    flags: dtPage ? dtPage.flags : { lock: true, mirror: false, rise: false, quiz: false },
+                    coldClearCanRun,
                     coldClear: state.coldClear,
                 });
             }
@@ -309,7 +313,8 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
             }
             default: {
                 // ModeTypes.Drawing等の未対応モードはtoolModeにフォールバック
-                const dfPage = state.fumen.pages[state.fumen.currentIndex];
+                const coldClearCanRun = canStartColdClearSequenceSearch(state)
+                    || canStartColdClearTopBranchesSearch(state);
                 return toolMode({
                     layout,
                     actions,
@@ -322,8 +327,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     paletteShortcuts: state.mode.paletteShortcuts,
                     editShortcuts: state.mode.editShortcuts,
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,
-                    commentText: state.comment.text,
-                    flags: dfPage ? dfPage.flags : { lock: true, mirror: false, rise: false, quiz: false },
+                    coldClearCanRun,
                     coldClear: state.coldClear,
                 });
             }

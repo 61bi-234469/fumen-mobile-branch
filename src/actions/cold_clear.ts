@@ -73,6 +73,7 @@ let currentSession: RunSession | null = null;
 const THINK_MS = 1000;
 const INIT_TIMEOUT_MS = 10000;
 const TOP_BRANCH_COUNT = 5;
+export const COLD_CLEAR_TOP_BRANCH_COUNT = TOP_BRANCH_COUNT;
 const MAX_PRINTABLE_SCORE = 1000000;
 
 // Action reference (set after Hyperapp mounts)
@@ -100,7 +101,7 @@ function terminateSession(session: RunSession) {
     session.wrapper.terminate();
 }
 
-const getTreeForState = (state: State) => {
+const getTreeForState = (state: Readonly<State>) => {
     if (state.tree.nodes.length > 0 && state.tree.rootId) {
         return ensureVirtualRoot({
             nodes: state.tree.nodes,
@@ -112,7 +113,7 @@ const getTreeForState = (state: State) => {
 };
 
 const resolveTargetNode = (
-    state: State,
+    state: Readonly<State>,
     tree = getTreeForState(state),
 ): { nodeId: TreeNodeId; pageIndex: number } | null => {
 
@@ -136,6 +137,95 @@ const isPageSupported = (page?: Page): page is Page => {
         return false;
     }
     return page.flags.lock && !page.flags.mirror && !page.flags.rise && !page.flags.quiz;
+};
+
+const resolveCommentTextFromPage = (pages: Page[], pageIndex: number): string | null => {
+    const visited = new Set<number>();
+    let currentIndex: number | undefined = pageIndex;
+
+    while (currentIndex !== undefined) {
+        if (visited.has(currentIndex)) {
+            return null;
+        }
+        visited.add(currentIndex);
+
+        const page: Page | undefined = pages[currentIndex];
+        if (!page) {
+            return null;
+        }
+
+        if (page.comment.text !== undefined) {
+            return page.comment.text;
+        }
+
+        currentIndex = page.comment.ref;
+    }
+
+    return '';
+};
+
+const parseQueueCommentFromPage = (pages: Page[], pageIndex: number) => {
+    const commentText = resolveCommentTextFromPage(pages, pageIndex);
+    if (commentText === null) {
+        return null;
+    }
+    return parseQueueComment(commentText);
+};
+
+const resolveSingleSearchInput = (
+    state: Readonly<State>,
+): { page: Page; parsed: NonNullable<ReturnType<typeof parseQueueComment>> } | null => {
+    const page = state.fumen.pages[state.fumen.currentIndex];
+    if (!isPageSupported(page)) {
+        return null;
+    }
+
+    const parsed = parseQueueCommentFromPage(state.fumen.pages, state.fumen.currentIndex);
+    if (!parsed) {
+        return null;
+    }
+
+    return { page, parsed };
+};
+
+const resolveTopBranchSearchInput = (
+    state: Readonly<State>,
+): {
+    tree: ReturnType<typeof getTreeForState>;
+    page: Page;
+    parsed: NonNullable<ReturnType<typeof parseQueueComment>>;
+    target: { nodeId: TreeNodeId; pageIndex: number };
+} | null => {
+    const tree = getTreeForState(state);
+    const target = resolveTargetNode(state, tree);
+    if (!target) {
+        return null;
+    }
+
+    const page = state.fumen.pages[target.pageIndex];
+    if (!isPageSupported(page)) {
+        return null;
+    }
+
+    const parsed = parseQueueCommentFromPage(state.fumen.pages, target.pageIndex);
+    if (!parsed) {
+        return null;
+    }
+
+    return {
+        tree,
+        target,
+        page,
+        parsed,
+    };
+};
+
+export const canStartColdClearSequenceSearch = (state: Readonly<State>): boolean => {
+    return resolveSingleSearchInput(state) !== null;
+};
+
+export const canStartColdClearTopBranchesSearch = (state: Readonly<State>): boolean => {
+    return resolveTopBranchSearchInput(state) !== null;
 };
 
 const toMove = (result: CCMove): Move | null => {
@@ -324,15 +414,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        const page = state.fumen.pages[state.fumen.currentIndex];
-        if (!isPageSupported(page)) {
+        const input = resolveSingleSearchInput(state);
+        if (!input) {
             return undefined;
         }
-
-        const parsed = parseQueueComment(state.comment.text);
-        if (!parsed) {
-            return undefined;
-        }
+        const { page, parsed } = input;
 
         if (currentSession) {
             terminateSession(currentSession);
@@ -391,21 +477,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        const page = state.fumen.pages[state.fumen.currentIndex];
-        if (!isPageSupported(page)) {
+        const input = resolveTopBranchSearchInput(state);
+        if (!input) {
             return undefined;
         }
-
-        const parsed = parseQueueComment(state.comment.text);
-        if (!parsed) {
-            return undefined;
-        }
-
-        const tree = getTreeForState(state);
-        const target = resolveTargetNode(state, tree);
-        if (!target) {
-            return undefined;
-        }
+        const { page, parsed, tree, target } = input;
         const shouldEnableTree = !state.tree.enabled;
 
         if (currentSession) {
