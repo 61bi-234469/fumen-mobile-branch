@@ -50,6 +50,7 @@ jest.mock('../../../locales/keys', () => ({
             PopupBlocked: () => 'Popup blocked',
             TreeModeRequired: () => 'Enable tree mode',
             TopBranchesAdded: (count: number) => `${count} branches added`,
+            OneBagAdded: () => 'One bag added',
         },
     },
 }));
@@ -636,5 +637,55 @@ describe('coldClearActions run isolation', () => {
 
         const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
         expect(pages[0].comment.text).toBe('OTL');
+    });
+
+    test('appendColdClearOneBagToComment appends shuffled 1bag to existing queue comment', () => {
+        const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText } as any);
+
+        const state = makeColdClearState({ commentText: 'IOT' });
+        coldClearActions.appendColdClearOneBagToComment()(state);
+
+        expect(setCommentText).toHaveBeenCalledWith({
+            text: 'IOTOTJLSZI',
+            pageIndex: 0,
+        });
+        expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({
+            html: 'One bag added',
+        }));
+
+        randomSpy.mockRestore();
+    });
+
+    test('appendColdClearOneBagToComment creates queue when current comment is not queue text', () => {
+        const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText } as any);
+
+        const state = makeColdClearState({ commentText: 'memo' });
+        coldClearActions.appendColdClearOneBagToComment()(state);
+
+        expect(setCommentText).toHaveBeenCalledWith({
+            text: 'OTJLSZI',
+            pageIndex: 0,
+        });
+
+        randomSpy.mockRestore();
+    });
+
+    test('appendColdClearOneBagToComment does nothing while cold clear is running', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText } as any);
+
+        const state = makeColdClearState({
+            isRunning: true,
+            runId: 1,
+            commentText: 'IOT',
+        });
+
+        const result = coldClearActions.appendColdClearOneBagToComment()(state);
+        expect(result).toBeUndefined();
+        expect(setCommentText).not.toHaveBeenCalled();
     });
 });

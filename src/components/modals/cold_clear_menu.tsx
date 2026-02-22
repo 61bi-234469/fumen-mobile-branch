@@ -15,6 +15,7 @@ interface ColdClearMenuModalProps {
         closeColdClearMenuModal: () => void;
         startColdClearSearch: () => void;
         startColdClearTopThreeSearch: () => void;
+        appendColdClearOneBagToComment: () => void;
         stopColdClearSearch: () => void;
     };
 }
@@ -178,6 +179,17 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                 closeMenu();
             },
         },
+        {
+            key: 'btn-cold-clear-append-one-bag',
+            datatest: 'btn-cold-clear-append-one-bag',
+            iconName: 'shuffle',
+            title: i18n.ColdClear.OneBagAddLabel(),
+            description: i18n.ColdClear.OneBagAddDescription(),
+            enabled: !isRunning,
+            onclick: () => {
+                actions.appendColdClearOneBagToComment();
+            },
+        },
     ];
 
     return (
@@ -218,7 +230,10 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                 }, item.iconName),
                                 h('div', { key: `${item.key}-texts`, style: style({ flex: 1 }) }, [
                                     h('p', { key: `${item.key}-title`, style: titleStyle }, item.title),
-                                    h('p', { key: `${item.key}-description`, style: descriptionStyle }, item.description),
+                                    h('p', {
+                                        key: `${item.key}-description`,
+                                        style: descriptionStyle,
+                                    }, item.description),
                                 ]),
                             ])
                         ))}

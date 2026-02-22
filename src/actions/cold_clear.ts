@@ -30,6 +30,7 @@ import {
 } from '../lib/fumen/tree_utils';
 import { TreeNodeId } from '../lib/fumen/tree_types';
 import type { ScreenActions } from './screen';
+import type { CommentActions } from './comment';
 
 declare const M: any;
 
@@ -66,7 +67,8 @@ type RunSession = SingleRunSession | Top3RunSession;
 
 type ColdClearRuntimeActions = ColdClearActions
     & Pick<TreeOperationActions, 'addColdClearBranches'>
-    & Pick<ScreenActions, 'changeToTreeViewScreen'>;
+    & Pick<ScreenActions, 'changeToTreeViewScreen'>
+    & Pick<CommentActions, 'setCommentText'>;
 
 let currentSession: RunSession | null = null;
 
@@ -75,6 +77,7 @@ const INIT_TIMEOUT_MS = 10000;
 const TOP_BRANCH_COUNT = 5;
 export const COLD_CLEAR_TOP_BRANCH_COUNT = TOP_BRANCH_COUNT;
 const MAX_PRINTABLE_SCORE = 1000000;
+const ONE_BAG_PIECES: Piece[] = [Piece.I, Piece.O, Piece.T, Piece.J, Piece.L, Piece.S, Piece.Z];
 
 // Action reference (set after Hyperapp mounts)
 let appActions: ColdClearRuntimeActions | null = null;
@@ -86,6 +89,7 @@ export const initColdClearActions = (actions: ColdClearRuntimeActions) => {
 export interface ColdClearActions {
     startColdClearSearch: () => action;
     startColdClearTopThreeSearch: () => action;
+    appendColdClearOneBagToComment: () => action;
     stopColdClearSearch: () => action;
     onColdClearMoveResult: (data: { runId: number, result: CCMoveResult }) => action;
     onColdClearTopMovesResult: (data: { runId: number, results: CCMove[] }) => action;
@@ -307,6 +311,28 @@ const buildScoredQueueComment = (score: number | undefined, hold: Piece | null, 
     }
 
     return `${scoreComment} | ${queueComment}`;
+};
+
+const shufflePieces = (pieces: Piece[]): Piece[] => {
+    const shuffled = pieces.slice();
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = shuffled[i];
+        shuffled[i] = shuffled[j];
+        shuffled[j] = tmp;
+    }
+    return shuffled;
+};
+
+const buildCommentWithAppendedOneBag = (currentComment: string): string => {
+    const parsed = parseQueueComment(currentComment);
+    const oneBag = shufflePieces(ONE_BAG_PIECES);
+
+    if (parsed) {
+        return buildQueueComment(parsed.hold, parsed.queue.concat(oneBag));
+    }
+
+    return buildQueueComment(null, oneBag);
 };
 
 const emitFinish = (runId: number) => {
@@ -541,6 +567,34 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 progress: { current: 0, total: 1 },
             },
         };
+    },
+
+    appendColdClearOneBagToComment: () => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const pageIndex = state.fumen.currentIndex;
+        const currentComment = resolveCommentTextFromPage(state.fumen.pages, pageIndex);
+        if (currentComment === null) {
+            return undefined;
+        }
+
+        const nextComment = buildCommentWithAppendedOneBag(currentComment);
+
+        M.toast({
+            html: i18n.ColdClear.OneBagAdded(),
+            classes: 'top-toast',
+            displayLength: 1200,
+        });
+
+        if (!appActions) {
+            return undefined;
+        }
+
+        return sequence(state, [
+            appActions.setCommentText({ pageIndex, text: nextComment }),
+        ]);
     },
 
     stopColdClearSearch: () => (state): NextState => {

@@ -168,5 +168,8 @@ export const resources = {
         TopBranchesAdded: 'AI: {{count}}件の分岐を追加しました',
         ShortPressTopBranches: 'CC短押し: 上位{{count}}手を探索します',
         LongPressSequenceSearch: 'CC長押し: 連続手順を探索します',
+        OneBagAddLabel: '1bag追加',
+        OneBagAddDescription: 'コメントのキュー末尾にランダムIOTJLSZを追記',
+        OneBagAdded: 'ColdClear: 1bagを追記しました',
     },
 };

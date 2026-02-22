@@ -193,5 +193,8 @@
         TopBranchesAdded: 'AI: Added {{count}} branch(es)',
         ShortPressTopBranches: 'CC short press: search top {{count}} branches',
         LongPressSequenceSearch: 'CC long press: search full sequence',
+        OneBagAddLabel: '1bag Add',
+        OneBagAddDescription: 'Append shuffled IOTJLSZ to comment queue',
+        OneBagAdded: 'ColdClear: Added 1bag to queue',
     },
 };
