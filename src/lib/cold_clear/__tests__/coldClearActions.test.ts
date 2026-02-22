@@ -42,6 +42,7 @@ jest.mock('../../../locales/keys', () => ({
             WorkerError: () => 'Worker error',
             InitTimeout: () => 'Init timeout',
             PopupBlocked: () => 'Popup blocked',
+            UsageHint: () => 'Usage hint',
             TreeModeRequired: () => 'Enable tree mode',
             TopBranchesAdded: (count: number) => `${count} branches added`,
             OneBagAdded: () => 'One bag added',
@@ -373,7 +374,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -479,7 +480,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -521,7 +522,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
         const runningState = makeColdClearState({
@@ -564,7 +565,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
         const runningState = makeColdClearState({
@@ -600,7 +601,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
         const runningState = makeColdClearState({
@@ -649,7 +650,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -684,7 +685,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -730,7 +731,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -769,7 +770,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -798,12 +799,12 @@ describe('coldClearActions run isolation', () => {
         });
         expect(mockActions.coldClearFinishSearch).toHaveBeenCalledWith(runId);
         expect(mockActions.changeToDrawerScreen).toHaveBeenCalledWith({});
-        expect(mockActions.changeToDrawPieceMode).toHaveBeenCalledTimes(1);
+        expect(mockActions.changeToMovePieceMode).toHaveBeenCalledTimes(1);
 
         const setOrder = mockActions.setCommentText.mock.invocationCallOrder[0];
         const finishOrder = mockActions.coldClearFinishSearch.mock.invocationCallOrder[0];
         const drawerOrder = mockActions.changeToDrawerScreen.mock.invocationCallOrder[0];
-        const pieceModeOrder = mockActions.changeToDrawPieceMode.mock.invocationCallOrder[0];
+        const pieceModeOrder = mockActions.changeToMovePieceMode.mock.invocationCallOrder[0];
         expect(setOrder).toBeLessThan(finishOrder);
         expect(finishOrder).toBeLessThan(drawerOrder);
         expect(drawerOrder).toBeLessThan(pieceModeOrder);
@@ -824,7 +825,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -868,7 +869,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -912,7 +913,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -956,7 +957,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -1000,7 +1001,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -1050,7 +1051,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -1110,7 +1111,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -1148,12 +1149,12 @@ describe('coldClearActions run isolation', () => {
         });
         expect(mockActions.coldClearFinishSearch).toHaveBeenCalledWith(runId);
         expect(mockActions.changeToDrawerScreen).toHaveBeenCalledWith({});
-        expect(mockActions.changeToDrawPieceMode).toHaveBeenCalledTimes(1);
+        expect(mockActions.changeToMovePieceMode).toHaveBeenCalledTimes(1);
 
         const setOrder = mockActions.setCommentText.mock.invocationCallOrder[0];
         const finishOrder = mockActions.coldClearFinishSearch.mock.invocationCallOrder[0];
         const drawerOrder = mockActions.changeToDrawerScreen.mock.invocationCallOrder[0];
-        const pieceModeOrder = mockActions.changeToDrawPieceMode.mock.invocationCallOrder[0];
+        const pieceModeOrder = mockActions.changeToMovePieceMode.mock.invocationCallOrder[0];
         expect(setOrder).toBeLessThan(finishOrder);
         expect(finishOrder).toBeLessThan(drawerOrder);
         expect(drawerOrder).toBeLessThan(pieceModeOrder);
@@ -1174,7 +1175,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 
@@ -1220,7 +1221,7 @@ describe('coldClearActions run isolation', () => {
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
             changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
             changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
-            changeToDrawPieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
         };
         initColdClearActions(mockActions);
 

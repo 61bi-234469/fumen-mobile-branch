@@ -25,7 +25,6 @@ export const toolMode = ({
     paletteShortcuts,
     editShortcuts,
     shortcutLabelVisible,
-    coldClearCanRun,
     coldClear,
     actions,
 }: {
@@ -39,7 +38,6 @@ export const toolMode = ({
     paletteShortcuts: PaletteShortcuts;
     editShortcuts: EditShortcuts;
     shortcutLabelVisible: boolean;
-    coldClearCanRun: boolean;
     coldClear: State['coldClear'];
     actions: {
         cutCurrentPage: () => void;
@@ -216,30 +214,27 @@ export const toolMode = ({
             iconSize: 20,
             iconName: 'extension',
         })),
-        (() => {
-            const ccReady = coldClearCanRun;
-            return toolButton({
-                borderWidth: 1,
-                width: layout.buttons.size.width,
-                margin: toolButtonMargin,
-                backgroundColorClass: coldClear.isRunning ? 'red' : 'white',
-                textColor: coldClear.isRunning ? '#fff' : (ccReady ? '#333' : '#9e9e9e'),
-                borderColor: coldClear.isRunning ? '#f44336' : (ccReady ? '#333' : '#9e9e9e'),
-                datatest: coldClear.isRunning ? 'btn-cold-clear-stop' : 'btn-cold-clear',
-                key: 'btn-cold-clear',
-                onclick: () => {
-                    actions.openColdClearMenuModal();
-                },
-            }, iconContents({
-                description: coldClear.isRunning
-                    ? (coldClear.progress
-                        ? i18n.ColdClear.Progress(coldClear.progress.current, coldClear.progress.total)
-                        : i18n.ColdClear.StopLabel())
-                    : i18n.ColdClear.MenuButtonLabel(),
-                iconSize: 18,
-                iconName: coldClear.isRunning ? 'stop' : 'auto_fix_high',
-            }));
-        })(),
+        toolButton({
+            borderWidth: 1,
+            width: layout.buttons.size.width,
+            margin: toolButtonMargin,
+            backgroundColorClass: coldClear.isRunning ? 'red' : 'white',
+            textColor: coldClear.isRunning ? '#fff' : '#333',
+            borderColor: coldClear.isRunning ? '#f44336' : '#333',
+            datatest: coldClear.isRunning ? 'btn-cold-clear-stop' : 'btn-cold-clear',
+            key: 'btn-cold-clear',
+            onclick: () => {
+                actions.openColdClearMenuModal();
+            },
+        }, iconContents({
+            description: coldClear.isRunning
+                ? (coldClear.progress
+                    ? i18n.ColdClear.Progress(coldClear.progress.current, coldClear.progress.total)
+                    : i18n.ColdClear.StopLabel())
+                : i18n.ColdClear.MenuButtonLabel(),
+            iconSize: 18,
+            iconName: coldClear.isRunning ? 'stop' : 'auto_fix_high',
+        })),
         toolSpace({
             flexGrow: 100,
             width: layout.buttons.size.width,

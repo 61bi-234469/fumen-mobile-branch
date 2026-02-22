@@ -83,7 +83,7 @@ type RunSession = SingleRunSession | Top3RunSession | PlacedRunSession;
 
 type ColdClearRuntimeActions = ColdClearActions
     & Pick<TreeOperationActions, 'addColdClearBranches'>
-    & Pick<ScreenActions, 'changeToTreeViewScreen' | 'changeToDrawerScreen' | 'changeToDrawPieceMode'>
+    & Pick<ScreenActions, 'changeToTreeViewScreen' | 'changeToDrawerScreen' | 'changeToMovePieceMode'>
     & Pick<CommentActions, 'setCommentText'>;
 
 let currentSession: RunSession | null = null;
@@ -199,35 +199,49 @@ const parseQueueCommentFromPage = (pages: Page[], pageIndex: number) => {
     return parseQueueComment(commentText);
 };
 
-const resolveSingleSearchInput = (
-    state: Readonly<State>,
-): {
+type SearchInputError =
+    | 'targetNotFound'
+    | 'unsupportedPageFlags'
+    | 'invalidQueueComment';
+
+type SearchInput = {
     tree: ReturnType<typeof getTreeForState>;
     page: Page;
     parsed: NonNullable<ReturnType<typeof parseQueueComment>>;
     target: { nodeId: TreeNodeId; pageIndex: number };
-} | null => {
+};
+
+type SearchInputResult = {
+    input?: SearchInput;
+    error?: SearchInputError;
+};
+
+const resolveSingleSearchInput = (
+    state: Readonly<State>,
+): SearchInputResult => {
     const tree = getTreeForState(state);
     const target = resolveTargetNode(state, tree);
     if (!target) {
-        return null;
+        return { error: 'targetNotFound' };
     }
 
     const page = state.fumen.pages[target.pageIndex];
     if (!isPageSupported(page)) {
-        return null;
+        return { error: 'unsupportedPageFlags' };
     }
 
     const parsed = parseQueueCommentFromPage(state.fumen.pages, target.pageIndex);
     if (!parsed) {
-        return null;
+        return { error: 'invalidQueueComment' };
     }
 
     return {
-        tree,
-        target,
-        page,
-        parsed,
+        input: {
+            tree,
+            target,
+            page,
+            parsed,
+        },
     };
 };
 
@@ -320,11 +334,15 @@ const buildPlacedSpawnSearchState = (
 };
 
 export const canStartColdClearSequenceSearch = (state: Readonly<State>): boolean => {
-    return resolveSingleSearchInput(state) !== null;
+    return resolveSingleSearchInput(state).input !== undefined;
 };
 
 export const canStartColdClearTopBranchesSearch = (state: Readonly<State>): boolean => {
-    return resolveTopBranchSearchInput(state) !== null;
+    return resolveTopBranchSearchInput(state).input !== undefined;
+};
+
+export const canEvaluatePlacedSpawnMinoScore = (state: Readonly<State>): boolean => {
+    return resolvePlacedSpawnInput(state).input !== undefined;
 };
 
 const toMove = (result: CCMove): Move | null => {
@@ -444,6 +462,23 @@ const showPlacedSpawnValidationError = (error: PlacedSpawnInputError) => {
     M.toast({ html: message, classes: 'top-toast', displayLength: 1500 });
 };
 
+const showSearchValidationError = (error: SearchInputError) => {
+    let message = i18n.ColdClear.UsageHint();
+
+    switch (error) {
+    case 'unsupportedPageFlags':
+        message = i18n.ColdClear.InvalidPageFlags();
+        break;
+    case 'invalidQueueComment':
+        message = i18n.ColdClear.InvalidQueueComment();
+        break;
+    default:
+        break;
+    }
+
+    M.toast({ html: message, classes: 'top-toast', displayLength: 1500 });
+};
+
 const isScorePrintable = (score: number | undefined): score is number => {
     return typeof score === 'number'
         && Number.isFinite(score)
@@ -534,7 +569,7 @@ const emitFinish = (runId: number) => {
 const moveToEditorPieceMenu = () => {
     if (appActions) {
         appActions.changeToDrawerScreen({});
-        appActions.changeToDrawPieceMode();
+        appActions.changeToMovePieceMode();
     }
 };
 
@@ -693,11 +728,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        const input = resolveSingleSearchInput(state);
-        if (!input) {
+        const resolved = resolveSingleSearchInput(state);
+        if (!resolved.input) {
+            showSearchValidationError(resolved.error ?? 'targetNotFound');
             return undefined;
         }
-        const { page, parsed, target, tree } = input;
+        const { page, parsed, target, tree } = resolved.input;
         const shouldEnableTree = !state.tree.enabled;
 
         if (currentSession) {
@@ -765,11 +801,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        const input = resolveTopBranchSearchInput(state);
-        if (!input) {
+        const resolved = resolveTopBranchSearchInput(state);
+        if (!resolved.input) {
+            showSearchValidationError(resolved.error ?? 'targetNotFound');
             return undefined;
         }
-        const { page, parsed, tree, target } = input;
+        const { page, parsed, tree, target } = resolved.input;
         const shouldEnableTree = !state.tree.enabled;
 
         if (currentSession) {
@@ -1093,7 +1130,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     appActions.setCommentText({ pageIndex: session.targetPageIndex, text: outsideTopComment }),
                     appActions.coldClearFinishSearch(runId),
                     appActions.changeToDrawerScreen({}),
-                    appActions.changeToDrawPieceMode(),
+                    appActions.changeToMovePieceMode(),
                 ]);
             }
 
@@ -1119,7 +1156,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 appActions.setCommentText({ pageIndex: session.targetPageIndex, text: nextComment }),
                 appActions.coldClearFinishSearch(runId),
                 appActions.changeToDrawerScreen({}),
-                appActions.changeToDrawPieceMode(),
+                appActions.changeToMovePieceMode(),
             ]);
         }
 

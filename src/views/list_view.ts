@@ -25,11 +25,6 @@ import {
     calculateTreeViewLayout,
     shouldShowDeleteBadge,
 } from '../lib/fumen/tree_view_layout';
-import {
-    canStartColdClearSequenceSearch,
-    canStartColdClearTopBranchesSearch,
-} from '../actions/cold_clear';
-
 const TOOLS_HEIGHT = 50;
 
 // Pinch-to-zoom state (kept outside component for persistence across renders)
@@ -629,8 +624,6 @@ export const view: View<State, Actions> = (state, actions) => {
     const treeAiButtonLeftOffset = 52;
     const bottomControlOpacity = 0.8;
     const bottomControlDisabledOpacity = 0.45;
-    const canRunColdClear = canStartColdClearSequenceSearch(state)
-        || canStartColdClearTopBranchesSearch(state);
     const treeRootAddButtonBottom = treeRootAddButtonBottomOffset
         + treeToggleCount * treeTogglePillHeight
         + Math.max(0, treeToggleCount - 1) * treeToggleGap;
@@ -685,14 +678,14 @@ export const view: View<State, Actions> = (state, actions) => {
         height: px(44),
         borderRadius: '50%',
         border: 'none',
-        backgroundColor: state.coldClear.isRunning ? '#f44336' : (canRunColdClear ? '#1565C0' : '#9E9E9E'),
+        backgroundColor: state.coldClear.isRunning ? '#f44336' : '#1565C0',
         color: '#fff',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-        opacity: state.coldClear.isRunning || canRunColdClear ? `${bottomControlOpacity}` : `${bottomControlDisabledOpacity}`,
+        opacity: bottomControlOpacity,
         zIndex: 100,
     });
 

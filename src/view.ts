@@ -20,12 +20,14 @@ import { SerializedTree, TreeViewMode } from './lib/fumen/tree_types';
 import {
     canStartColdClearSequenceSearch,
     canStartColdClearTopBranchesSearch,
+    canEvaluatePlacedSpawnMinoScore,
     COLD_CLEAR_TOP_BRANCH_COUNT,
 } from './actions/cold_clear';
 
 export const view: View<State, Actions> = (state, actions) => {
     const canSequenceSearch = canStartColdClearSequenceSearch(state);
     const canTopBranchesSearch = canStartColdClearTopBranchesSearch(state);
+    const canPlacedSpawnScore = canEvaluatePlacedSpawnMinoScore(state);
 
     const selectView = () => {
         const screens = state.mode.screen;
@@ -112,6 +114,7 @@ export const view: View<State, Actions> = (state, actions) => {
             topBranchCount: COLD_CLEAR_TOP_BRANCH_COUNT,
             canSequenceSearch,
             canTopBranchesSearch,
+            canPlacedSpawnScore,
             actions,
         }) : undefined as any,
 

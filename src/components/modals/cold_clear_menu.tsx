@@ -11,6 +11,7 @@ interface ColdClearMenuModalProps {
     topBranchCount: number;
     canSequenceSearch: boolean;
     canTopBranchesSearch: boolean;
+    canPlacedSpawnScore: boolean;
     actions: {
         closeColdClearMenuModal: () => void;
         startColdClearSearch: () => void;
@@ -30,6 +31,7 @@ type MenuItem = {
     enabled: boolean;
     danger?: boolean;
     onclick: () => void;
+    onDisabledClick?: () => void;
 };
 
 export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
@@ -39,6 +41,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         topBranchCount,
         canSequenceSearch,
         canTopBranchesSearch,
+        canPlacedSpawnScore,
         actions,
     },
 ) => {
@@ -117,7 +120,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         gap: px(8),
     });
 
-    const itemStyle = (enabled: boolean, danger: boolean) => style({
+    const itemStyle = (enabled: boolean, danger: boolean, clickable: boolean) => style({
         width: '100%',
         border: 'none',
         borderRadius: '12px',
@@ -131,7 +134,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         color: enabled
             ? (danger ? '#c62828' : '#1f2937')
             : '#9e9e9e',
-        cursor: enabled ? 'pointer' : 'default',
+        cursor: clickable ? 'pointer' : 'default',
         textAlign: 'left',
     });
 
@@ -150,10 +153,10 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         lineHeight: '1.2',
     });
 
-    const descriptionStyle = style({
+    const descriptionStyle = (enabled: boolean) => style({
         margin: `${px(2)} 0px 0px 0px`,
         fontSize: px(12),
-        color: '#6b7280',
+        color: enabled ? '#6b7280' : '#9e9e9e',
         lineHeight: '1.25',
     });
 
@@ -180,6 +183,11 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             onclick: () => {
                 actions.startColdClearSearch();
             },
+            onDisabledClick: () => {
+                if (!isRunning) {
+                    actions.startColdClearSearch();
+                }
+            },
         },
         {
             key: 'btn-cold-clear-top-branches-search',
@@ -191,6 +199,11 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             onclick: () => {
                 actions.startColdClearTopThreeSearch();
             },
+            onDisabledClick: () => {
+                if (!isRunning) {
+                    actions.startColdClearTopThreeSearch();
+                }
+            },
         },
         {
             key: 'btn-cold-clear-evaluate-placed-spawn-score',
@@ -198,9 +211,14 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             iconName: 'grade',
             title: i18n.ColdClear.EvaluatePlacedSpawnScoreLabel(),
             description: i18n.ColdClear.EvaluatePlacedSpawnScoreDescription(),
-            enabled: !isRunning,
+            enabled: !isRunning && canPlacedSpawnScore,
             onclick: () => {
                 actions.evaluatePlacedSpawnMinoScore();
+            },
+            onDisabledClick: () => {
+                if (!isRunning) {
+                    actions.evaluatePlacedSpawnMinoScore();
+                }
             },
         },
         {
@@ -234,15 +252,17 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                         </p>
                         : undefined}
                     <div key="cold-clear-menu-list" style={menuListStyle}>
-                        {items.map(item => (
-                            h('button', {
+                        {items.map(item => {
+                            const clickable = item.enabled || item.onDisabledClick !== undefined;
+                            return h('button', {
                                 key: item.key,
                                 datatest: item.datatest,
-                                style: itemStyle(item.enabled, item.danger ?? false),
-                                disabled: !item.enabled,
+                                style: itemStyle(item.enabled, item.danger ?? false, clickable),
+                                'aria-disabled': !item.enabled,
                                 onclick: (event: MouseEvent) => {
                                     event.preventDefault();
                                     if (!item.enabled) {
+                                        item.onDisabledClick?.();
                                         return;
                                     }
                                     item.onclick();
@@ -257,11 +277,11 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                     h('p', { key: `${item.key}-title`, style: titleStyle }, item.title),
                                     h('p', {
                                         key: `${item.key}-description`,
-                                        style: descriptionStyle,
+                                        style: descriptionStyle(item.enabled),
                                     }, item.description),
                                 ]),
-                            ])
-                        ))}
+                            ]);
+                        })}
                     </div>
                 </div>
 

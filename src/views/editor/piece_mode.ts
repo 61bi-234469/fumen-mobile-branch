@@ -13,9 +13,10 @@ import {
 import { EditorLayout, toolStyle } from './editor';
 import { Move, Page } from '../../lib/fumen/types';
 import { PageFieldOperation, Pages } from '../../lib/pages';
-import { PieceShortcuts } from '../../states';
+import { PieceShortcuts, State } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
 import { px, style } from '../../lib/types';
+import { i18n } from '../../locales/keys';
 
 export const pieceMode = ({
     layout,
@@ -29,6 +30,7 @@ export const pieceMode = ({
     pieceShortcuts,
     shortcutLabelVisible,
     pieceShortcutDasMs,
+    coldClear,
     actions,
 }: {
     layout: EditorLayout;
@@ -44,10 +46,12 @@ export const pieceMode = ({
     pieceShortcuts: PieceShortcuts;
     shortcutLabelVisible: boolean;
     pieceShortcutDasMs: number;
+    coldClear: State['coldClear'];
     actions: {
         changeToDrawPieceMode: () => void;
         changeToMovePieceMode: () => void;
         changeToSelectPieceMode: () => void;
+        openColdClearMenuModal: () => void;
         clearPiece: () => void;
         rotateToLeft: (data?: { srs?: boolean }) => void;
         rotateToRight: (data?: { srs?: boolean }) => void;
@@ -81,6 +85,27 @@ export const pieceMode = ({
             margin: toolButtonMargin,
             key: 'div-space',
         }),
+        toolButton({
+            borderWidth: 1,
+            width: layout.buttons.size.width,
+            margin: toolButtonMargin,
+            backgroundColorClass: coldClear.isRunning ? 'red' : 'white',
+            textColor: coldClear.isRunning ? '#fff' : '#333',
+            borderColor: coldClear.isRunning ? '#f44336' : '#333',
+            datatest: coldClear.isRunning ? 'btn-cold-clear-stop' : 'btn-cold-clear',
+            key: 'btn-cold-clear',
+            onclick: () => {
+                actions.openColdClearMenuModal();
+            },
+        }, iconContents({
+            description: coldClear.isRunning
+                ? (coldClear.progress
+                    ? i18n.ColdClear.Progress(coldClear.progress.current, coldClear.progress.total)
+                    : i18n.ColdClear.StopLabel())
+                : i18n.ColdClear.MenuButtonLabel(),
+            iconSize: 18,
+            iconName: coldClear.isRunning ? 'stop' : 'auto_fix_high',
+        })),
         rotationButton({
             layout,
             rotation: operateRotation,
