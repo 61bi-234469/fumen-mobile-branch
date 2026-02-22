@@ -333,18 +333,7 @@ const resolvePlacedSpawnInput = (
 const buildPlacedSpawnSearchState = (
     hold: Piece | null,
     queue: Piece[],
-    placedPiece: Piece,
-    inferredHoldUsed: boolean,
 ): { hold: Piece | null; queue: Piece[] } => {
-    // In this app many pages store "post-lock" queue comments.
-    // For no-hold evaluation, reconstruct pre-lock search queue by prepending current piece.
-    if (!inferredHoldUsed && queue.length > 0 && queue[0] !== placedPiece) {
-        return {
-            hold,
-            queue: [placedPiece, ...queue],
-        };
-    }
-
     return {
         hold,
         queue: queue.slice(),
@@ -410,38 +399,6 @@ const applyQueueAfterMove = (
     return {
         hold,
         queue: queue.slice(1),
-    };
-};
-
-const applyQueueAfterPlacedSpawnEvaluation = (
-    hold: Piece | null,
-    queue: Piece[],
-    usedHold: boolean,
-): { hold: Piece | null; queue: Piece[] } | null => {
-    if (!usedHold) {
-        return {
-            hold,
-            queue: queue.slice(),
-        };
-    }
-
-    if (hold === null) {
-        if (queue.length < 2) {
-            return null;
-        }
-        return {
-            hold: queue[0],
-            queue: queue.slice(2),
-        };
-    }
-
-    if (queue.length < 1) {
-        return null;
-    }
-
-    return {
-        hold: queue[0],
-        queue: queue.slice(),
     };
 };
 
@@ -528,7 +485,7 @@ const buildPlacedSpawnScoredQueueComment = (
     hold: Piece | null,
     queue: Piece[],
 ): string | null => {
-    if (typeof score !== 'number' || !Number.isFinite(score)) {
+    if (!isScorePrintable(score)) {
         return null;
     }
 
@@ -892,8 +849,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const searchState = buildPlacedSpawnSearchState(
             parsed.hold,
             parsed.queue,
-            placedPiece.type,
-            inferredHoldUsed,
         );
 
         const session: PlacedRunSession = {
@@ -1069,12 +1024,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
         if (session.queue.length === 0) {
             finishSingleSearch(runId);
-            return {
-                coldClear: {
-                    ...state.coldClear,
-                    progress: { current: session.resultPages.length, total: session.totalMoves },
-                },
-            };
+            return undefined;
         }
 
         session.wrapper.requestMove();
@@ -1117,20 +1067,10 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 return undefined;
             }
 
-            const queueState = applyQueueAfterPlacedSpawnEvaluation(
-                session.hold,
-                session.queue,
-                session.inferredHoldUsed,
-            );
-            if (!queueState) {
-                finishPlacedSpawnEvaluation(runId, true);
-                return undefined;
-            }
-
             const nextComment = buildPlacedSpawnScoredQueueComment(
                 exactResult.score,
-                queueState.hold,
-                queueState.queue,
+                session.hold,
+                session.queue,
             );
             if (nextComment === null) {
                 finishPlacedSpawnEvaluation(runId, true);

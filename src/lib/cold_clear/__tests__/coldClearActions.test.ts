@@ -363,6 +363,42 @@ describe('coldClearActions run isolation', () => {
         expect(result).toBeUndefined();
     });
 
+    test('onColdClearMoveResult returns undefined on completion to avoid stale running state overwrite', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IO' });
+        const startResult = coldClearActions.startColdClearSearch()(state);
+        const runId = getColdClear(startResult).runId;
+
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+        };
+        initColdClearActions(mockActions);
+
+        const runningState = makeColdClearState({
+            runId,
+            isRunning: true,
+            runType: 'single',
+            targetNodeId: 'n0',
+            treeEnabled: true,
+            commentText: 'IO',
+        });
+
+        const first = coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: false, piece: 0, rotation: 0, x: 4, y: 0 },
+        })(runningState);
+        expect(getColdClear(first).progress).toEqual({ current: 1, total: 2 });
+
+        const second = coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: false, piece: 1, rotation: 0, x: 4, y: 0 },
+        })(runningState);
+
+        expect(second).toBeUndefined();
+        expect(mockActions.coldClearFinishSearch).toHaveBeenCalledWith(runId);
+    });
+
     test('start, stop, start sequence produces different runIds', () => {
         // First run
         const state1 = makeColdClearState();
@@ -752,8 +788,8 @@ describe('coldClearActions run isolation', () => {
         expect(finishOrder).toBeLessThan(treeOrder);
     });
 
-    test('evaluatePlacedSpawnMinoScore keeps queue for hold swap with existing hold', () => {
-        const state = makeColdClearState({ treeEnabled: true, commentText: 'T:IOSL' });
+    test('evaluatePlacedSpawnMinoScore keeps hold/queue unchanged when current and hold are same', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'T:SZTILJSZO' });
         state.fumen.pages[0].piece = {
             type: Piece.T,
             rotation: Rotation.Spawn,
@@ -775,7 +811,7 @@ describe('coldClearActions run isolation', () => {
             runType: 'placed',
             targetNodeId: 'n0',
             treeEnabled: true,
-            commentText: 'T:IOSL',
+            commentText: 'T:SZTILJSZO',
         });
         runningState.fumen.pages[0].piece = {
             type: Piece.T,
@@ -790,11 +826,11 @@ describe('coldClearActions run isolation', () => {
 
         expect(mockActions.setCommentText).toHaveBeenCalledWith({
             pageIndex: 0,
-            text: 'score=7.00 | I:IOSL',
+            text: 'score=7.00 | T:SZTILJSZO',
         });
     });
 
-    test('evaluatePlacedSpawnMinoScore advances queue for empty-hold swap path', () => {
+    test('evaluatePlacedSpawnMinoScore keeps queue unchanged for empty-hold hold-used path', () => {
         const state = makeColdClearState({ treeEnabled: true, commentText: 'IOTL' });
         state.fumen.pages[0].piece = {
             type: Piece.O,
@@ -832,11 +868,11 @@ describe('coldClearActions run isolation', () => {
 
         expect(mockActions.setCommentText).toHaveBeenCalledWith({
             pageIndex: 0,
-            text: 'score=5.50 | I:TL',
+            text: 'score=5.50 | IOTL',
         });
     });
 
-    test('evaluatePlacedSpawnMinoScore writes large finite score to comment', () => {
+    test('evaluatePlacedSpawnMinoScore writes max printable score to comment', () => {
         const state = makeColdClearState({ treeEnabled: true, commentText: 'IO' });
         state.fumen.pages[0].piece = {
             type: Piece.I,
@@ -869,16 +905,16 @@ describe('coldClearActions run isolation', () => {
 
         coldClearActions.onColdClearTopMovesResult({
             runId,
-            results: [{ hold: false, piece: 0, rotation: 0, x: 4, y: 0, score: 1000000.01 }],
+            results: [{ hold: false, piece: 0, rotation: 0, x: 4, y: 0, score: 1000000 }],
         })(runningState);
 
         expect(mockActions.setCommentText).toHaveBeenCalledWith({
             pageIndex: 0,
-            text: 'score=1000000.01 | IO',
+            text: 'score=1000000.00 | IO',
         });
     });
 
-    test('evaluatePlacedSpawnMinoScore backfills search queue from post-lock comment state', () => {
+    test('evaluatePlacedSpawnMinoScore uses current comment queue as-is for search state', () => {
         const state = makeColdClearState({ treeEnabled: true, commentText: 'O:SSZ' });
         state.fumen.pages[0].piece = {
             type: Piece.T,
@@ -892,7 +928,7 @@ describe('coldClearActions run isolation', () => {
         const wrapperInstance = wrapperCtor.mock.results[0].value;
         const initMsg = wrapperInstance.start.mock.calls[0][0];
         expect(initMsg.hold).toBe(1); // O
-        expect(initMsg.queue).toEqual([2, 5, 5, 6]); // TSSZ
+        expect(initMsg.queue).toEqual([5, 5, 6]); // SSZ
 
         const mockActions: any = {
             setCommentText: jest.fn().mockReturnValue(() => ({ comment: { updated: true } })),
@@ -1017,6 +1053,50 @@ describe('coldClearActions run isolation', () => {
         const result = coldClearActions.onColdClearTopMovesResult({
             runId,
             results: [{ hold: false, piece: 0, rotation: 0, x: 4, y: 0, score: Number.NaN }],
+        })(runningState);
+
+        expect(result).toBeUndefined();
+        expect(mockActions.setCommentText).not.toHaveBeenCalled();
+        expect(mockActions.coldClearFinishSearch).toHaveBeenCalledWith(runId);
+        expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({
+            html: 'Cannot evaluate current placement',
+        }));
+    });
+
+    test('evaluatePlacedSpawnMinoScore treats out-of-range score as no-result', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IO' });
+        state.fumen.pages[0].piece = {
+            type: Piece.I,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+        const startResult = coldClearActions.evaluatePlacedSpawnMinoScore()(state);
+        const runId = getColdClear(startResult).runId;
+
+        const mockActions: any = {
+            setCommentText: jest.fn().mockReturnValue(() => ({ comment: { updated: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+        };
+        initColdClearActions(mockActions);
+
+        const runningState = makeColdClearState({
+            runId,
+            isRunning: true,
+            runType: 'placed',
+            targetNodeId: 'n0',
+            treeEnabled: true,
+            commentText: 'IO',
+        });
+        runningState.fumen.pages[0].piece = {
+            type: Piece.I,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+
+        const result = coldClearActions.onColdClearTopMovesResult({
+            runId,
+            results: [{ hold: false, piece: 0, rotation: 0, x: 4, y: 0, score: 1000000.01 }],
         })(runningState);
 
         expect(result).toBeUndefined();
