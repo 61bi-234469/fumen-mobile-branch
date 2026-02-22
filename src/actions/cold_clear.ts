@@ -343,7 +343,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         nextRunId += 1;
 
         const pages = new Pages(state.fumen.pages);
-        const field = pages.getField(state.fumen.currentIndex, PageFieldOperation.Command);
+        const field = pages.getField(state.fumen.currentIndex, PageFieldOperation.All);
         const session: SingleRunSession = {
             runId,
             field,
@@ -623,7 +623,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 return;
             }
 
-            const nextField = session.field.copy();
+            const displayField = session.field.copy();
+            const nextField = displayField.copy();
             try {
                 nextField.put(move);
                 nextField.clearLine();
@@ -633,7 +634,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
             candidatePages.push({
                 index: 0,
-                field: { obj: nextField },
+                field: { obj: displayField },
+                piece: move,
                 comment: {
                     text: buildScoredQueueComment(result.score, queueState.hold, queueState.queue),
                 },

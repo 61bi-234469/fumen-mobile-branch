@@ -1,7 +1,8 @@
 import { coldClearActions, initColdClearActions, resetForTesting } from '../../../actions/cold_clear';
-import { Piece } from '../../enums';
+import { Piece, Rotation } from '../../enums';
 import { Field } from '../../fumen/field';
 import { encode } from '../../fumen/fumen';
+import { Pages, PageFieldOperation } from '../../pages';
 import { ColdClearWrapper } from '../ColdClearWrapper';
 
 // Mock ColdClearWrapper to avoid actual Worker creation
@@ -143,7 +144,7 @@ describe('coldClearActions run isolation', () => {
         expect((global as any).window.open).not.toHaveBeenCalled();
     });
 
-    test('startColdClearSearch uses command-applied field', () => {
+    test('startColdClearSearch uses page field with pre commands', () => {
         const state = makeColdClearState({ commentText: 'I' });
         state.fumen.pages[0].commands = {
             pre: {
@@ -159,6 +160,28 @@ describe('coldClearActions run isolation', () => {
         const initMsg = wrapperInstance.start.mock.calls[0][0];
 
         expect(initMsg.field[0]).toBe(1);
+    });
+
+    test('startColdClearSearch uses post-lock field when current page has lock piece', () => {
+        const state = makeColdClearState({ commentText: 'I' });
+        for (let x = 0; x < 6; x += 1) {
+            state.fumen.pages[0].field.obj.setToPlayField(x, Piece.Gray);
+        }
+        state.fumen.pages[0].piece = {
+            type: Piece.I,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 7, y: 0 },
+        };
+
+        const result = coldClearActions.startColdClearSearch()(state);
+        expect(getColdClear(result).isRunning).toBe(true);
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapperInstance = wrapperCtor.mock.results[0].value;
+        const initMsg = wrapperInstance.start.mock.calls[0][0];
+
+        // Row 0 is fully filled by the lock piece and then line-cleared.
+        expect(initMsg.field[0]).toBe(0);
     });
 
     test('startColdClearSearch increments runId on each call', () => {
@@ -536,6 +559,53 @@ describe('coldClearActions run isolation', () => {
 
         const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
         expect(pages[0].comment.text).toBe('score=1.20 | OTL');
+    });
+
+    test('onColdClearTopMovesResult stores display as pre-clear and replay as post-clear', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IOTL' });
+        for (let x = 0; x < 6; x += 1) {
+            state.fumen.pages[0].field.obj.setToPlayField(x, Piece.Gray);
+        }
+        const startResult = coldClearActions.startColdClearTopThreeSearch()(state);
+        const runId = getColdClear(startResult).runId;
+
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+        };
+        initColdClearActions(mockActions);
+
+        const runningState = makeColdClearState({
+            runId,
+            treeEnabled: true,
+            isRunning: true,
+            runType: 'top3',
+            targetNodeId: 'n0',
+            commentText: 'IOTL',
+        });
+        for (let x = 0; x < 6; x += 1) {
+            runningState.fumen.pages[0].field.obj.setToPlayField(x, Piece.Gray);
+        }
+
+        coldClearActions.onColdClearTopMovesResult({
+            runId,
+            results: [{ hold: false, piece: 0, rotation: 0, x: 7, y: 0, score: 1.2 }],
+        })(runningState);
+
+        const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
+        expect(pages).toHaveLength(1);
+        expect(pages[0].piece).toEqual({
+            type: Piece.I,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 7, y: 0 },
+        });
+        expect(pages[0].field.obj.get(0, 0)).toBe(Piece.Gray);
+        expect(pages[0].field.obj.get(6, 0)).toBe(Piece.Empty);
+
+        const replayPages = [runningState.fumen.pages[0], { ...pages[0], index: 1 }];
+        const replayField = new Pages(replayPages).getField(1, PageFieldOperation.All);
+        expect(replayField.get(0, 0)).toBe(Piece.Empty);
     });
 
     test('onColdClearTopMovesResult falls back to queue-only when score is invalid', () => {
