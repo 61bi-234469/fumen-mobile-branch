@@ -281,7 +281,12 @@ export interface TreeOperationActions {
 
     // Add page respecting tree mode
     addPageInTreeMode: (data?: { parentNodeId?: TreeNodeId }) => action;
-    addColdClearBranches: (data: { parentNodeId: TreeNodeId; pages: Page[] }) => action;
+    addColdClearBranches: (data: {
+        parentNodeId: TreeNodeId;
+        pages: Page[];
+        focusFirstAdded?: boolean;
+        addAsChildChain?: boolean;
+    }) => action;
 
     // Tree initialization and sync
     initializeTreeFromPages: () => action;
@@ -925,7 +930,12 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
         ]);
     },
 
-    addColdClearBranches: ({ parentNodeId, pages }) => (state): NextState => {
+    addColdClearBranches: ({
+        parentNodeId,
+        pages,
+        focusFirstAdded = false,
+        addAsChildChain = false,
+    }) => (state): NextState => {
         if (!state.tree.enabled || pages.length === 0) return undefined;
 
         const tree = getOrCreateTree(state);
@@ -936,12 +946,20 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
 
         let newTree = tree;
         const newPages = [...state.fumen.pages];
+        let firstAddedNodeId: TreeNodeId | null = null;
+        let currentParentId = parentNodeId;
 
         pages.forEach((page) => {
             const newPageIndex = newPages.length;
             newPages.push(clonePageForAppend(page, newPageIndex));
-            const added = addBranchNode(newTree, parentNodeId, newPageIndex);
+            const added = addBranchNode(newTree, currentParentId, newPageIndex);
             newTree = added.tree;
+            if (!firstAddedNodeId) {
+                firstAddedNodeId = added.newNodeId;
+            }
+            if (addAsChildChain) {
+                currentParentId = added.newNodeId;
+            }
         });
 
         const normalized = normalizeTreeAndPages(
@@ -950,7 +968,10 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
             state.fumen.currentIndex,
             state.tree.activeNodeId,
         );
-        const nextActiveNodeId = resolveActiveNodeId(normalized.tree, state.tree.activeNodeId);
+        const preferredActiveNodeId = focusFirstAdded && firstAddedNodeId
+            ? firstAddedNodeId
+            : state.tree.activeNodeId;
+        const nextActiveNodeId = resolveActiveNodeId(normalized.tree, preferredActiveNodeId);
         const nextSnapshot = createSnapshot(normalized.tree, normalized.pages, normalized.currentIndex);
         const task = toTreeOperationTask(prevSnapshot, nextSnapshot);
         const { mementoActions } = require('./memento');

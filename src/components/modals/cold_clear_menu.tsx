@@ -41,6 +41,10 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         actions,
     },
 ) => {
+    const syncRunningState = (element: HTMLDivElement) => {
+        element.dataset.coldClearRunning = isRunning ? '1' : '0';
+    };
+
     const close = () => {
         const modal = resources.modals.coldClearMenu;
         if (modal !== undefined) {
@@ -53,14 +57,25 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
     };
 
     const closeMenu = () => {
+        if (isRunning) {
+            return;
+        }
         actions.closeColdClearMenuModal();
         close();
         destroy();
     };
 
     const oncreate = (element: HTMLDivElement) => {
+        syncRunningState(element);
         const instance = M.Modal.init(element, {
             onCloseStart: () => {
+                if (element.dataset.coldClearRunning === '1') {
+                    const modal = resources.modals.coldClearMenu;
+                    if (modal) {
+                        setTimeout(() => modal.open(), 0);
+                    }
+                    return;
+                }
                 actions.closeColdClearMenuModal();
                 destroy();
             },
@@ -152,7 +167,6 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             danger: true,
             onclick: () => {
                 actions.stopColdClearSearch();
-                closeMenu();
             },
         }] : []),
         {
@@ -164,7 +178,6 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             enabled: !isRunning && canSequenceSearch,
             onclick: () => {
                 actions.startColdClearSearch();
-                closeMenu();
             },
         },
         {
@@ -176,7 +189,6 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             enabled: !isRunning && canTopBranchesSearch,
             onclick: () => {
                 actions.startColdClearTopThreeSearch();
-                closeMenu();
             },
         },
         {
@@ -199,6 +211,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                 datatest="mdl-cold-clear-menu"
                 className="modal bottom-sheet"
                 oncreate={oncreate}
+                onupdate={syncRunningState}
                 ondestroy={ondestroy}
             >
                 <div key="cold-clear-menu-content" className="modal-content" style={contentStyle}>
@@ -246,6 +259,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                         key="btn-cold-clear-menu-close"
                         datatest="btn-cold-clear-menu-close"
                         className="waves-effect waves-teal btn-flat"
+                        disabled={isRunning}
                         onclick={(event: MouseEvent) => {
                             event.preventDefault();
                             closeMenu();

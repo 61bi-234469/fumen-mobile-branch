@@ -5,7 +5,6 @@ import { NextState, sequence } from './commons';
 import { State } from '../states';
 import { Page, Move } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
-import { encode } from '../lib/fumen/fumen';
 import { PageFieldOperation, Pages } from '../lib/pages';
 import { parseQueueComment, buildQueueComment } from '../lib/cold_clear/queueParser';
 import { fieldToCC } from '../lib/cold_clear/fieldConverter';
@@ -44,6 +43,7 @@ interface SessionBase {
 
 interface SingleRunSession extends SessionBase {
     runType: 'single';
+    targetNodeId: TreeNodeId;
     resultPages: Page[];
     field: Field;
     hold: Piece | null;
@@ -178,22 +178,6 @@ const parseQueueCommentFromPage = (pages: Page[], pageIndex: number) => {
 
 const resolveSingleSearchInput = (
     state: Readonly<State>,
-): { page: Page; parsed: NonNullable<ReturnType<typeof parseQueueComment>> } | null => {
-    const page = state.fumen.pages[state.fumen.currentIndex];
-    if (!isPageSupported(page)) {
-        return null;
-    }
-
-    const parsed = parseQueueCommentFromPage(state.fumen.pages, state.fumen.currentIndex);
-    if (!parsed) {
-        return null;
-    }
-
-    return { page, parsed };
-};
-
-const resolveTopBranchSearchInput = (
-    state: Readonly<State>,
 ): {
     tree: ReturnType<typeof getTreeForState>;
     page: Page;
@@ -223,6 +207,10 @@ const resolveTopBranchSearchInput = (
         parsed,
     };
 };
+
+const resolveTopBranchSearchInput = (
+    state: Readonly<State>,
+) => resolveSingleSearchInput(state);
 
 export const canStartColdClearSequenceSearch = (state: Readonly<State>): boolean => {
     return resolveSingleSearchInput(state) !== null;
@@ -341,7 +329,7 @@ const emitFinish = (runId: number) => {
     }
 };
 
-async function finishSingleSearch(runId: number) {
+function finishSingleSearch(runId: number) {
     const session = currentSession;
     if (!session || session.runId !== runId || session.runType !== 'single') {
         return;
@@ -352,22 +340,16 @@ async function finishSingleSearch(runId: number) {
 
     if (session.resultPages.length === 0) {
         M.toast({ html: i18n.ColdClear.NoMoveFound(), classes: 'top-toast', displayLength: 1500 });
-    } else {
-        try {
-            const encoded = await encode(session.resultPages, true);
-            const params = new URLSearchParams();
-            params.set('d', `v115@${encoded}`);
-            params.set('screen', 'list');
-            const url = `${window.location.origin}${window.location.pathname}#?${params.toString()}`;
-
-            const openedTab = window.open(url, '_blank');
-            if (!openedTab) {
-                await navigator.clipboard.writeText(url);
-                M.toast({ html: i18n.ColdClear.PopupBlocked(), classes: 'top-toast', displayLength: 3000 });
-            }
-        } catch (error) {
-            M.toast({ html: i18n.ColdClear.WorkerError(), classes: 'top-toast', displayLength: 1500 });
-        }
+    } else if (appActions) {
+        appActions.addColdClearBranches({
+            parentNodeId: session.targetNodeId,
+            pages: session.resultPages,
+            focusFirstAdded: true,
+            addAsChildChain: true,
+        });
+        emitFinish(runId);
+        appActions.changeToTreeViewScreen();
+        return;
     }
 
     emitFinish(runId);
@@ -444,7 +426,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (!input) {
             return undefined;
         }
-        const { page, parsed } = input;
+        const { page, parsed, target, tree } = input;
+        const shouldEnableTree = !state.tree.enabled;
 
         if (currentSession) {
             terminateSession(currentSession);
@@ -455,12 +438,13 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         nextRunId += 1;
 
         const pages = new Pages(state.fumen.pages);
-        const field = pages.getField(state.fumen.currentIndex, PageFieldOperation.All);
+        const field = pages.getField(target.pageIndex, PageFieldOperation.All);
         const session: SingleRunSession = {
             runId,
             field,
             runType: 'single',
             wrapper: new ColdClearWrapper(),
+            targetNodeId: target.nodeId,
             resultPages: [],
             hold: parsed.hold,
             queue: parsed.queue.slice(),
@@ -487,10 +471,17 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         startWorkerSession(session, initMsg, () => session.resultPages.length > 0);
 
         return {
+            tree: shouldEnableTree ? {
+                ...state.tree,
+                enabled: true,
+                nodes: tree.nodes,
+                rootId: tree.rootId,
+                activeNodeId: target.nodeId,
+            } : state.tree,
             coldClear: {
                 runId,
                 runType: 'single',
-                targetNodeId: null,
+                targetNodeId: target.nodeId,
                 isRunning: true,
                 abortRequested: false,
                 progress: { current: 0, total: session.totalMoves },
@@ -799,6 +790,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             appActions.addColdClearBranches({
                 parentNodeId: session.targetNodeId,
                 pages: candidatePages,
+                focusFirstAdded: true,
             }),
             appActions.coldClearFinishSearch(runId),
             appActions.changeToTreeViewScreen(),
@@ -845,6 +837,10 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
         return {
+            modal: {
+                ...state.modal,
+                coldClearMenu: false,
+            },
             coldClear: {
                 isRunning: false,
                 abortRequested: false,

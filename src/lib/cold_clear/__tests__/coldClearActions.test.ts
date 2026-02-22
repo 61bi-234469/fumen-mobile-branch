@@ -1,7 +1,6 @@
 import { coldClearActions, initColdClearActions, resetForTesting } from '../../../actions/cold_clear';
 import { Piece, Rotation } from '../../enums';
 import { Field } from '../../fumen/field';
-import { encode } from '../../fumen/fumen';
 import { Pages, PageFieldOperation } from '../../pages';
 import { ColdClearWrapper } from '../ColdClearWrapper';
 
@@ -13,11 +12,6 @@ jest.mock('../ColdClearWrapper', () => ({
         requestTopMoves: jest.fn(),
         terminate: jest.fn(),
     })),
-}));
-
-// Mock fumen encode
-jest.mock('../../fumen/fumen', () => ({
-    encode: jest.fn().mockResolvedValue('mockEncoded'),
 }));
 
 // Provide Materialize toast mock
@@ -105,6 +99,17 @@ function makeColdClearState(overrides: {
         cache: {
             currentInitField: new Field({}),
         },
+        modal: {
+            fumen: false,
+            menu: false,
+            append: false,
+            clipboard: false,
+            userSettings: false,
+            listViewReplace: false,
+            listViewImport: false,
+            listViewExport: false,
+            coldClearMenu: true,
+        },
         tree: {
             enabled: treeEnabled,
             nodes: treeNodes,
@@ -143,6 +148,15 @@ describe('coldClearActions run isolation', () => {
         coldClearActions.startColdClearSearch()(state);
 
         expect((global as any).window.open).not.toHaveBeenCalled();
+    });
+
+    test('startColdClearSearch auto-enables tree mode when disabled', () => {
+        const state = makeColdClearState({ treeEnabled: false, commentText: 'I' });
+        const result = coldClearActions.startColdClearSearch()(state);
+        expect(result).toBeDefined();
+        const nextState = result as any;
+        expect(nextState.tree.enabled).toBe(true);
+        expect(nextState.tree.nodes.length).toBeGreaterThan(0);
     });
 
     test('startColdClearSearch uses page field with pre commands', () => {
@@ -279,6 +293,7 @@ describe('coldClearActions run isolation', () => {
         expect(cc.abortRequested).toBe(false);
         expect(cc.runId).toBe(7);
         expect(cc.progress).toBeNull();
+        expect((result as any).modal.coldClearMenu).toBe(false);
     });
 
     test('coldClearFinishSearch ignores stale runId', () => {
@@ -437,6 +452,9 @@ describe('coldClearActions run isolation', () => {
 
         expect(result).toBeDefined();
         expect(mockActions.addColdClearBranches).toHaveBeenCalledTimes(1);
+        expect(mockActions.addColdClearBranches).toHaveBeenCalledWith(expect.objectContaining({
+            focusFirstAdded: true,
+        }));
         expect(mockActions.coldClearFinishSearch).toHaveBeenCalledWith(runId);
         expect(mockActions.changeToTreeViewScreen).toHaveBeenCalledTimes(1);
 
@@ -447,11 +465,24 @@ describe('coldClearActions run isolation', () => {
         expect(finishOrder).toBeLessThan(treeOrder);
     });
 
-    test('onColdClearMoveResult generates scored comments for single run', async () => {
-        const state = makeColdClearState({ commentText: 'IO' });
+    test('onColdClearMoveResult generates scored comments for single run', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IO' });
         const startResult = coldClearActions.startColdClearSearch()(state);
         const runId = getColdClear(startResult).runId;
-        const runningState = makeColdClearState({ runId, isRunning: true, commentText: 'IO' });
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+        };
+        initColdClearActions(mockActions);
+        const runningState = makeColdClearState({
+            runId,
+            isRunning: true,
+            runType: 'single',
+            targetNodeId: 'n0',
+            treeEnabled: true,
+            commentText: 'IO',
+        });
 
         coldClearActions.onColdClearMoveResult({
             runId,
@@ -463,20 +494,36 @@ describe('coldClearActions run isolation', () => {
             result: { type: 'moveResult', hold: false, piece: 1, rotation: 0, x: 4, y: 0, score: 50 },
         })(runningState);
 
-        await Promise.resolve();
-
-        const encodeMock = encode as jest.Mock;
-        expect(encodeMock).toHaveBeenCalled();
-        const pages = encodeMock.mock.calls[0][0];
+        expect(mockActions.addColdClearBranches).toHaveBeenCalledTimes(1);
+        const callArg = mockActions.addColdClearBranches.mock.calls[0][0];
+        const pages = callArg.pages;
+        expect(callArg.parentNodeId).toBe('n0');
+        expect(callArg.focusFirstAdded).toBe(true);
+        expect(callArg.addAsChildChain).toBe(true);
         expect(pages[0].comment.text).toBe('score=123.45 | O');
         expect(pages[1].comment.text).toBe('score=50.00');
+        expect(mockActions.coldClearFinishSearch).toHaveBeenCalledWith(runId);
+        expect(mockActions.changeToTreeViewScreen).toHaveBeenCalledTimes(1);
     });
 
-    test('onColdClearMoveResult falls back to queue-only when score is missing', async () => {
-        const state = makeColdClearState({ commentText: 'IO' });
+    test('onColdClearMoveResult falls back to queue-only when score is missing', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IO' });
         const startResult = coldClearActions.startColdClearSearch()(state);
         const runId = getColdClear(startResult).runId;
-        const runningState = makeColdClearState({ runId, isRunning: true, commentText: 'IO' });
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+        };
+        initColdClearActions(mockActions);
+        const runningState = makeColdClearState({
+            runId,
+            isRunning: true,
+            runType: 'single',
+            targetNodeId: 'n0',
+            treeEnabled: true,
+            commentText: 'IO',
+        });
 
         coldClearActions.onColdClearMoveResult({
             runId,
@@ -488,19 +535,29 @@ describe('coldClearActions run isolation', () => {
             result: { type: 'moveResult', hold: false, piece: 1, rotation: 0, x: 4, y: 0 },
         })(runningState);
 
-        await Promise.resolve();
-
-        const encodeMock = encode as jest.Mock;
-        const pages = encodeMock.mock.calls[0][0];
+        const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
         expect(pages[0].comment.text).toBe('O');
         expect(pages[1].comment.text).toBe('');
     });
 
-    test('onColdClearMoveResult falls back to queue-only for non-finite or out-of-range score', async () => {
-        const state = makeColdClearState({ commentText: 'IO' });
+    test('onColdClearMoveResult falls back to queue-only for non-finite or out-of-range score', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IO' });
         const startResult = coldClearActions.startColdClearSearch()(state);
         const runId = getColdClear(startResult).runId;
-        const runningState = makeColdClearState({ runId, isRunning: true, commentText: 'IO' });
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+        };
+        initColdClearActions(mockActions);
+        const runningState = makeColdClearState({
+            runId,
+            isRunning: true,
+            runType: 'single',
+            targetNodeId: 'n0',
+            treeEnabled: true,
+            commentText: 'IO',
+        });
 
         coldClearActions.onColdClearMoveResult({
             runId,
@@ -512,10 +569,7 @@ describe('coldClearActions run isolation', () => {
             result: { type: 'moveResult', hold: false, piece: 1, rotation: 0, x: 4, y: 0, score: 1000000.01 },
         })(runningState);
 
-        await Promise.resolve();
-
-        const encodeMock = encode as jest.Mock;
-        const pages = encodeMock.mock.calls[0][0];
+        const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
         expect(pages[0].comment.text).toBe('O');
         expect(pages[1].comment.text).toBe('');
     });

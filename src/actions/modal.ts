@@ -172,6 +172,9 @@ export const modalActions: Readonly<ModalActions> = {
         };
     },
     closeColdClearMenuModal: () => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
         return {
             modal: {
                 ...state.modal,
@@ -179,7 +182,7 @@ export const modalActions: Readonly<ModalActions> = {
             },
         };
     },
-    closeAllModals: () => (): NextState => {
+    closeAllModals: () => (state): NextState => {
         return {
             modal: {
                 append: false,
@@ -190,7 +193,7 @@ export const modalActions: Readonly<ModalActions> = {
                 listViewReplace: false,
                 listViewImport: false,
                 listViewExport: false,
-                coldClearMenu: false,
+                coldClearMenu: state.coldClear.isRunning ? true : false,
             },
         };
     },
