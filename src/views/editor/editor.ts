@@ -22,6 +22,7 @@ import { fillRowMode } from './fill_row_mode';
 import { pieceSelectMode } from './piece_select_mode';
 import { navigatorElement } from '../navigator';
 import { commentMode } from './comment_mode';
+import { canSwapCurrentPieceWithHoldQueue } from '../../actions/cold_clear';
 
 interface FieldLayout {
     topLeft: Coordinate;
@@ -240,6 +241,7 @@ const ScreenField = (state: State, actions: Actions, layout: EditorLayout) => {
                     shortcutLabelVisible: state.mode.shortcutLabelVisible,
                     pieceShortcutDasMs: state.mode.pieceShortcutDasMs,
                     coldClear: state.coldClear,
+                    canSwapCurrentPieceWithHoldQueue: canSwapCurrentPieceWithHoldQueue(state),
                 });
             }
             case ModeTypes.Flags: {

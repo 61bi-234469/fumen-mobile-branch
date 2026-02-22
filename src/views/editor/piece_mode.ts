@@ -31,6 +31,7 @@ export const pieceMode = ({
     shortcutLabelVisible,
     pieceShortcutDasMs,
     coldClear,
+    canSwapCurrentPieceWithHoldQueue,
     actions,
 }: {
     layout: EditorLayout;
@@ -47,11 +48,13 @@ export const pieceMode = ({
     shortcutLabelVisible: boolean;
     pieceShortcutDasMs: number;
     coldClear: State['coldClear'];
+    canSwapCurrentPieceWithHoldQueue: boolean;
     actions: {
         changeToDrawPieceMode: () => void;
         changeToMovePieceMode: () => void;
         changeToSelectPieceMode: () => void;
         openColdClearMenuModal: () => void;
+        swapCurrentPieceWithHoldQueue: () => void;
         clearPiece: () => void;
         rotateToLeft: (data?: { srs?: boolean }) => void;
         rotateToRight: (data?: { srs?: boolean }) => void;
@@ -85,27 +88,54 @@ export const pieceMode = ({
             margin: toolButtonMargin,
             key: 'div-space',
         }),
-        toolButton({
-            borderWidth: 1,
-            width: layout.buttons.size.width,
-            margin: toolButtonMargin,
-            backgroundColorClass: coldClear.isRunning ? 'red' : 'white',
-            textColor: coldClear.isRunning ? '#fff' : '#333',
-            borderColor: coldClear.isRunning ? '#f44336' : '#333',
-            datatest: coldClear.isRunning ? 'btn-cold-clear-stop' : 'btn-cold-clear',
-            key: 'btn-cold-clear',
-            onclick: () => {
-                actions.openColdClearMenuModal();
-            },
-        }, iconContents({
-            description: coldClear.isRunning
-                ? (coldClear.progress
-                    ? i18n.ColdClear.Progress(coldClear.progress.current, coldClear.progress.total)
-                    : i18n.ColdClear.StopLabel())
-                : i18n.ColdClear.MenuButtonLabel(),
-            iconSize: 18,
-            iconName: coldClear.isRunning ? 'stop' : 'auto_fix_high',
-        })),
+        div({
+            key: 'btn-cold-clear-row',
+            style: style({
+                display: 'flex',
+                flexDirection: 'row',
+                width: px(layout.buttons.size.width),
+                margin: `${px(toolButtonMargin)} 0px`,
+            }),
+        }, [
+            toolButton({
+                borderWidth: 1,
+                width: layout.buttons.size.width / 2 - 2,
+                margin: '0px 2px 0px 0px',
+                backgroundColorClass: coldClear.isRunning ? 'red' : 'white',
+                textColor: coldClear.isRunning ? '#fff' : '#333',
+                borderColor: coldClear.isRunning ? '#f44336' : '#333',
+                datatest: coldClear.isRunning ? 'btn-cold-clear-stop' : 'btn-cold-clear',
+                key: 'btn-cold-clear',
+                onclick: () => {
+                    actions.openColdClearMenuModal();
+                },
+            }, iconContents({
+                description: coldClear.isRunning
+                    ? (coldClear.progress
+                        ? i18n.ColdClear.Progress(coldClear.progress.current, coldClear.progress.total)
+                        : i18n.ColdClear.StopLabel())
+                    : i18n.ColdClear.MenuButtonLabel(),
+                iconSize: 18,
+                iconName: coldClear.isRunning ? 'stop' : 'auto_fix_high',
+            })),
+            toolButton({
+                borderWidth: 1,
+                width: layout.buttons.size.width / 2 - 2,
+                margin: '0px 0px 0px 2px',
+                backgroundColorClass: canSwapCurrentPieceWithHoldQueue ? 'white' : 'grey lighten-3',
+                textColor: canSwapCurrentPieceWithHoldQueue ? '#333' : '#9e9e9e',
+                borderColor: canSwapCurrentPieceWithHoldQueue ? '#333' : '#bdbdbd',
+                datatest: 'btn-cold-clear-hold-swap',
+                key: 'btn-cold-clear-hold-swap',
+                onclick: () => {
+                    actions.swapCurrentPieceWithHoldQueue();
+                },
+            }, iconContents({
+                description: i18n.ColdClear.HoldSwapLabel(),
+                iconSize: 18,
+                iconName: 'swap_horiz',
+            })),
+        ]),
         rotationButton({
             layout,
             rotation: operateRotation,

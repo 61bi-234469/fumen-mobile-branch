@@ -46,6 +46,9 @@ jest.mock('../../../locales/keys', () => ({
             TreeModeRequired: () => 'Enable tree mode',
             TopBranchesAdded: (count: number) => `${count} branches added`,
             OneBagAdded: () => 'One bag added',
+            HoldSwapLabel: () => 'Swap',
+            HoldSwapMissingQueue: () => 'Next queue required',
+            HoldSwapCurrentPieceRequired: () => 'Current piece required',
             EvaluatePlacedSpawnScoreLabel: () => 'Placed Score',
             EvaluatePlacedSpawnScoreDescription: () => 'Evaluate placed piece',
             InvalidPageFlags: () => 'Invalid page flags',
@@ -1349,6 +1352,92 @@ describe('coldClearActions run isolation', () => {
         const result = coldClearActions.appendColdClearOneBagToComment()(state);
         expect(result).toBeUndefined();
         expect(setCommentText).not.toHaveBeenCalled();
+    });
+
+    test('swapCurrentPieceWithHoldQueue swaps current with hold and keeps queue', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'S:LZJI' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+
+        coldClearActions.swapCurrentPieceWithHoldQueue()(state);
+
+        expect(setCommentText).toHaveBeenCalledWith({
+            text: 'T:LZJI',
+            pageIndex: 0,
+        });
+        expect(spawnPiece).toHaveBeenCalledWith({
+            piece: Piece.S,
+            srs: true,
+        });
+    });
+
+    test('swapCurrentPieceWithHoldQueue moves queue front to current when hold is empty', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'LZJI' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+
+        coldClearActions.swapCurrentPieceWithHoldQueue()(state);
+
+        expect(setCommentText).toHaveBeenCalledWith({
+            text: 'T:ZJI',
+            pageIndex: 0,
+        });
+        expect(spawnPiece).toHaveBeenCalledWith({
+            piece: Piece.L,
+            srs: true,
+        });
+    });
+
+    test('swapCurrentPieceWithHoldQueue fails with toast when queue is missing', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'memo' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+
+        const result = coldClearActions.swapCurrentPieceWithHoldQueue()(state);
+        expect(result).toBeUndefined();
+        expect(setCommentText).not.toHaveBeenCalled();
+        expect(spawnPiece).not.toHaveBeenCalled();
+        expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({
+            html: 'Next queue required',
+        }));
+    });
+
+    test('swapCurrentPieceWithHoldQueue fails with toast when current piece is missing', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'LZJI' });
+        state.fumen.pages[0].piece = undefined;
+
+        const result = coldClearActions.swapCurrentPieceWithHoldQueue()(state);
+        expect(result).toBeUndefined();
+        expect(setCommentText).not.toHaveBeenCalled();
+        expect(spawnPiece).not.toHaveBeenCalled();
+        expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({
+            html: 'Current piece required',
+        }));
     });
 });
 

@@ -31,6 +31,7 @@ import {
 import { TreeNodeId } from '../lib/fumen/tree_types';
 import type { ScreenActions } from './screen';
 import type { CommentActions } from './comment';
+import type { FieldEditorActions } from './field_editor';
 
 declare const M: any;
 
@@ -84,7 +85,8 @@ type RunSession = SingleRunSession | Top3RunSession | PlacedRunSession;
 type ColdClearRuntimeActions = ColdClearActions
     & Pick<TreeOperationActions, 'addColdClearBranches'>
     & Pick<ScreenActions, 'changeToTreeViewScreen' | 'changeToDrawerScreen' | 'changeToMovePieceMode'>
-    & Pick<CommentActions, 'setCommentText'>;
+    & Pick<CommentActions, 'setCommentText'>
+    & Pick<FieldEditorActions, 'spawnPiece'>;
 
 let currentSession: RunSession | null = null;
 
@@ -113,6 +115,7 @@ export interface ColdClearActions {
     startColdClearTopThreeSearch: () => action;
     evaluatePlacedSpawnMinoScore: () => action;
     appendColdClearOneBagToComment: () => action;
+    swapCurrentPieceWithHoldQueue: () => action;
     stopColdClearSearch: () => action;
     onColdClearMoveResult: (data: { runId: number, result: CCMoveResult }) => action;
     onColdClearTopMovesResult: (data: { runId: number, results: CCMove[] }) => action;
@@ -345,6 +348,12 @@ export const canEvaluatePlacedSpawnMinoScore = (state: Readonly<State>): boolean
     return resolvePlacedSpawnInput(state).input !== undefined;
 };
 
+export const canSwapCurrentPieceWithHoldQueue = (state: Readonly<State>): boolean => {
+    const pageIndex = state.fumen.currentIndex;
+    const parsed = parseQueueCommentFromPage(state.fumen.pages, pageIndex);
+    return parsed !== null && parsed.queue.length > 0;
+};
+
 const toMove = (result: CCMove): Move | null => {
     const piece = CC_TO_PIECE[result.piece];
     const rotation = CC_ROTATION_TO_APP[result.rotation];
@@ -476,6 +485,13 @@ const showSearchValidationError = (error: SearchInputError) => {
         break;
     }
 
+    M.toast({ html: message, classes: 'top-toast', displayLength: 1500 });
+};
+
+const showSwapValidationError = (type: 'missingQueue' | 'missingCurrentPiece') => {
+    const message = type === 'missingCurrentPiece'
+        ? i18n.ColdClear.HoldSwapCurrentPieceRequired()
+        : i18n.ColdClear.HoldSwapMissingQueue();
     M.toast({ html: message, classes: 'top-toast', displayLength: 1500 });
 };
 
@@ -970,6 +986,40 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
         return sequence(state, [
             appActions.setCommentText({ pageIndex, text: nextComment }),
+        ]);
+    },
+
+    swapCurrentPieceWithHoldQueue: () => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const pageIndex = state.fumen.currentIndex;
+        const page = state.fumen.pages[pageIndex];
+        if (!page || !page.piece || !isMinoPiece(page.piece.type)) {
+            showSwapValidationError('missingCurrentPiece');
+            return undefined;
+        }
+
+        const parsed = parseQueueCommentFromPage(state.fumen.pages, pageIndex);
+        if (!parsed || parsed.queue.length === 0) {
+            showSwapValidationError('missingQueue');
+            return undefined;
+        }
+
+        const currentPiece = page.piece.type;
+        const nextSpawnPiece = parsed.hold !== null ? parsed.hold : parsed.queue[0];
+        const nextQueue = parsed.hold !== null ? parsed.queue.slice() : parsed.queue.slice(1);
+        const nextComment = buildQueueComment(currentPiece, nextQueue);
+
+        if (!appActions) {
+            return undefined;
+        }
+
+        const srs = state.fumen.pages[0]?.flags.srs ?? true;
+        return sequence(state, [
+            appActions.setCommentText({ pageIndex, text: nextComment }),
+            appActions.spawnPiece({ piece: nextSpawnPiece, srs }),
         ]);
     },
 
