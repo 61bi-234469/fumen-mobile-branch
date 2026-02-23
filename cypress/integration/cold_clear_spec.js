@@ -95,6 +95,16 @@ const visitWithPendingTopMovesWorkerMock = () => {
 };
 
 describe('Cold Clear menu', () => {
+    it('adds a top-level node from ghost add button in tree view', () => {
+        visit({ mode: 'edit', lng: 'en' });
+        ensureTreeGraphView();
+
+        cy.get(datatest('text-page-count')).should('contain', '1 pages');
+        cy.get(datatest('btn-tree-root-add-ghost')).should('be.visible').click();
+        cy.get(datatest('text-page-count')).should('contain', '2 pages');
+        cy.get(datatest('btn-tree-ai-menu')).should('be.visible');
+    });
+
     it('shows placed-score action second from bottom and enabled', () => {
         visit({ mode: 'edit', lng: 'en' });
         ensureTreeGraphView();

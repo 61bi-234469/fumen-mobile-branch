@@ -22,13 +22,16 @@ import {
     TREE_DELETE_BADGE_OFFSET_Y,
     TREE_DELETE_BADGE_SIZE,
     TREE_HORIZONTAL_GAP,
+    TREE_NODE_EXTRA_HEIGHT,
     TREE_NODE_RADIUS,
     TREE_NODE_WIDTH,
     TREE_PADDING,
     TREE_PAGE_NUMBER_OFFSET,
     TREE_SCROLL_PADDING_BOTTOM,
     TREE_SCROLL_PADDING_RIGHT,
+    TREE_THUMBNAIL_HEIGHT,
     TREE_THUMBNAIL_WIDTH,
+    TREE_VERTICAL_GAP,
     calculateTreeViewLayout,
     shouldShowDeleteBadge,
     TreeNodeLayout,
@@ -66,6 +69,7 @@ interface Props {
         onAddBranch: (parentNodeId: TreeNodeId) => void;
         onInsertNode: (parentNodeId: TreeNodeId) => void;
         onCopyNode: (nodeId: TreeNodeId) => void;
+        onAddRoot: () => void;
         onCommentChange: (pageIndex: number, comment: string) => void;
         onDragStart: (nodeId: TreeNodeId) => void;
         onDragOverNode: (nodeId: TreeNodeId) => void;
@@ -765,12 +769,18 @@ export const FumenGraph: Component<Props> = ({
     // Calculate layout
     const treeViewLayout = calculateTreeViewLayout(tree, pages, trimTopBlank);
     const { layout } = treeViewLayout;
+    const minGhostNodeHeight = TREE_THUMBNAIL_HEIGHT + TREE_NODE_EXTRA_HEIGHT;
+    const ghostNodeWidth = Math.max(72, Math.round(TREE_NODE_WIDTH * 0.72));
+    const ghostNodeHeight = Math.max(56, Math.round(minGhostNodeHeight * 0.38));
+    const ghostNodeX = TREE_PADDING + (TREE_NODE_WIDTH - ghostNodeWidth) / 2;
+    const ghostNodeY = TREE_PADDING + treeViewLayout.contentHeight + TREE_VERTICAL_GAP;
+    const ghostTreeContentHeight = treeViewLayout.contentHeight + TREE_VERTICAL_GAP + ghostNodeHeight;
 
-    // Calculate SVG dimensions (add extra space for add button on the right)
+    // Calculate SVG dimensions (add extra space for add button on the right and ghost add row at bottom)
     const buttonExtraWidth = TREE_ADD_BUTTON_SIZE + 10;
     const baseWidth = TREE_PADDING * 2 + (layout.maxDepth + 1) * (TREE_NODE_WIDTH + TREE_HORIZONTAL_GAP)
         + buttonExtraWidth + TREE_SCROLL_PADDING_RIGHT;
-    const baseHeight = TREE_PADDING * 2 + treeViewLayout.contentHeight + TREE_SCROLL_PADDING_BOTTOM;
+    const baseHeight = TREE_PADDING * 2 + ghostTreeContentHeight + TREE_SCROLL_PADDING_BOTTOM;
 
     // Apply scale to dimensions
     const scaledWidth = Math.max(containerWidth, baseWidth * scale);
@@ -886,6 +896,63 @@ export const FumenGraph: Component<Props> = ({
     const stopPropagation = (e: Event) => {
         e.stopPropagation();
     };
+    const stopAndPrevent = (e: Event) => {
+        e.stopPropagation();
+        if (e.cancelable) {
+            e.preventDefault();
+        }
+    };
+
+    const ghostNodeStyle = style({
+        cursor: isDragging ? 'default' : 'pointer',
+        pointerEvents: isDragging ? 'none' : 'auto',
+        opacity: isDragging ? 0.45 : 1,
+    });
+
+    const rootAddGhostButton = (
+        <g
+            key="tree-root-add-ghost"
+            datatest="btn-tree-root-add-ghost"
+            transform={`translate(${ghostNodeX}, ${ghostNodeY})`}
+            style={ghostNodeStyle}
+            onmousedown={stopAndPrevent}
+            onclick={(e: MouseEvent) => {
+                stopAndPrevent(e);
+                if (!isDragging) {
+                    actions.onAddRoot();
+                }
+            }}
+            ontouchstart={stopAndPrevent}
+            ontouchend={(e: TouchEvent) => {
+                stopAndPrevent(e);
+                if (!isDragging) {
+                    actions.onAddRoot();
+                }
+            }}
+        >
+            <rect
+                width={ghostNodeWidth}
+                height={ghostNodeHeight}
+                rx={TREE_NODE_RADIUS}
+                ry={TREE_NODE_RADIUS}
+                fill="#F1F3F5"
+                stroke="#9AA1A9"
+                stroke-width={1.5}
+                stroke-dasharray="4 3"
+            />
+            <g transform={`translate(${ghostNodeWidth / 2}, ${ghostNodeHeight / 2})`}>
+                <text
+                    text-anchor="middle"
+                    dominant-baseline="central"
+                    font-size="20"
+                    font-weight="bold"
+                    fill="#7A838D"
+                >
+                    +
+                </text>
+            </g>
+        </g>
+    );
 
     const commentInputs = renderableNodes.map((node) => {
         const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
@@ -1239,6 +1306,7 @@ export const FumenGraph: Component<Props> = ({
                         {/* Nodes layer */}
                         <g key="nodes-layer">
                             {nodes}
+                            {rootAddGhostButton}
                         </g>
                     </g>
                 </svg>

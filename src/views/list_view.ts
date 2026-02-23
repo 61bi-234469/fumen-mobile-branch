@@ -621,7 +621,6 @@ export const view: View<State, Actions> = (state, actions) => {
     const treeToggleCount = isTreeView ? 3 : 0;
     const cornerOffset = 8;
     const treeRootAddButtonBottomOffset = cornerOffset - 20;
-    const treeAiButtonLeftOffset = 52;
     const bottomControlOpacity = 0.8;
     const bottomControlDisabledOpacity = 0.45;
     const treeRootAddButtonBottom = treeRootAddButtonBottomOffset
@@ -650,30 +649,10 @@ export const view: View<State, Actions> = (state, actions) => {
         opacity: bottomControlOpacity,
     });
 
-    const treeRootAddButtonStyle = style({
-        position: 'fixed',
-        bottom: px(treeRootAddButtonBottom),
-        right: px(cornerOffset),
-        width: px(44),
-        height: px(44),
-        borderRadius: '50%',
-        border: 'none',
-        backgroundColor: '#4CAF50',
-        color: '#fff',
-        fontSize: px(24),
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-        opacity: bottomControlOpacity,
-        zIndex: 100,
-    });
-
     const treeAiButtonStyle = style({
         position: 'fixed',
         bottom: px(treeRootAddButtonBottom),
-        right: px(cornerOffset + treeAiButtonLeftOffset),
+        right: px(cornerOffset),
         width: px(44),
         height: px(44),
         borderRadius: '50%',
@@ -861,6 +840,9 @@ export const view: View<State, Actions> = (state, actions) => {
                         onCopyNode: (nodeId) => {
                             // Copy operation: copy page and create sibling node
                             actions.copyTreeNode({ nodeId });
+                        },
+                        onAddRoot: () => {
+                            actions.addRootFromCurrentNode();
                         },
                         onCommentChange: (pageIndex: number, comment: string) => {
                             actions.updatePageComment({
@@ -1131,15 +1113,6 @@ export const view: View<State, Actions> = (state, actions) => {
                 className: 'material-icons',
                 style: style({ fontSize: px(24) }),
             }, state.coldClear.isRunning ? 'stop' : 'auto_fix_high'),
-        ])] : []),
-
-        // Add top-level page button (tree view only)
-        ...(isTreeView ? [h('button', {
-            key: 'tree-root-add',
-            style: treeRootAddButtonStyle,
-            onclick: () => actions.addRootFromCurrentNode(),
-        }, [
-            h('i', { className: 'material-icons', style: style({ fontSize: px(24) }) }, 'add'),
         ])] : []),
 
     ]);
