@@ -983,9 +983,13 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (!appActions) {
             return undefined;
         }
+        const runtimeActions = appActions;
 
         return sequence(state, [
-            appActions.setCommentText({ pageIndex, text: nextComment }),
+            () => {
+                runtimeActions.setCommentText({ pageIndex, text: nextComment });
+                return undefined;
+            },
         ]);
     },
 
@@ -1015,11 +1019,18 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (!appActions) {
             return undefined;
         }
+        const runtimeActions = appActions;
 
         const srs = state.fumen.pages[0]?.flags.srs ?? true;
         return sequence(state, [
-            appActions.setCommentText({ pageIndex, text: nextComment }),
-            appActions.spawnPiece({ piece: nextSpawnPiece, srs }),
+            () => {
+                runtimeActions.setCommentText({ pageIndex, text: nextComment });
+                return undefined;
+            },
+            () => {
+                runtimeActions.spawnPiece({ piece: nextSpawnPiece, srs });
+                return undefined;
+            },
         ]);
     },
 
@@ -1175,12 +1186,25 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     emitFinish(runId);
                     return undefined;
                 }
+                const runtimeActions = appActions;
 
                 return sequence(state, [
-                    appActions.setCommentText({ pageIndex: session.targetPageIndex, text: outsideTopComment }),
-                    appActions.coldClearFinishSearch(runId),
-                    appActions.changeToDrawerScreen({}),
-                    appActions.changeToMovePieceMode(),
+                    () => {
+                        runtimeActions.setCommentText({ pageIndex: session.targetPageIndex, text: outsideTopComment });
+                        return undefined;
+                    },
+                    () => {
+                        runtimeActions.coldClearFinishSearch(runId);
+                        return undefined;
+                    },
+                    () => {
+                        runtimeActions.changeToDrawerScreen({});
+                        return undefined;
+                    },
+                    () => {
+                        runtimeActions.changeToMovePieceMode();
+                        return undefined;
+                    },
                 ]);
             }
 
@@ -1201,12 +1225,25 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 emitFinish(runId);
                 return undefined;
             }
+            const runtimeActions = appActions;
 
             return sequence(state, [
-                appActions.setCommentText({ pageIndex: session.targetPageIndex, text: nextComment }),
-                appActions.coldClearFinishSearch(runId),
-                appActions.changeToDrawerScreen({}),
-                appActions.changeToMovePieceMode(),
+                () => {
+                    runtimeActions.setCommentText({ pageIndex: session.targetPageIndex, text: nextComment });
+                    return undefined;
+                },
+                () => {
+                    runtimeActions.coldClearFinishSearch(runId);
+                    return undefined;
+                },
+                () => {
+                    runtimeActions.changeToDrawerScreen({});
+                    return undefined;
+                },
+                () => {
+                    runtimeActions.changeToMovePieceMode();
+                    return undefined;
+                },
             ]);
         }
 
@@ -1288,15 +1325,25 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (!appActions) {
             return undefined;
         }
+        const runtimeActions = appActions;
 
         return sequence(state, [
-            appActions.addColdClearBranches({
-                parentNodeId: session.targetNodeId,
-                pages: candidatePages,
-                focusFirstAdded: true,
-            }),
-            appActions.coldClearFinishSearch(runId),
-            appActions.changeToTreeViewScreen(),
+            () => {
+                runtimeActions.addColdClearBranches({
+                    parentNodeId: session.targetNodeId,
+                    pages: candidatePages,
+                    focusFirstAdded: true,
+                });
+                return undefined;
+            },
+            () => {
+                runtimeActions.coldClearFinishSearch(runId);
+                return undefined;
+            },
+            () => {
+                runtimeActions.changeToTreeViewScreen();
+                return undefined;
+            },
         ]);
     },
 
