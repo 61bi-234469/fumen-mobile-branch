@@ -1,6 +1,6 @@
 import { Page } from './fumen/types';
 import { Pages, PageFieldOperation, isTextCommentResult } from './pages';
-import { decidePieceColor } from './colors';
+import { decideBackgroundColor, decidePieceColor } from './colors';
 import { HighlightType } from '../state_types';
 import { FieldConstants, Piece, Rotation } from './enums';
 import { getBlocks } from './piece';
@@ -40,6 +40,11 @@ export function generateThumbnail(
 
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, THUMBNAIL_WIDTH, canvas.height);
+    if (visibleTopRow >= 20) {
+        const upperFieldRows = visibleTopRow - 20 + 1;
+        ctx.fillStyle = decideBackgroundColor(20);
+        ctx.fillRect(0, 0, THUMBNAIL_WIDTH, upperFieldRows * BLOCK_SIZE);
+    }
 
     // Detect filled lines
     const filledLines = new Set<number>();
@@ -63,7 +68,12 @@ export function generateThumbnail(
         for (let x = 0; x < FieldConstants.Width; x += 1) {
             const piece = field.get(x, y);
             const highlight = isFilledLine ? HighlightType.Highlight1 : HighlightType.Normal;
-            const color = decidePieceColor(piece, highlight, guideLineColor);
+            if (piece === Piece.Empty && y >= 20) {
+                continue;
+            }
+            const color = piece === Piece.Empty
+                ? decideBackgroundColor(y)
+                : decidePieceColor(piece, highlight, guideLineColor);
 
             ctx.fillStyle = color;
             if (y <= visibleTopRow) {
@@ -293,6 +303,11 @@ function drawThumbnail(
     // Black background for thumbnail
     ctx.fillStyle = '#000000';
     ctx.fillRect(x, y, EXPORT_ITEM_WIDTH, thumbnailHeight);
+    if (resolvedVisibleTopRow >= 20) {
+        const upperFieldRows = resolvedVisibleTopRow - 20 + 1;
+        ctx.fillStyle = decideBackgroundColor(20);
+        ctx.fillRect(x, y, EXPORT_ITEM_WIDTH, upperFieldRows * BLOCK_SIZE);
+    }
 
     // Detect filled lines
     const filledLines = new Set<number>();
@@ -316,7 +331,12 @@ function drawThumbnail(
         for (let fieldX = 0; fieldX < FieldConstants.Width; fieldX += 1) {
             const piece = field.get(fieldX, fieldY);
             const highlight = isFilledLine ? HighlightType.Highlight1 : HighlightType.Normal;
-            const color = decidePieceColor(piece, highlight, guideLineColor);
+            if (piece === Piece.Empty && fieldY >= 20) {
+                continue;
+            }
+            const color = piece === Piece.Empty
+                ? decideBackgroundColor(fieldY)
+                : decidePieceColor(piece, highlight, guideLineColor);
 
             ctx.fillStyle = color;
             if (fieldY <= resolvedVisibleTopRow) {
