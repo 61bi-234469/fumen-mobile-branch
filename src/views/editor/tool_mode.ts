@@ -13,6 +13,7 @@ import { EditorLayout, toolStyle } from './editor';
 import { EditShortcuts, PaletteShortcuts, State } from '../../states';
 import { displayShortcut } from '../../lib/shortcuts';
 import { i18n } from '../../locales/keys';
+import { executePieceShortcut } from '../../lib/piece_shortcut';
 
 export const toolMode = ({
     layout,
@@ -50,6 +51,7 @@ export const toolMode = ({
         selectPieceColor: (data: { piece: Piece }) => void;
         selectInferencePieceColor: () => void;
         changeToMovePieceMode: () => void;
+        clearPiece: () => void;
         spawnPiece: (data: { piece: Piece, srs: boolean }) => void;
         clearFieldAndPiece: () => void;
         convertToGray: () => void;
@@ -209,6 +211,7 @@ export const toolMode = ({
             datatest: 'btn-piece-mode',
             key: 'btn-piece-mode',
             onclick: () => actions.changeToDrawPieceMode(),
+            onlongpress: () => executePieceShortcut('Reset', actions),
         }, iconContents({
             description: 'piece',
             iconSize: 20,

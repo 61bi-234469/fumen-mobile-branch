@@ -3,6 +3,7 @@ import { isModifierKey, matchShortcut } from '../lib/shortcuts';
 import { EditShortcuts, PaletteShortcuts, PieceShortcuts, State } from '../states';
 import { Actions } from '../actions';
 import { TreeViewMode } from '../lib/fumen/tree_types';
+import { executePieceShortcut, PieceShortcutKey } from '../lib/piece_shortcut';
 
 const LONG_PRESS_DURATION = 500;
 
@@ -36,8 +37,6 @@ type PaletteKey = keyof PaletteShortcuts;
 type EditShortcutKey = keyof EditShortcuts;
 
 // ピースショートカットキーの種類
-type PieceShortcutKey = keyof PieceShortcuts;
-
 // 画面ごとに許可される編集用ショートカット
 const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = {
     [Screens.Editor]: [
@@ -343,29 +342,6 @@ const currentPageHasPiece = (state: State): boolean => {
 };
 
 // ピースショートカット即時実行（keydown時）
-const executePieceShortcut = (key: PieceShortcutKey, actions: Actions) => {
-    switch (key) {
-    case 'MoveLeft':
-        actions.moveToLeft();
-        break;
-    case 'MoveRight':
-        actions.moveToRight();
-        break;
-    case 'Drop':
-        actions.harddrop();
-        break;
-    case 'RotateLeft':
-        actions.rotateToLeft();
-        break;
-    case 'RotateRight':
-        actions.rotateToRight();
-        break;
-    case 'Reset':
-        actions.clearPiece();
-        break;
-    }
-};
-
 // ピースDAS実行（長押し時、端まで移動）
 const executePieceDas = (key: PieceShortcutKey, actions: Actions) => {
     if (key === 'MoveLeft') {
