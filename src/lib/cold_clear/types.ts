@@ -21,7 +21,16 @@ export interface CCRequestTopMovesMessage {
     count: number;
 }
 
-export type WorkerMessage = CCInitMessage | CCRequestMoveMessage | CCRequestTopMovesMessage;
+export interface CCRequestSequenceMessage {
+    type: 'requestSequence';
+    count: number;
+}
+
+export type WorkerMessage =
+    | CCInitMessage
+    | CCRequestMoveMessage
+    | CCRequestTopMovesMessage
+    | CCRequestSequenceMessage;
 
 // === Worker Response Types (Worker → Main) ===
 
@@ -56,7 +65,17 @@ export interface CCNoMove {
     type: 'noMove';
 }
 
-export type WorkerResponse = CCMoveResult | CCTopMovesResult | CCInitDone | CCError | CCNoMove;
+export interface CCSequenceDone {
+    type: 'sequenceDone';
+}
+
+export type WorkerResponse =
+    | CCMoveResult
+    | CCTopMovesResult
+    | CCInitDone
+    | CCError
+    | CCNoMove
+    | CCSequenceDone;
 
 // === Piece Mapping Tables ===
 // CC C-API order: I=0, O=1, T=2, L=3, J=4, S=5, Z=6

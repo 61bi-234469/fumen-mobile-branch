@@ -58,6 +58,29 @@ const toMove = (result: any): CCMove => ({
             } else {
                 postResponse({ type: 'topMovesResult', moves: moves.slice(0, requestCount) });
             }
+        } else if (msg.type === 'requestSequence') {
+            if (!bot) {
+                postResponse({ type: 'error', message: 'Bot not initialized' });
+                return;
+            }
+            const requestCount = Math.max(0, Math.floor(msg.count));
+            if (requestCount <= 0) {
+                postResponse({ type: 'sequenceDone' });
+                return;
+            }
+
+            for (let i = 0; i < requestCount; i += 1) {
+                const result = bot.suggest_move_sync(thinkMs);
+                if (!result) {
+                    postResponse({ type: 'noMove' });
+                    return;
+                }
+                postResponse({
+                    type: 'moveResult',
+                    ...toMove(result),
+                });
+            }
+            postResponse({ type: 'sequenceDone' });
         }
     } catch (e) {
         postResponse({ type: 'error', message: String(e) });

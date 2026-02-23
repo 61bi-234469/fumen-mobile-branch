@@ -10,6 +10,7 @@ jest.mock('../ColdClearWrapper', () => ({
         start: jest.fn(),
         requestMove: jest.fn(),
         requestTopMoves: jest.fn(),
+        requestSequence: jest.fn(),
         terminate: jest.fn(),
     })),
 }));
@@ -210,6 +211,18 @@ describe('coldClearActions run isolation', () => {
 
         // Row 0 is fully filled by the lock piece and then line-cleared.
         expect(initMsg.field[0]).toBe(0);
+    });
+
+    test('startColdClearSearch passes b2b/combo parsed from comment to init message', () => {
+        const state = makeColdClearState({ commentText: 'b2b=1 | combo=4 | T:IOSL' });
+        coldClearActions.startColdClearSearch()(state);
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapperInstance = wrapperCtor.mock.results[0].value;
+        const initMsg = wrapperInstance.start.mock.calls[0][0];
+
+        expect(initMsg.b2b).toBe(true);
+        expect(initMsg.combo).toBe(4);
     });
 
     test('startColdClearSearch increments runId on each call', () => {
@@ -476,6 +489,18 @@ describe('coldClearActions run isolation', () => {
         expect(cc.isRunning).toBe(true);
     });
 
+    test('startColdClearTopThreeSearch passes b2b/combo parsed from comment to init message', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'b2b=true | combo=-1 | IOTL' });
+        coldClearActions.startColdClearTopThreeSearch()(state);
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapperInstance = wrapperCtor.mock.results[0].value;
+        const initMsg = wrapperInstance.start.mock.calls[0][0];
+
+        expect(initMsg.b2b).toBe(true);
+        expect(initMsg.combo).toBe(-1);
+    });
+
     test('top3 initDone requests configured top N moves', () => {
         const state = makeColdClearState({ treeEnabled: true, commentText: 'IOTL', topBranchCount: 7 });
         const startResult = coldClearActions.startColdClearTopThreeSearch()(state);
@@ -493,6 +518,26 @@ describe('coldClearActions run isolation', () => {
         const wrapperCtor = ColdClearWrapper as any as jest.Mock;
         const wrapperInstance = wrapperCtor.mock.results[0].value;
         expect(wrapperInstance.requestTopMoves).toHaveBeenCalledWith(7);
+    });
+
+    test('single initDone requests sequence execution with queue-length count', () => {
+        const state = makeColdClearState({ commentText: 'T:IOSL' });
+        const startResult = coldClearActions.startColdClearSearch()(state);
+        const runId = getColdClear(startResult).runId;
+
+        const runningState = makeColdClearState({
+            runId,
+            isRunning: true,
+            runType: 'single',
+            targetNodeId: 'n0',
+            treeEnabled: true,
+            commentText: 'T:IOSL',
+        });
+        coldClearActions.onColdClearInitDone({ runId })(runningState);
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapperInstance = wrapperCtor.mock.results[0].value;
+        expect(wrapperInstance.requestSequence).toHaveBeenCalledWith(4);
     });
 
     test('top3 results are capped by configured top branch count', () => {
@@ -1156,6 +1201,23 @@ describe('coldClearActions run isolation', () => {
         const initMsg = wrapperInstance.start.mock.calls[0][0];
         expect(initMsg.hold).toBe(1); // O
         expect(initMsg.queue).toEqual([2, 2, 5, 6]); // T + TSZ
+    });
+
+    test('evaluatePlacedSpawnMinoScore passes b2b/combo parsed from comment to init message', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'b2b=1 | combo=2 | O:TSZ' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+        coldClearActions.evaluatePlacedSpawnMinoScore()(state);
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapperInstance = wrapperCtor.mock.results[0].value;
+        const initMsg = wrapperInstance.start.mock.calls[0][0];
+
+        expect(initMsg.b2b).toBe(true);
+        expect(initMsg.combo).toBe(2);
     });
 
     test('evaluatePlacedSpawnMinoScore writes outside-top comment when no exact result is found', () => {

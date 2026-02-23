@@ -7,7 +7,7 @@ import { Page, Move } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
 import { PageFieldOperation, Pages } from '../lib/pages';
 import { getBlockPositions } from '../lib/piece';
-import { parseQueueComment, buildQueueComment } from '../lib/cold_clear/queueParser';
+import { parseQueueComment, parseQueueStateComment, buildQueueComment } from '../lib/cold_clear/queueParser';
 import { fieldToCC } from '../lib/cold_clear/fieldConverter';
 import {
     CCInitMessage,
@@ -77,6 +77,8 @@ interface PlacedRunSession extends SessionBase {
     retryCount: number;
     hold: Piece | null;
     queue: Piece[];
+    b2b: boolean;
+    combo: number;
     searchHold: Piece | null;
     searchQueue: Piece[];
 }
@@ -125,6 +127,7 @@ export interface ColdClearActions {
     onColdClearInitDone: (data: { runId: number }) => action;
     onColdClearError: (data: { runId: number, error: string }) => action;
     onColdClearNoMove: (data: { runId: number }) => action;
+    onColdClearSequenceDone: (data: { runId: number }) => action;
     coldClearFinishSearch: (runId: number) => action;
 }
 
@@ -210,7 +213,7 @@ const parseQueueCommentFromPage = (pages: Page[], pageIndex: number) => {
     if (commentText === null) {
         return null;
     }
-    return parseQueueComment(commentText);
+    return parseQueueStateComment(commentText);
 };
 
 type SearchInputError =
@@ -221,7 +224,7 @@ type SearchInputError =
 type SearchInput = {
     tree: ReturnType<typeof getTreeForState>;
     page: Page;
-    parsed: NonNullable<ReturnType<typeof parseQueueComment>>;
+    parsed: NonNullable<ReturnType<typeof parseQueueStateComment>>;
     target: { nodeId: TreeNodeId; pageIndex: number };
 };
 
@@ -276,7 +279,7 @@ type PlacedSpawnInput = {
     tree: ReturnType<typeof getTreeForState>;
     page: Page;
     preLockField: Field;
-    parsed: NonNullable<ReturnType<typeof parseQueueComment>>;
+    parsed: NonNullable<ReturnType<typeof parseQueueStateComment>>;
     placedPiece: Move;
     target: { nodeId: TreeNodeId; pageIndex: number };
 };
@@ -668,8 +671,8 @@ const buildPlacedSpawnInitMessage = (session: PlacedRunSession): CCInitMessage =
         type: 'init',
         field: ccField,
         hold: ccHold,
-        b2b: false,
-        combo: 0,
+        b2b: session.b2b,
+        combo: session.combo,
         queue: ccQueue,
         thinkMs: session.thinkMs,
     };
@@ -714,6 +717,9 @@ function handleWorkerMessage(runId: number, msg: WorkerResponse) {
         break;
     case 'noMove':
         appActions.onColdClearNoMove({ runId });
+        break;
+    case 'sequenceDone':
+        appActions.onColdClearSequenceDone({ runId });
         break;
     case 'error':
         appActions.onColdClearError({ runId, error: msg.message });
@@ -796,8 +802,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             type: 'init',
             field: ccField,
             hold: ccHold,
-            b2b: false,
-            combo: 0,
+            b2b: parsed.b2b,
+            combo: parsed.combo,
             queue: ccQueue,
             thinkMs: THINK_MS,
         };
@@ -871,8 +877,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             type: 'init',
             field: ccField,
             hold: ccHold,
-            b2b: false,
-            combo: 0,
+            b2b: parsed.b2b,
+            combo: parsed.combo,
             queue: ccQueue,
             thinkMs: THINK_MS,
         };
@@ -963,6 +969,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             retryCount: 0,
             hold: parsed.hold,
             queue: parsed.queue.slice(),
+            b2b: parsed.b2b,
+            combo: parsed.combo,
             searchHold: searchState.hold,
             searchQueue: searchState.queue,
         };
@@ -1105,7 +1113,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         }
 
         if (currentSession.runType === 'single') {
-            currentSession.wrapper.requestMove();
+            currentSession.wrapper.requestSequence(currentSession.totalMoves);
         } else if (currentSession.runType === 'top3') {
             currentSession.wrapper.requestTopMoves(currentSession.topBranchCount);
         } else {
@@ -1170,8 +1178,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             finishSingleSearch(runId);
             return undefined;
         }
-
-        session.wrapper.requestMove();
 
         return {
             coldClear: {
@@ -1394,6 +1400,19 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (currentSession && currentSession.runId === runId && currentSession.runType === 'top3') {
             finishTop3Search(runId);
             M.toast({ html: i18n.ColdClear.NoMoveFound(), classes: 'top-toast', displayLength: 1500 });
+            return undefined;
+        }
+
+        finishSingleSearch(runId);
+        return undefined;
+    },
+
+    onColdClearSequenceDone: ({ runId }) => (state): NextState => {
+        if (!state.coldClear.isRunning || state.coldClear.runId !== runId) {
+            return undefined;
+        }
+
+        if (!currentSession || currentSession.runId !== runId || currentSession.runType !== 'single') {
             return undefined;
         }
 

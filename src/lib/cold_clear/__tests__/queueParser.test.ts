@@ -1,5 +1,5 @@
 import { Piece } from '../../enums';
-import { buildQueueComment, parseQueueComment } from '../queueParser';
+import { buildQueueComment, parseQueueComment, parseQueueStateComment } from '../queueParser';
 
 describe('parseQueueComment', () => {
     test('parse queue without hold', () => {
@@ -160,6 +160,54 @@ describe('buildQueueComment', () => {
 
     test('build single piece queue with hold', () => {
         expect(buildQueueComment(Piece.I, [Piece.Z])).toBe('I:Z');
+    });
+});
+
+describe('parseQueueStateComment', () => {
+    test('parse queue state defaults to b2b=false and combo=0', () => {
+        const result = parseQueueStateComment('T:IOSL');
+        expect(result).toEqual({
+            hold: Piece.T,
+            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+            b2b: false,
+            combo: 0,
+        });
+    });
+
+    test('parse queue state with b2b and combo metadata', () => {
+        const result = parseQueueStateComment('b2b=1 | combo=3 | T:IOSL');
+        expect(result).toEqual({
+            hold: Piece.T,
+            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+            b2b: true,
+            combo: 3,
+        });
+    });
+
+    test('parse queue state when b2b and combo are in one metadata segment', () => {
+        const result = parseQueueStateComment('b2b=1 combo=3 | T:IOSL');
+        expect(result).toEqual({
+            hold: Piece.T,
+            queue: [Piece.I, Piece.O, Piece.S, Piece.L],
+            b2b: true,
+            combo: 3,
+        });
+    });
+
+    test('parse queue state with score, outsideTop, b2b and combo metadata', () => {
+        const result = parseQueueStateComment('score=12.30 | outsideTop=10000 | b2b=false | combo=-1 | IOT');
+        expect(result).toEqual({
+            hold: null,
+            queue: [Piece.I, Piece.O, Piece.T],
+            b2b: false,
+            combo: -1,
+        });
+    });
+
+    test('return null when metadata grammar is invalid', () => {
+        expect(parseQueueStateComment('b2b=yes | combo=2 | IOT')).toBeNull();
+        expect(parseQueueStateComment('b2b=1  combo=2 | IOT')).toBeNull();
+        expect(parseQueueStateComment('combo=2')).toBeNull();
     });
 });
 

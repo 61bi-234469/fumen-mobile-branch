@@ -5,9 +5,17 @@ export interface ParsedQueue {
     queue: Piece[];
 }
 
+export interface ParsedQueueState extends ParsedQueue {
+    b2b: boolean;
+    combo: number;
+}
+
 const QUEUE_REGEX = /^([IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]+$/;
-const SCORED_QUEUE_REGEX = /^score=(-?(?:0|[1-9]\d*)\.\d{2}) \| ((?:[IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]+)$/;
-const OUTSIDE_TOP_QUEUE_REGEX = /^outsideTop=(\d+) \| ((?:[IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]+)$/;
+const SCORE_SEGMENT_REGEX = /^score=(-?(?:0|[1-9]\d*)\.\d{2})$/;
+const OUTSIDE_TOP_SEGMENT_REGEX = /^outsideTop=(\d+)$/;
+const B2B_SEGMENT_REGEX = /^b2b=(0|1|true|false)$/;
+const COMBO_SEGMENT_REGEX = /^combo=(-?\d+)$/;
+const METADATA_SEPARATOR = ' | ';
 
 const CHAR_TO_PIECE: Record<string, Piece> = {
     I: Piece.I,
@@ -37,22 +45,67 @@ const PIECE_TO_CHAR: Record<number, string> = {
 };
 
 export function parseQueueComment(text: string): ParsedQueue | null {
-    const queueOnly = parseQueueOnlyComment(text);
-    if (queueOnly) {
-        return queueOnly;
+    const parsed = parseQueueStateComment(text);
+    if (!parsed) {
+        return null;
     }
 
-    const scoredMatch = SCORED_QUEUE_REGEX.exec(text);
-    if (scoredMatch) {
-        return parseQueueOnlyComment(scoredMatch[2]);
+    return {
+        hold: parsed.hold,
+        queue: parsed.queue,
+    };
+}
+
+export function parseQueueStateComment(text: string): ParsedQueueState | null {
+    if (!text) {
+        return null;
     }
 
-    const outsideTopMatch = OUTSIDE_TOP_QUEUE_REGEX.exec(text);
-    if (outsideTopMatch) {
-        return parseQueueOnlyComment(outsideTopMatch[2]);
+    const segments = text.split(METADATA_SEPARATOR);
+    if (segments.length === 0) {
+        return null;
     }
 
-    return null;
+    const queueOnly = parseQueueOnlyComment(segments[segments.length - 1]);
+    if (!queueOnly) {
+        return null;
+    }
+
+    let b2b = false;
+    let combo = 0;
+    for (let i = 0; i < segments.length - 1; i += 1) {
+        const tokens = segments[i].split(' ');
+        if (tokens.length === 0 || tokens.some(token => token.length === 0)) {
+            return null;
+        }
+
+        for (const token of tokens) {
+            if (SCORE_SEGMENT_REGEX.test(token) || OUTSIDE_TOP_SEGMENT_REGEX.test(token)) {
+                continue;
+            }
+
+            const b2bMatch = B2B_SEGMENT_REGEX.exec(token);
+            if (b2bMatch) {
+                b2b = b2bMatch[1] === '1' || b2bMatch[1] === 'true';
+                continue;
+            }
+
+            const comboMatch = COMBO_SEGMENT_REGEX.exec(token);
+            if (comboMatch) {
+                combo = Number.parseInt(comboMatch[1], 10);
+                continue;
+            }
+
+            return null;
+        }
+    }
+
+    return {
+        hold: queueOnly.hold,
+        queue: queueOnly.queue,
+        b2b,
+        combo,
+    };
 }
 
 function parseQueueOnlyComment(text: string): ParsedQueue | null {

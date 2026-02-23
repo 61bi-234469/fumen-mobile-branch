@@ -32,6 +32,12 @@ export class ColdClearWrapper {
         }
     }
 
+    requestSequence(count: number): void {
+        if (this.worker) {
+            this.worker.postMessage({ count, type: 'requestSequence' } as WorkerMessage);
+        }
+    }
+
     terminate(): void {
         if (this.worker) {
             this.worker.terminate();
