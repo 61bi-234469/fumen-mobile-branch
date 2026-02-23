@@ -368,6 +368,9 @@ const loadUserSettings = () => {
     if (viewSettings.trimTopBlank !== undefined) {
         main.setListViewTrimTopBlank({ enabled: viewSettings.trimTopBlank });
     }
+    if (viewSettings.coldClearTopBranchCount !== undefined) {
+        main.setColdClearTopBranchCount({ count: viewSettings.coldClearTopBranchCount });
+    }
 
     const treeViewSettings: Partial<State['tree']> = {};
     if (viewSettings.buttonDropMovesSubtree !== undefined) {

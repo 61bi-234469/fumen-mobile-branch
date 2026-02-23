@@ -21,7 +21,6 @@ import {
     canStartColdClearSequenceSearch,
     canStartColdClearTopBranchesSearch,
     canEvaluatePlacedSpawnMinoScore,
-    COLD_CLEAR_TOP_BRANCH_COUNT,
 } from './actions/cold_clear';
 
 export const view: View<State, Actions> = (state, actions) => {
@@ -109,13 +108,13 @@ export const view: View<State, Actions> = (state, actions) => {
         }) : undefined as any,
 
         state.modal.coldClearMenu ? ColdClearMenuModal({
-            isRunning: state.coldClear.isRunning,
-            progress: state.coldClear.progress,
-            topBranchCount: COLD_CLEAR_TOP_BRANCH_COUNT,
             canSequenceSearch,
             canTopBranchesSearch,
             canPlacedSpawnScore,
             actions,
+            isRunning: state.coldClear.isRunning,
+            progress: state.coldClear.progress,
+            topBranchCount: state.coldClear.topBranchCount,
         }) : undefined as any,
 
         div({ key: 'view-end' }),

@@ -1337,6 +1337,7 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 trimTopBlank: state.listView.trimTopBlank,
                 buttonDropMovesSubtree: nextTree.tree.buttonDropMovesSubtree,
                 grayAfterLineClear: nextTree.tree.grayAfterLineClear,
+                coldClearTopBranchCount: state.coldClear.topBranchCount,
             });
         }
 

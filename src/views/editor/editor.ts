@@ -516,4 +516,3 @@ export const view: View<State, Actions> = (state, actions) => {
         ]),
     ]);
 };
-

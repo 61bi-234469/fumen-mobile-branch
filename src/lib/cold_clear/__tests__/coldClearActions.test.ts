@@ -73,6 +73,7 @@ function makeColdClearState(overrides: {
     runType?: 'single' | 'top3' | 'placed';
     targetNodeId?: string | null;
     progress?: { current: number; total: number } | null;
+    topBranchCount?: number;
     commentText?: string;
     flags?: { lock: boolean; mirror: boolean; rise: boolean; quiz: boolean; colorize: boolean; srs: boolean };
     treeEnabled?: boolean;
@@ -93,6 +94,7 @@ function makeColdClearState(overrides: {
             runType: overrides.runType || 'single',
             targetNodeId: overrides.targetNodeId !== undefined ? overrides.targetNodeId : null,
             progress: overrides.progress || null,
+            topBranchCount: overrides.topBranchCount !== undefined ? overrides.topBranchCount : 5,
         },
         fumen: {
             currentIndex: 0,
@@ -257,6 +259,26 @@ describe('coldClearActions run isolation', () => {
     test('stopColdClearSearch returns undefined if not running', () => {
         const state = makeColdClearState({ isRunning: false });
         const result = coldClearActions.stopColdClearSearch()(state);
+        expect(result).toBeUndefined();
+    });
+
+    test('setColdClearTopBranchCount clamps range and floors decimals', () => {
+        const lowState = makeColdClearState({ topBranchCount: 5 });
+        const lowResult = coldClearActions.setColdClearTopBranchCount({ count: 0 })(lowState) as any;
+        expect(lowResult.coldClear.topBranchCount).toBe(1);
+
+        const highState = makeColdClearState({ topBranchCount: 5 });
+        const highResult = coldClearActions.setColdClearTopBranchCount({ count: 999 })(highState) as any;
+        expect(highResult.coldClear.topBranchCount).toBe(20);
+
+        const decimalState = makeColdClearState({ topBranchCount: 4 });
+        const decimalResult = coldClearActions.setColdClearTopBranchCount({ count: 5.9 })(decimalState) as any;
+        expect(decimalResult.coldClear.topBranchCount).toBe(5);
+    });
+
+    test('setColdClearTopBranchCount does nothing while running', () => {
+        const state = makeColdClearState({ isRunning: true, topBranchCount: 5 });
+        const result = coldClearActions.setColdClearTopBranchCount({ count: 7 })(state);
         expect(result).toBeUndefined();
     });
 
@@ -454,8 +476,8 @@ describe('coldClearActions run isolation', () => {
         expect(cc.isRunning).toBe(true);
     });
 
-    test('top3 initDone requests top 5 moves', () => {
-        const state = makeColdClearState({ treeEnabled: true, commentText: 'IOTL' });
+    test('top3 initDone requests configured top N moves', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IOTL', topBranchCount: 7 });
         const startResult = coldClearActions.startColdClearTopThreeSearch()(state);
         const runId = getColdClear(startResult).runId;
 
@@ -470,7 +492,44 @@ describe('coldClearActions run isolation', () => {
 
         const wrapperCtor = ColdClearWrapper as any as jest.Mock;
         const wrapperInstance = wrapperCtor.mock.results[0].value;
-        expect(wrapperInstance.requestTopMoves).toHaveBeenCalledWith(5);
+        expect(wrapperInstance.requestTopMoves).toHaveBeenCalledWith(7);
+    });
+
+    test('top3 results are capped by configured top branch count', () => {
+        const state = makeColdClearState({ treeEnabled: true, commentText: 'IOTLJSZ', topBranchCount: 1 });
+        const startResult = coldClearActions.startColdClearTopThreeSearch()(state);
+        const runId = getColdClear(startResult).runId;
+
+        const mockActions: any = {
+            addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
+            coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
+            changeToTreeViewScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 2 } })),
+            changeToDrawerScreen: jest.fn().mockReturnValue(() => ({ mode: { screen: 1 } })),
+            changeToMovePieceMode: jest.fn().mockReturnValue(() => ({ mode: { type: 'Piece' } })),
+        };
+        initColdClearActions(mockActions);
+
+        const runningState = makeColdClearState({
+            runId,
+            treeEnabled: true,
+            isRunning: true,
+            runType: 'top3',
+            targetNodeId: 'n0',
+            commentText: 'IOTLJSZ',
+            topBranchCount: 1,
+        });
+
+        coldClearActions.onColdClearTopMovesResult({
+            runId,
+            results: [
+                { hold: false, piece: 0, rotation: 0, x: 4, y: 0, score: 10 },
+                { hold: false, piece: 1, rotation: 0, x: 4, y: 0, score: 9 },
+            ],
+        })(runningState);
+
+        expect(mockActions.addColdClearBranches).toHaveBeenCalledTimes(1);
+        const pages = mockActions.addColdClearBranches.mock.calls[0][0].pages;
+        expect(pages).toHaveLength(1);
     });
 
     test('top3 completion transitions to tree view after finish', () => {
@@ -1440,4 +1499,3 @@ describe('coldClearActions run isolation', () => {
         }));
     });
 });
-

@@ -174,6 +174,7 @@ export interface State {
         runType: 'single' | 'top3' | 'placed';
         targetNodeId: string | null;
         progress: { current: number; total: number } | null;
+        topBranchCount: number;
     };
     version: string;
     platform: Platforms;
@@ -297,6 +298,7 @@ export const initState: Readonly<State> = {
         runType: 'single',
         targetNodeId: null,
         progress: null,
+        topBranchCount: 5,
     },
     version: VERSION,
     platform: getPlatform(),

@@ -2,6 +2,10 @@ import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { resources } from '../../states';
 import { i18n } from '../../locales/keys';
+import {
+    COLD_CLEAR_TOP_BRANCH_COUNT_MAX,
+    COLD_CLEAR_TOP_BRANCH_COUNT_MIN,
+} from '../../actions/cold_clear';
 
 declare const M: any;
 
@@ -16,6 +20,7 @@ interface ColdClearMenuModalProps {
         closeColdClearMenuModal: () => void;
         startColdClearSearch: () => void;
         startColdClearTopThreeSearch: () => void;
+        setColdClearTopBranchCount: (data: { count: number }) => void;
         evaluatePlacedSpawnMinoScore: () => void;
         appendColdClearOneBagToComment: () => void;
         stopColdClearSearch: () => void;
@@ -111,6 +116,44 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         color: '#666',
         fontSize: px(12),
     });
+
+    const topBranchCountRowStyle = style({
+        margin: '0px',
+        padding: `${px(10)} ${px(20)} 0px ${px(20)}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: px(12),
+    });
+
+    const topBranchCountLabelStyle = style({
+        margin: '0px',
+        color: '#374151',
+        fontSize: px(13),
+        fontWeight: 700,
+    });
+
+    const topBranchCountDescriptionStyle = style({
+        margin: `${px(2)} 0px 0px 0px`,
+        color: '#6b7280',
+        fontSize: px(11),
+    });
+
+    const topBranchCountInputStyle = style({
+        width: px(70),
+        margin: '0px',
+        textAlign: 'center',
+        height: px(32),
+    });
+
+    const onChangeTopBranchCount = (event: Event) => {
+        const target = event.target as HTMLInputElement;
+        const value = Number(target.value);
+        if (Number.isNaN(value)) {
+            return;
+        }
+        actions.setColdClearTopBranchCount({ count: value });
+    };
 
     const menuListStyle = style({
         margin: '0px',
@@ -252,7 +295,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                         </p>
                         : undefined}
                     <div key="cold-clear-menu-list" style={menuListStyle}>
-                        {items.map(item => {
+                        {items.map((item) => {
                             const clickable = item.enabled || item.onDisabledClick !== undefined;
                             return h('button', {
                                 key: item.key,
@@ -282,6 +325,31 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                 ]),
                             ]);
                         })}
+                    </div>
+                    <div key="cold-clear-top-branch-count-row" style={topBranchCountRowStyle}>
+                        <div key="cold-clear-top-branch-count-texts">
+                            <p key="cold-clear-top-branch-count-label" style={topBranchCountLabelStyle}>
+                                {i18n.ColdClear.TopBranchCountLabel()}
+                            </p>
+                            <p
+                                key="cold-clear-top-branch-count-description"
+                                style={topBranchCountDescriptionStyle}
+                            >
+                                {i18n.ColdClear.TopBranchCountDescription()}
+                            </p>
+                        </div>
+                        <input
+                            key="input-cold-clear-top-branch-count"
+                            datatest="input-cold-clear-top-branch-count"
+                            type="number"
+                            value={topBranchCount}
+                            min={COLD_CLEAR_TOP_BRANCH_COUNT_MIN}
+                            max={COLD_CLEAR_TOP_BRANCH_COUNT_MAX}
+                            step={1}
+                            disabled={isRunning}
+                            onchange={onChangeTopBranchCount}
+                            style={topBranchCountInputStyle}
+                        />
                     </div>
                 </div>
 

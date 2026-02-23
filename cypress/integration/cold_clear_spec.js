@@ -55,6 +55,45 @@ const visitWithNoMoveWorkerMock = () => {
     cy.get(datatest('text-comment')).should('be.visible');
 };
 
+const visitWithPendingTopMovesWorkerMock = () => {
+    cy.visit('fumen-for-mobile/#/edit?lng=en&mobile=1', {
+        onBeforeLoad(win) {
+            win.__topMoveRequestCounts = [];
+
+            class MockWorker {
+                constructor() {
+                    this.onmessage = null;
+                    this.onerror = null;
+                }
+
+                postMessage(message) {
+                    if (!this.onmessage) {
+                        return;
+                    }
+
+                    if (message.type === 'init') {
+                        setTimeout(() => {
+                            if (this.onmessage) {
+                                this.onmessage({ data: { type: 'initDone' } });
+                            }
+                        }, 0);
+                        return;
+                    }
+
+                    if (message.type === 'requestTopMoves') {
+                        win.__topMoveRequestCounts.push(message.count);
+                    }
+                }
+
+                terminate() {}
+            }
+
+            win.Worker = MockWorker;
+        },
+    });
+    cy.get(datatest('text-comment')).should('be.visible');
+};
+
 describe('Cold Clear menu', () => {
     it('shows placed-score action second from bottom and enabled', () => {
         visit({ mode: 'edit', lng: 'en' });
@@ -106,5 +145,21 @@ describe('Cold Clear menu', () => {
         cy.contains('.toast', 'AI: Cannot evaluate current placement').should('be.visible');
         cy.get(datatest('mdl-cold-clear-menu')).should('not.exist');
         cy.get(datatest('btn-tree-ai-menu')).should('be.visible');
+    });
+
+    it('allows editing top branch count and sends updated request count', () => {
+        visitWithPendingTopMovesWorkerMock();
+
+        cy.get(datatest('text-comment')).clear().type('TIOLJSZ');
+        ensureTreeGraphView();
+
+        cy.get(datatest('btn-tree-ai-menu')).click();
+        cy.get(datatest('input-cold-clear-top-branch-count')).should('be.visible').and('not.be.disabled');
+
+        cy.get(datatest('input-cold-clear-top-branch-count')).clear().type('7').blur();
+        cy.get(datatest('btn-cold-clear-top-branches-search')).click();
+
+        cy.window().its('__topMoveRequestCounts').should('deep.equal', [7]);
+        cy.get(datatest('input-cold-clear-top-branch-count')).should('be.disabled');
     });
 });

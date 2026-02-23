@@ -61,6 +61,7 @@ interface Top3RunSession extends SessionBase {
     field: Field;
     hold: Piece | null;
     queue: Piece[];
+    topBranchCount: number;
     colorize: boolean;
     srs: boolean;
 }
@@ -92,8 +93,9 @@ let currentSession: RunSession | null = null;
 
 const THINK_MS = 1000;
 const INIT_TIMEOUT_MS = 10000;
-const TOP_BRANCH_COUNT = 5;
-export const COLD_CLEAR_TOP_BRANCH_COUNT = TOP_BRANCH_COUNT;
+export const COLD_CLEAR_TOP_BRANCH_COUNT_DEFAULT = 5;
+export const COLD_CLEAR_TOP_BRANCH_COUNT_MIN = 1;
+export const COLD_CLEAR_TOP_BRANCH_COUNT_MAX = 20;
 const PLACED_SCORE_INITIAL_THINK_MS = THINK_MS;
 const PLACED_SCORE_MAX_THINK_MS = THINK_MS * 8;
 const PLACED_SCORE_INITIAL_CANDIDATE_COUNT = 5000;
@@ -113,6 +115,7 @@ export const initColdClearActions = (actions: ColdClearRuntimeActions) => {
 export interface ColdClearActions {
     startColdClearSearch: () => action;
     startColdClearTopThreeSearch: () => action;
+    setColdClearTopBranchCount: (data: { count: number }) => action;
     evaluatePlacedSpawnMinoScore: () => action;
     appendColdClearOneBagToComment: () => action;
     swapCurrentPieceWithHoldQueue: () => action;
@@ -126,6 +129,14 @@ export interface ColdClearActions {
 }
 
 let nextRunId = 1;
+
+const normalizeTopBranchCount = (count: number): number => {
+    if (!Number.isFinite(count)) {
+        return COLD_CLEAR_TOP_BRANCH_COUNT_DEFAULT;
+    }
+    const normalizedCount = Math.floor(count);
+    return Math.max(COLD_CLEAR_TOP_BRANCH_COUNT_MIN, Math.min(COLD_CLEAR_TOP_BRANCH_COUNT_MAX, normalizedCount));
+};
 
 function terminateSession(session: RunSession) {
     session.wrapper.terminate();
@@ -802,6 +813,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 activeNodeId: target.nodeId,
             } : state.tree,
             coldClear: {
+                ...state.coldClear,
                 runId,
                 runType: 'single',
                 targetNodeId: target.nodeId,
@@ -835,10 +847,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
         const pages = new Pages(state.fumen.pages);
         const field = pages.getField(target.pageIndex, PageFieldOperation.All);
+        const topBranchCount = normalizeTopBranchCount(state.coldClear.topBranchCount);
 
         const session: Top3RunSession = {
             runId,
             field,
+            topBranchCount,
             runType: 'top3',
             wrapper: new ColdClearWrapper(),
             targetNodeId: target.nodeId,
@@ -874,12 +888,31 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 activeNodeId: target.nodeId,
             } : state.tree,
             coldClear: {
+                ...state.coldClear,
                 runId,
                 runType: 'top3',
                 targetNodeId: target.nodeId,
                 isRunning: true,
                 abortRequested: false,
                 progress: { current: 0, total: 1 },
+            },
+        };
+    },
+
+    setColdClearTopBranchCount: ({ count }) => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const normalizedCount = normalizeTopBranchCount(count);
+        if (state.coldClear.topBranchCount === normalizedCount) {
+            return undefined;
+        }
+
+        return {
+            coldClear: {
+                ...state.coldClear,
+                topBranchCount: normalizedCount,
             },
         };
     },
@@ -951,6 +984,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                     activeNodeId: target.nodeId,
                 },
             coldClear: {
+                ...state.coldClear,
                 runId,
                 runType: 'placed',
                 targetNodeId: target.nodeId,
@@ -1028,7 +1062,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 return undefined;
             },
             () => {
-                runtimeActions.spawnPiece({ piece: nextSpawnPiece, srs });
+                runtimeActions.spawnPiece({ srs, piece: nextSpawnPiece });
                 return undefined;
             },
         ]);
@@ -1073,7 +1107,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (currentSession.runType === 'single') {
             currentSession.wrapper.requestMove();
         } else if (currentSession.runType === 'top3') {
-            currentSession.wrapper.requestTopMoves(TOP_BRANCH_COUNT);
+            currentSession.wrapper.requestTopMoves(currentSession.topBranchCount);
         } else {
             currentSession.wrapper.requestTopMoves(currentSession.requestedCandidateCount);
         }
@@ -1273,7 +1307,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
         const candidatePages: Page[] = [];
 
-        results.slice(0, TOP_BRANCH_COUNT).forEach((result) => {
+        results.slice(0, session.topBranchCount).forEach((result) => {
             const move = toMove(result);
             if (!move) {
                 return;
@@ -1397,6 +1431,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 coldClearMenu: false,
             },
             coldClear: {
+                ...state.coldClear,
                 isRunning: false,
                 abortRequested: false,
                 runId: state.coldClear.runId,

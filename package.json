@@ -8,10 +8,10 @@
     "serve": "node serve.js",
     "lint": "tslint --project tsconfig.json --config tslint.json",
     "test": "jest",
-    "cy-run": "cypress run",
-    "cy-open": "cypress open",
+    "cy-run": "node scripts/cypress_wrapper.js run",
+    "cy-open": "node scripts/cypress_wrapper.js open",
     "test-ci": "yarn test",
-    "cy-run-ci": "yarn cy-run"
+    "cy-run-ci": "node scripts/cypress_wrapper.js run"
   },
   "devDependencies": {
     "@hyperapp/html": "1.1.1",

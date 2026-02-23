@@ -538,6 +538,7 @@ export const listViewActions: Readonly<ListViewActions> = {
             trimTopBlank: enabled,
             buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
             grayAfterLineClear: state.tree.grayAfterLineClear,
+            coldClearTopBranchCount: state.coldClear.topBranchCount,
         });
         return {
             listView: {

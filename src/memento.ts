@@ -172,6 +172,7 @@ interface ViewSettings {
     trimTopBlank: boolean;
     buttonDropMovesSubtree: boolean;
     grayAfterLineClear: boolean;
+    coldClearTopBranchCount: number;
 }
 
 const safer = {
@@ -242,6 +243,7 @@ export const localStorageWrapper = {
             trimTopBlank: safer.boolean(obj.trimTopBlank),
             buttonDropMovesSubtree: safer.boolean(obj.buttonDropMovesSubtree),
             grayAfterLineClear: safer.boolean(obj.grayAfterLineClear),
+            coldClearTopBranchCount: safer.number(obj.coldClearTopBranchCount),
         };
     },
 };
