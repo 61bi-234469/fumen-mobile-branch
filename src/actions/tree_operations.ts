@@ -1338,6 +1338,9 @@ export const treeOperationActions: Readonly<TreeOperationActions> = {
                 buttonDropMovesSubtree: nextTree.tree.buttonDropMovesSubtree,
                 grayAfterLineClear: nextTree.tree.grayAfterLineClear,
                 coldClearTopBranchCount: state.coldClear.topBranchCount,
+                coldClearHoldAllowed: state.coldClear.holdAllowed,
+                coldClearSpeculate: state.coldClear.speculate,
+                coldClearNextLimit: state.coldClear.nextLimit,
             });
         }
 

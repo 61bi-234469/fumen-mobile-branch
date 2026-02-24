@@ -15,6 +15,8 @@ const toMove = (result: any): CCMove => ({
     rotation: result.rotation,
     x: result.x,
     y: result.y,
+    b2b: result.b2b === true,
+    combo: typeof result.combo === 'number' ? result.combo : 0,
     score: typeof result.score === 'number' ? result.score : undefined,
 });
 
@@ -23,7 +25,15 @@ const toMove = (result: any): CCMove => ({
     try {
         if (msg.type === 'init') {
             await initWasm();
-            bot = ColdClearBot.new(msg.field, msg.hold, msg.b2b, msg.combo, new Uint8Array(msg.queue));
+            bot = new ColdClearBot(
+                msg.field,
+                msg.hold,
+                msg.b2b,
+                msg.combo,
+                new Uint8Array(msg.queue),
+                msg.holdAllowed,
+                msg.speculate,
+            );
             thinkMs = msg.thinkMs;
             postResponse({ type: 'initDone' });
         } else if (msg.type === 'requestMove') {

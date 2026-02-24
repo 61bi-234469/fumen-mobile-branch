@@ -9,6 +9,8 @@ export interface CCInitMessage {
     b2b: boolean;
     combo: number;
     queue: number[];    // CC piece values (0-6)
+    holdAllowed: boolean;
+    speculate: boolean;
     thinkMs: number;
 }
 
@@ -40,6 +42,8 @@ export interface CCMove {
     rotation: number;   // CC rotation value (0-3)
     x: number;          // Rotation center X (left=0)
     y: number;          // Rotation center Y (bottom=0)
+    b2b?: boolean;
+    combo?: number;
     score?: number;     // Move evaluation score from Cold Clear (optional)
 }
 

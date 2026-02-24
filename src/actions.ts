@@ -371,6 +371,15 @@ const loadUserSettings = () => {
     if (viewSettings.coldClearTopBranchCount !== undefined) {
         main.setColdClearTopBranchCount({ count: viewSettings.coldClearTopBranchCount });
     }
+    if (viewSettings.coldClearHoldAllowed !== undefined) {
+        main.setColdClearHoldAllowed({ holdAllowed: viewSettings.coldClearHoldAllowed });
+    }
+    if (viewSettings.coldClearSpeculate !== undefined) {
+        main.setColdClearSpeculate({ speculate: viewSettings.coldClearSpeculate });
+    }
+    if (viewSettings.coldClearNextLimit !== undefined) {
+        main.setColdClearNextLimit({ nextLimit: viewSettings.coldClearNextLimit });
+    }
 
     const treeViewSettings: Partial<State['tree']> = {};
     if (viewSettings.buttonDropMovesSubtree !== undefined) {

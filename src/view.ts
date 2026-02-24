@@ -21,12 +21,14 @@ import {
     canStartColdClearSequenceSearch,
     canStartColdClearTopBranchesSearch,
     canEvaluatePlacedSpawnMinoScore,
+    resolveCurrentColdClearMenuQueueState,
 } from './actions/cold_clear';
 
 export const view: View<State, Actions> = (state, actions) => {
     const canSequenceSearch = canStartColdClearSequenceSearch(state);
     const canTopBranchesSearch = canStartColdClearTopBranchesSearch(state);
     const canPlacedSpawnScore = canEvaluatePlacedSpawnMinoScore(state);
+    const currentQueueState = resolveCurrentColdClearMenuQueueState(state);
 
     const selectView = () => {
         const screens = state.mode.screen;
@@ -112,9 +114,13 @@ export const view: View<State, Actions> = (state, actions) => {
             canTopBranchesSearch,
             canPlacedSpawnScore,
             actions,
+            currentQueueState,
             isRunning: state.coldClear.isRunning,
             progress: state.coldClear.progress,
             topBranchCount: state.coldClear.topBranchCount,
+            holdAllowed: state.coldClear.holdAllowed,
+            speculate: state.coldClear.speculate,
+            nextLimit: state.coldClear.nextLimit,
         }) : undefined as any,
 
         div({ key: 'view-end' }),

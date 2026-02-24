@@ -175,6 +175,10 @@ export interface State {
         targetNodeId: string | null;
         progress: { current: number; total: number } | null;
         topBranchCount: number;
+        holdAllowed: boolean;
+        speculate: boolean;
+        nextLimit: number | null;
+        queuePreview: { pageIndex: number; text: string } | null;
     };
     version: string;
     platform: Platforms;
@@ -299,6 +303,10 @@ export const initState: Readonly<State> = {
         targetNodeId: null,
         progress: null,
         topBranchCount: 5,
+        holdAllowed: true,
+        speculate: true,
+        nextLimit: null,
+        queuePreview: null,
     },
     version: VERSION,
     platform: getPlatform(),

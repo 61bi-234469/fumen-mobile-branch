@@ -10,7 +10,7 @@ export interface ParsedQueueState extends ParsedQueue {
     combo: number;
 }
 
-const QUEUE_REGEX = /^([IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]+$/;
+const QUEUE_REGEX = /^([IOTLJSZiotljsz]:)?[IOTLJSZiotljsz]*$/;
 const SCORE_SEGMENT_REGEX = /^score=(-?(?:0|[1-9]\d*)\.\d{2})$/;
 const OUTSIDE_TOP_SEGMENT_REGEX = /^outsideTop=(\d+)$/;
 const B2B_SEGMENT_REGEX = /^b2b=(0|1|true|false)$/;
@@ -50,6 +50,10 @@ export function parseQueueComment(text: string): ParsedQueue | null {
         return null;
     }
 
+    if (parsed.hold === null && parsed.queue.length === 0) {
+        return null;
+    }
+
     return {
         hold: parsed.hold,
         queue: parsed.queue,
@@ -67,13 +71,12 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
     }
 
     const queueOnly = parseQueueOnlyComment(segments[segments.length - 1]);
-    if (!queueOnly) {
-        return null;
-    }
+    const metadataSegmentCount = queueOnly ? segments.length - 1 : segments.length;
+    const queue = queueOnly || { hold: null, queue: [] };
 
     let b2b = false;
     let combo = 0;
-    for (let i = 0; i < segments.length - 1; i += 1) {
+    for (let i = 0; i < metadataSegmentCount; i += 1) {
         const tokens = segments[i].split(' ');
         if (tokens.length === 0 || tokens.some(token => token.length === 0)) {
             return null;
@@ -92,7 +95,7 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
 
             const comboMatch = COMBO_SEGMENT_REGEX.exec(token);
             if (comboMatch) {
-                combo = Number.parseInt(comboMatch[1], 10);
+                combo = Math.max(0, Number.parseInt(comboMatch[1], 10));
                 continue;
             }
 
@@ -101,15 +104,22 @@ export function parseQueueStateComment(text: string): ParsedQueueState | null {
     }
 
     return {
-        hold: queueOnly.hold,
-        queue: queueOnly.queue,
         b2b,
         combo,
+        hold: queue.hold,
+        queue: queue.queue,
     };
 }
 
 function parseQueueOnlyComment(text: string): ParsedQueue | null {
-    if (!text || !QUEUE_REGEX.test(text)) {
+    if (text === '') {
+        return {
+            hold: null,
+            queue: [],
+        };
+    }
+
+    if (!QUEUE_REGEX.test(text)) {
         return null;
     }
 
@@ -131,6 +141,9 @@ function parseQueueOnlyComment(text: string): ParsedQueue | null {
 
 export function buildQueueComment(hold: Piece | null, queue: Piece[]): string {
     if (queue.length === 0) {
+        if (hold !== null) {
+            return `${PIECE_TO_CHAR[hold]}:`;
+        }
         return '';
     }
     const queueStr = queue.map(p => PIECE_TO_CHAR[p]).join('');
@@ -138,4 +151,32 @@ export function buildQueueComment(hold: Piece | null, queue: Piece[]): string {
         return queueStr;
     }
     return `${PIECE_TO_CHAR[hold]}:${queueStr}`;
+}
+
+export function buildQueueStateComment(
+    hold: Piece | null,
+    queue: Piece[],
+    b2b: boolean,
+    combo: number,
+): string {
+    const queueComment = buildQueueComment(hold, queue);
+    const metadataTokens: string[] = [];
+
+    if (b2b) {
+        metadataTokens.push('b2b=1');
+    }
+
+    const normalizedCombo = Math.max(0, Math.floor(combo));
+    if (normalizedCombo > 0) {
+        metadataTokens.push(`combo=${normalizedCombo}`);
+    }
+
+    const metadataComment = metadataTokens.join(' ');
+    if (metadataComment && queueComment) {
+        return `${metadataComment} | ${queueComment}`;
+    }
+    if (metadataComment) {
+        return metadataComment;
+    }
+    return queueComment;
 }

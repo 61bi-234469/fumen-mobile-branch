@@ -1,5 +1,5 @@
 import { Piece } from '../../enums';
-import { buildQueueComment, parseQueueComment, parseQueueStateComment } from '../queueParser';
+import { buildQueueComment, buildQueueStateComment, parseQueueComment, parseQueueStateComment } from '../queueParser';
 
 describe('parseQueueComment', () => {
     test('parse queue without hold', () => {
@@ -94,8 +94,11 @@ describe('parseQueueComment', () => {
         expect(parseQueueComment(':')).toBeNull();
     });
 
-    test('return null for hold with empty queue (colon at end)', () => {
-        expect(parseQueueComment('T:')).toBeNull();
+    test('parse hold with empty queue (colon at end)', () => {
+        expect(parseQueueComment('T:')).toEqual({
+            hold: Piece.T,
+            queue: [],
+        });
     });
 
     test('parse scored queue without hold', () => {
@@ -130,6 +133,10 @@ describe('parseQueueComment', () => {
         expect(parseQueueComment('score=12.34')).toBeNull();
     });
 
+    test('return null for metadata-only queue state text', () => {
+        expect(parseQueueComment('score=12.34 | b2b=1 combo=4')).toBeNull();
+    });
+
     test('return null for invalid scored queue grammar', () => {
         expect(parseQueueComment('score=12.3 | IOTL')).toBeNull();
         expect(parseQueueComment('score=12.34|IOTL')).toBeNull();
@@ -146,8 +153,8 @@ describe('buildQueueComment', () => {
         expect(buildQueueComment(null, [Piece.I, Piece.O, Piece.T])).toBe('IOT');
     });
 
-    test('return empty string when queue is empty (with hold)', () => {
-        expect(buildQueueComment(Piece.T, [])).toBe('');
+    test('return hold marker when queue is empty (with hold)', () => {
+        expect(buildQueueComment(Piece.T, [])).toBe('T:');
     });
 
     test('return empty string when queue is empty (without hold)', () => {
@@ -200,14 +207,47 @@ describe('parseQueueStateComment', () => {
             hold: null,
             queue: [Piece.I, Piece.O, Piece.T],
             b2b: false,
-            combo: -1,
+            combo: 0,
         });
     });
 
     test('return null when metadata grammar is invalid', () => {
         expect(parseQueueStateComment('b2b=yes | combo=2 | IOT')).toBeNull();
         expect(parseQueueStateComment('b2b=1  combo=2 | IOT')).toBeNull();
-        expect(parseQueueStateComment('combo=2')).toBeNull();
+    });
+
+    test('parse metadata-only queue state (no queue segment)', () => {
+        const result = parseQueueStateComment('score=12.30 | b2b=1 combo=2');
+        expect(result).toEqual({
+            hold: null,
+            queue: [],
+            b2b: true,
+            combo: 2,
+        });
+    });
+
+    test('parse hold-only queue state', () => {
+        const result = parseQueueStateComment('b2b=1 combo=3 | T:');
+        expect(result).toEqual({
+            hold: Piece.T,
+            queue: [],
+            b2b: true,
+            combo: 3,
+        });
+    });
+});
+
+describe('buildQueueStateComment', () => {
+    test('omit default b2b/combo', () => {
+        expect(buildQueueStateComment(Piece.T, [Piece.I, Piece.O], false, 0)).toBe('T:IO');
+    });
+
+    test('emit b2b/combo when non-default', () => {
+        expect(buildQueueStateComment(Piece.T, [Piece.I], true, 3)).toBe('b2b=1 combo=3 | T:I');
+    });
+
+    test('emit metadata-only when queue and hold are empty', () => {
+        expect(buildQueueStateComment(null, [], true, 2)).toBe('b2b=1 combo=2');
     });
 });
 

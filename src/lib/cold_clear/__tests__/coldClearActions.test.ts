@@ -1,4 +1,9 @@
-import { coldClearActions, initColdClearActions, resetForTesting } from '../../../actions/cold_clear';
+import {
+    canSwapCurrentPieceWithHoldQueue,
+    coldClearActions,
+    initColdClearActions,
+    resetForTesting,
+} from '../../../actions/cold_clear';
 import { Piece, Rotation } from '../../enums';
 import { Field } from '../../fumen/field';
 import { Pages, PageFieldOperation } from '../../pages';
@@ -75,6 +80,10 @@ function makeColdClearState(overrides: {
     targetNodeId?: string | null;
     progress?: { current: number; total: number } | null;
     topBranchCount?: number;
+    holdAllowed?: boolean;
+    speculate?: boolean;
+    nextLimit?: number | null;
+    queuePreview?: { pageIndex: number; text: string } | null;
     commentText?: string;
     flags?: { lock: boolean; mirror: boolean; rise: boolean; quiz: boolean; colorize: boolean; srs: boolean };
     treeEnabled?: boolean;
@@ -96,6 +105,10 @@ function makeColdClearState(overrides: {
             targetNodeId: overrides.targetNodeId !== undefined ? overrides.targetNodeId : null,
             progress: overrides.progress || null,
             topBranchCount: overrides.topBranchCount !== undefined ? overrides.topBranchCount : 5,
+            holdAllowed: overrides.holdAllowed !== undefined ? overrides.holdAllowed : true,
+            speculate: overrides.speculate !== undefined ? overrides.speculate : true,
+            nextLimit: overrides.nextLimit !== undefined ? overrides.nextLimit : null,
+            queuePreview: overrides.queuePreview !== undefined ? overrides.queuePreview : null,
         },
         fumen: {
             currentIndex: 0,
@@ -498,7 +511,7 @@ describe('coldClearActions run isolation', () => {
         const initMsg = wrapperInstance.start.mock.calls[0][0];
 
         expect(initMsg.b2b).toBe(true);
-        expect(initMsg.combo).toBe(-1);
+        expect(initMsg.combo).toBe(0);
     });
 
     test('top3 initDone requests configured top N moves', () => {
@@ -1559,5 +1572,108 @@ describe('coldClearActions run isolation', () => {
         expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({
             html: 'Current piece required',
         }));
+    });
+
+    test('startColdClearSearch passes holdAllowed/speculate to init message', () => {
+        const state = makeColdClearState({
+            commentText: 'IOT',
+            holdAllowed: false,
+            speculate: false,
+        });
+        coldClearActions.startColdClearSearch()(state);
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapperInstance = wrapperCtor.mock.results[0].value;
+        const initMsg = wrapperInstance.start.mock.calls[0][0];
+        expect(initMsg.holdAllowed).toBe(false);
+        expect(initMsg.speculate).toBe(false);
+    });
+
+    test('nextLimit enabled uses requestMove loop for single search', () => {
+        const state = makeColdClearState({ commentText: 'IOT', nextLimit: 1 });
+        const startResult = coldClearActions.startColdClearSearch()(state) as any;
+        const runId = startResult.coldClear.runId;
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const firstWrapper = wrapperCtor.mock.results[0].value;
+        expect(firstWrapper.requestSequence).not.toHaveBeenCalled();
+
+        const runningState = makeColdClearState({
+            runId,
+            isRunning: true,
+            runType: 'single',
+            commentText: 'IOT',
+            nextLimit: 1,
+            treeEnabled: true,
+        });
+        coldClearActions.onColdClearInitDone({ runId })(runningState);
+        expect(firstWrapper.requestMove).toHaveBeenCalledTimes(1);
+
+        coldClearActions.onColdClearMoveResult({
+            runId,
+            result: { type: 'moveResult', hold: false, piece: 0, rotation: 0, x: 4, y: 0, b2b: true, combo: 2 },
+        })(runningState);
+
+        expect(wrapperCtor).toHaveBeenCalledTimes(2);
+        const secondWrapper = wrapperCtor.mock.results[1].value;
+        const secondInit = secondWrapper.start.mock.calls[0][0];
+        expect(secondInit.queue.length).toBe(1);
+    });
+
+    test('nextLimit slices queue for top branch search', () => {
+        const state = makeColdClearState({ commentText: 'IOTL', nextLimit: 2 });
+        coldClearActions.startColdClearTopThreeSearch()(state);
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapperInstance = wrapperCtor.mock.results[0].value;
+        const initMsg = wrapperInstance.start.mock.calls[0][0];
+        expect(initMsg.queue).toEqual([0, 1]);
+    });
+
+    test('single result comment reflects b2b/combo metadata', () => {
+        const state = makeColdClearState({ commentText: 'IOT' });
+        const startResult = coldClearActions.startColdClearSearch()(state) as any;
+        const runId = startResult.coldClear.runId;
+        const runningState = makeColdClearState({
+            runId,
+            isRunning: true,
+            runType: 'single',
+            commentText: 'IOT',
+            treeEnabled: true,
+        });
+
+        const nextState = coldClearActions.onColdClearMoveResult({
+            runId,
+            result: {
+                type: 'moveResult',
+                hold: false,
+                piece: 0,
+                rotation: 0,
+                x: 4,
+                y: 0,
+                score: 12.3,
+                b2b: true,
+                combo: 3,
+            },
+        })(runningState) as any;
+
+        expect(nextState.coldClear.progress.current).toBe(1);
+    });
+
+    test('start operation auto-commits queue preview once', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText } as any);
+
+        const state = makeColdClearState({
+            commentText: 'IOT',
+            queuePreview: { pageIndex: 0, text: 'T:IO' },
+        });
+        coldClearActions.startColdClearSearch()(state);
+        expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: 'T:IO' });
+    });
+
+    test('canSwapCurrentPieceWithHoldQueue returns false when holdAllowed is false', () => {
+        const state = makeColdClearState({ commentText: 'IOT', holdAllowed: false });
+        expect(canSwapCurrentPieceWithHoldQueue(state as any)).toBe(false);
     });
 });

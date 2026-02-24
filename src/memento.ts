@@ -173,6 +173,9 @@ interface ViewSettings {
     buttonDropMovesSubtree: boolean;
     grayAfterLineClear: boolean;
     coldClearTopBranchCount: number;
+    coldClearHoldAllowed: boolean;
+    coldClearSpeculate: boolean;
+    coldClearNextLimit: number | null;
 }
 
 const safer = {
@@ -244,6 +247,11 @@ export const localStorageWrapper = {
             buttonDropMovesSubtree: safer.boolean(obj.buttonDropMovesSubtree),
             grayAfterLineClear: safer.boolean(obj.grayAfterLineClear),
             coldClearTopBranchCount: safer.number(obj.coldClearTopBranchCount),
+            coldClearHoldAllowed: safer.boolean(obj.coldClearHoldAllowed),
+            coldClearSpeculate: safer.boolean(obj.coldClearSpeculate),
+            coldClearNextLimit: obj.coldClearNextLimit === null
+                ? null
+                : safer.number(obj.coldClearNextLimit),
         };
     },
 };

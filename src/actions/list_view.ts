@@ -539,6 +539,9 @@ export const listViewActions: Readonly<ListViewActions> = {
             buttonDropMovesSubtree: state.tree.buttonDropMovesSubtree,
             grayAfterLineClear: state.tree.grayAfterLineClear,
             coldClearTopBranchCount: state.coldClear.topBranchCount,
+            coldClearHoldAllowed: state.coldClear.holdAllowed,
+            coldClearSpeculate: state.coldClear.speculate,
+            coldClearNextLimit: state.coldClear.nextLimit,
         });
         return {
             listView: {

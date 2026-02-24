@@ -7,7 +7,12 @@ import { Page, Move } from '../lib/fumen/types';
 import { Field } from '../lib/fumen/field';
 import { PageFieldOperation, Pages } from '../lib/pages';
 import { getBlockPositions } from '../lib/piece';
-import { parseQueueComment, parseQueueStateComment, buildQueueComment } from '../lib/cold_clear/queueParser';
+import {
+    parseQueueComment,
+    parseQueueStateComment,
+    buildQueueComment,
+    buildQueueStateComment,
+} from '../lib/cold_clear/queueParser';
 import { fieldToCC } from '../lib/cold_clear/fieldConverter';
 import {
     CCInitMessage,
@@ -32,6 +37,7 @@ import { TreeNodeId } from '../lib/fumen/tree_types';
 import type { ScreenActions } from './screen';
 import type { CommentActions } from './comment';
 import type { FieldEditorActions } from './field_editor';
+import { localStorageWrapper } from '../memento';
 
 declare const M: any;
 
@@ -50,7 +56,12 @@ interface SingleRunSession extends SessionBase {
     field: Field;
     hold: Piece | null;
     queue: Piece[];
+    b2b: boolean;
+    combo: number;
     totalMoves: number;
+    holdAllowed: boolean;
+    speculate: boolean;
+    nextLimit: number | null;
     colorize: boolean;
     srs: boolean;
 }
@@ -61,7 +72,11 @@ interface Top3RunSession extends SessionBase {
     field: Field;
     hold: Piece | null;
     queue: Piece[];
+    b2b: boolean;
+    combo: number;
     topBranchCount: number;
+    holdAllowed: boolean;
+    speculate: boolean;
     colorize: boolean;
     srs: boolean;
 }
@@ -81,6 +96,9 @@ interface PlacedRunSession extends SessionBase {
     combo: number;
     searchHold: Piece | null;
     searchQueue: Piece[];
+    holdAllowed: boolean;
+    speculate: boolean;
+    nextLimit: number | null;
 }
 
 type RunSession = SingleRunSession | Top3RunSession | PlacedRunSession;
@@ -98,6 +116,9 @@ const INIT_TIMEOUT_MS = 10000;
 export const COLD_CLEAR_TOP_BRANCH_COUNT_DEFAULT = 5;
 export const COLD_CLEAR_TOP_BRANCH_COUNT_MIN = 1;
 export const COLD_CLEAR_TOP_BRANCH_COUNT_MAX = 20;
+export const COLD_CLEAR_NEXT_LIMIT_MIN = 1;
+export const COLD_CLEAR_NEXT_LIMIT_MAX = 30;
+export const COLD_CLEAR_NEXT_LIMIT_DEFAULT = 5;
 const PLACED_SCORE_INITIAL_THINK_MS = THINK_MS;
 const PLACED_SCORE_MAX_THINK_MS = THINK_MS * 8;
 const PLACED_SCORE_INITIAL_CANDIDATE_COUNT = 5000;
@@ -105,6 +126,7 @@ const PLACED_SCORE_MAX_CANDIDATE_COUNT = 20000;
 const PLACED_SCORE_MAX_RETRY = 1;
 const MAX_PRINTABLE_SCORE = 1000000;
 const OUTSIDE_TOP_CANDIDATES_COMMENT_PREFIX = 'outsideTop';
+const SCORE_SEGMENT_REGEX = /^score=(-?(?:0|[1-9]\d*)\.\d{2})$/;
 const ONE_BAG_PIECES: Piece[] = [Piece.I, Piece.O, Piece.T, Piece.J, Piece.L, Piece.S, Piece.Z];
 
 // Action reference (set after Hyperapp mounts)
@@ -118,9 +140,19 @@ export interface ColdClearActions {
     startColdClearSearch: () => action;
     startColdClearTopThreeSearch: () => action;
     setColdClearTopBranchCount: (data: { count: number }) => action;
+    setColdClearHoldAllowed: (data: { holdAllowed: boolean }) => action;
+    setColdClearSpeculate: (data: { speculate: boolean }) => action;
+    setColdClearNextLimit: (data: { nextLimit: number | null }) => action;
     evaluatePlacedSpawnMinoScore: () => action;
     appendColdClearOneBagToComment: () => action;
     swapCurrentPieceWithHoldQueue: () => action;
+    previewColdClearQueueComment: (data: {
+        hold: Piece | null;
+        queue: Piece[];
+        b2b: boolean;
+        combo: number;
+    }) => action;
+    commitColdClearQueueComment: () => action;
     stopColdClearSearch: () => action;
     onColdClearMoveResult: (data: { runId: number, result: CCMoveResult }) => action;
     onColdClearTopMovesResult: (data: { runId: number, results: CCMove[] }) => action;
@@ -139,6 +171,65 @@ const normalizeTopBranchCount = (count: number): number => {
     }
     const normalizedCount = Math.floor(count);
     return Math.max(COLD_CLEAR_TOP_BRANCH_COUNT_MIN, Math.min(COLD_CLEAR_TOP_BRANCH_COUNT_MAX, normalizedCount));
+};
+
+const normalizeCombo = (combo: number | undefined): number => {
+    if (typeof combo !== 'number' || !Number.isFinite(combo)) {
+        return 0;
+    }
+    return Math.max(0, Math.floor(combo));
+};
+
+const normalizeNextLimit = (nextLimit: number | null): number | null => {
+    if (nextLimit === null) {
+        return null;
+    }
+    if (!Number.isFinite(nextLimit)) {
+        return null;
+    }
+    const normalized = Math.floor(nextLimit);
+    if (normalized < COLD_CLEAR_NEXT_LIMIT_MIN || COLD_CLEAR_NEXT_LIMIT_MAX < normalized) {
+        return null;
+    }
+    return normalized;
+};
+
+const saveColdClearViewSettings = (
+    state: Readonly<State>,
+    overrides?: Partial<{
+        topBranchCount: number;
+        holdAllowed: boolean;
+        speculate: boolean;
+        nextLimit: number | null;
+    }>,
+) => {
+    if (typeof localStorage === 'undefined') {
+        return;
+    }
+
+    localStorageWrapper.saveViewSettings({
+        trimTopBlank: state.listView?.trimTopBlank ?? false,
+        buttonDropMovesSubtree: state.tree?.buttonDropMovesSubtree ?? false,
+        grayAfterLineClear: state.tree?.grayAfterLineClear ?? false,
+        coldClearTopBranchCount: overrides?.topBranchCount ?? state.coldClear.topBranchCount,
+        coldClearHoldAllowed: overrides?.holdAllowed ?? state.coldClear.holdAllowed,
+        coldClearSpeculate: overrides?.speculate ?? state.coldClear.speculate,
+        coldClearNextLimit: overrides?.nextLimit !== undefined
+            ? overrides.nextLimit
+            : state.coldClear.nextLimit,
+    });
+};
+
+const clearQueuePreviewIfNeeded = (state: Readonly<State>): NextState => {
+    if (!state.coldClear.queuePreview) {
+        return undefined;
+    }
+    return {
+        coldClear: {
+            ...state.coldClear,
+            queuePreview: null,
+        },
+    };
 };
 
 function terminateSession(session: RunSession) {
@@ -208,12 +299,99 @@ const resolveCommentTextFromPage = (pages: Page[], pageIndex: number): string | 
     return '';
 };
 
-const parseQueueCommentFromPage = (pages: Page[], pageIndex: number) => {
-    const commentText = resolveCommentTextFromPage(pages, pageIndex);
+const resolveCommentTextWithPreview = (
+    pages: Page[],
+    pageIndex: number,
+    preview: Readonly<State>['coldClear']['queuePreview'],
+): string | null => {
+    if (preview && preview.pageIndex === pageIndex) {
+        return preview.text;
+    }
+    return resolveCommentTextFromPage(pages, pageIndex);
+};
+
+const parseQueueCommentFromPage = (
+    pages: Page[],
+    pageIndex: number,
+    preview: Readonly<State>['coldClear']['queuePreview'] = null,
+) => {
+    const commentText = resolveCommentTextWithPreview(pages, pageIndex, preview);
     if (commentText === null) {
         return null;
     }
     return parseQueueStateComment(commentText);
+};
+
+const parseScoreFromComment = (commentText: string): number | null => {
+    const segments = commentText.split(' | ');
+    for (const segment of segments) {
+        const tokens = segment.split(' ');
+        for (const token of tokens) {
+            const matched = SCORE_SEGMENT_REGEX.exec(token);
+            if (!matched) {
+                continue;
+            }
+            const score = Number.parseFloat(matched[1]);
+            if (Number.isFinite(score)) {
+                return score;
+            }
+        }
+    }
+    return null;
+};
+
+const commitQueuePreviewIfNeeded = (state: Readonly<State>): void => {
+    const preview = state.coldClear.queuePreview;
+    if (!preview || !appActions) {
+        return;
+    }
+
+    const currentComment = resolveCommentTextFromPage(state.fumen.pages, preview.pageIndex);
+    if (currentComment === null || currentComment === preview.text) {
+        return;
+    }
+
+    appActions.setCommentText({
+        pageIndex: preview.pageIndex,
+        text: preview.text,
+    });
+};
+
+export interface ColdClearMenuQueueState {
+    pageIndex: number;
+    hold: Piece | null;
+    queue: Piece[];
+    b2b: boolean;
+    combo: number;
+    score: number | null;
+}
+
+export const resolveCurrentColdClearMenuQueueState = (
+    state: Readonly<State>,
+): ColdClearMenuQueueState | null => {
+    const pageIndex = state.fumen.currentIndex;
+    const commentText = resolveCommentTextWithPreview(
+        state.fumen.pages,
+        pageIndex,
+        state.coldClear.queuePreview,
+    );
+    if (commentText === null) {
+        return null;
+    }
+
+    const parsed = parseQueueStateComment(commentText);
+    if (!parsed) {
+        return null;
+    }
+
+    return {
+        pageIndex,
+        hold: parsed.hold,
+        queue: parsed.queue.slice(),
+        b2b: parsed.b2b,
+        combo: parsed.combo,
+        score: parseScoreFromComment(commentText),
+    };
 };
 
 type SearchInputError =
@@ -247,8 +425,12 @@ const resolveSingleSearchInput = (
         return { error: 'unsupportedPageFlags' };
     }
 
-    const parsed = parseQueueCommentFromPage(state.fumen.pages, target.pageIndex);
-    if (!parsed) {
+    const parsed = parseQueueCommentFromPage(
+        state.fumen.pages,
+        target.pageIndex,
+        state.coldClear.queuePreview,
+    );
+    if (!parsed || parsed.queue.length === 0) {
         return { error: 'invalidQueueComment' };
     }
 
@@ -303,7 +485,11 @@ const resolvePlacedSpawnInput = (
         return { error: 'unsupportedPageFlags' };
     }
 
-    const parsed = parseQueueCommentFromPage(state.fumen.pages, target.pageIndex);
+    const parsed = parseQueueCommentFromPage(
+        state.fumen.pages,
+        target.pageIndex,
+        state.coldClear.queuePreview,
+    );
     if (!parsed) {
         return { error: 'invalidQueueComment' };
     }
@@ -363,8 +549,11 @@ export const canEvaluatePlacedSpawnMinoScore = (state: Readonly<State>): boolean
 };
 
 export const canSwapCurrentPieceWithHoldQueue = (state: Readonly<State>): boolean => {
+    if (!state.coldClear.holdAllowed) {
+        return false;
+    }
     const pageIndex = state.fumen.currentIndex;
-    const parsed = parseQueueCommentFromPage(state.fumen.pages, pageIndex);
+    const parsed = parseQueueCommentFromPage(state.fumen.pages, pageIndex, state.coldClear.queuePreview);
     return parsed !== null && parsed.queue.length > 0;
 };
 
@@ -522,30 +711,38 @@ const formatScore = (score: number): string => {
     return score.toFixed(2);
 };
 
-const buildScoredQueueComment = (score: number | undefined, hold: Piece | null, queue: Piece[]): string => {
-    const queueComment = buildQueueComment(hold, queue);
+const buildScoredQueueComment = (
+    score: number | undefined,
+    hold: Piece | null,
+    queue: Piece[],
+    b2b: boolean,
+    combo: number,
+): string => {
+    const queueStateComment = buildQueueStateComment(hold, queue, b2b, combo);
     if (!isScorePrintable(score)) {
-        return queueComment;
+        return queueStateComment;
     }
 
     const scoreComment = `score=${formatScore(score)}`;
-    if (!queueComment) {
+    if (!queueStateComment) {
         return scoreComment;
     }
 
-    return `${scoreComment} | ${queueComment}`;
+    return `${scoreComment} | ${queueStateComment}`;
 };
 
 const buildPlacedSpawnScoredQueueComment = (
     score: number | undefined,
     hold: Piece | null,
     queue: Piece[],
+    b2b: boolean,
+    combo: number,
 ): string | null => {
     if (!isScorePrintable(score)) {
         return null;
     }
 
-    const queueComment = buildQueueComment(hold, queue);
+    const queueComment = buildQueueStateComment(hold, queue, b2b, combo);
     const scoreComment = `score=${formatScore(score)}`;
     if (!queueComment) {
         return scoreComment;
@@ -666,7 +863,10 @@ function finishPlacedSpawnEvaluation(
 const buildPlacedSpawnInitMessage = (session: PlacedRunSession): CCInitMessage => {
     const ccField = fieldToCC(session.field);
     const ccHold = session.searchHold !== null ? PIECE_TO_CC[session.searchHold] : CC_HOLD_NONE;
-    const ccQueue = session.searchQueue.map(piece => PIECE_TO_CC[piece]);
+    const initQueue = session.nextLimit === null
+        ? session.searchQueue
+        : session.searchQueue.slice(0, session.nextLimit);
+    const ccQueue = initQueue.map(piece => PIECE_TO_CC[piece]);
     return {
         type: 'init',
         field: ccField,
@@ -674,7 +874,29 @@ const buildPlacedSpawnInitMessage = (session: PlacedRunSession): CCInitMessage =
         b2b: session.b2b,
         combo: session.combo,
         queue: ccQueue,
+        holdAllowed: session.holdAllowed,
+        speculate: session.speculate,
         thinkMs: session.thinkMs,
+    };
+};
+
+const buildSingleInitMessage = (session: SingleRunSession): CCInitMessage => {
+    const ccField = fieldToCC(session.field);
+    const ccHold = session.hold !== null ? PIECE_TO_CC[session.hold] : CC_HOLD_NONE;
+    const initQueue = session.nextLimit === null
+        ? session.queue
+        : session.queue.slice(0, session.nextLimit);
+    const ccQueue = initQueue.map(p => PIECE_TO_CC[p]);
+    return {
+        type: 'init',
+        field: ccField,
+        hold: ccHold,
+        b2b: session.b2b,
+        combo: session.combo,
+        queue: ccQueue,
+        holdAllowed: session.holdAllowed,
+        speculate: session.speculate,
+        thinkMs: THINK_MS,
     };
 };
 
@@ -761,10 +983,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
+        commitQueuePreviewIfNeeded(state);
+
         const resolved = resolveSingleSearchInput(state);
         if (!resolved.input) {
             showSearchValidationError(resolved.error ?? 'targetNotFound');
-            return undefined;
+            return clearQueuePreviewIfNeeded(state);
         }
         const { page, parsed, target, tree } = resolved.input;
         const shouldEnableTree = !state.tree.enabled;
@@ -788,27 +1012,18 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             resultPages: [],
             hold: parsed.hold,
             queue: parsed.queue.slice(),
+            b2b: parsed.b2b,
+            combo: normalizeCombo(parsed.combo),
             totalMoves: parsed.queue.length,
+            holdAllowed: state.coldClear.holdAllowed,
+            speculate: state.coldClear.speculate,
+            nextLimit: state.coldClear.nextLimit,
             colorize: page.flags.colorize,
             srs: page.flags.srs,
         };
         currentSession = session;
 
-        const ccField = fieldToCC(field);
-        const ccHold = parsed.hold !== null ? PIECE_TO_CC[parsed.hold] : CC_HOLD_NONE;
-        const ccQueue = parsed.queue.map(p => PIECE_TO_CC[p]);
-
-        const initMsg: CCInitMessage = {
-            type: 'init',
-            field: ccField,
-            hold: ccHold,
-            b2b: parsed.b2b,
-            combo: parsed.combo,
-            queue: ccQueue,
-            thinkMs: THINK_MS,
-        };
-
-        startWorkerSession(session, initMsg, () => session.resultPages.length > 0);
+        startWorkerSession(session, buildSingleInitMessage(session), () => session.resultPages.length > 0);
 
         return {
             tree: shouldEnableTree ? {
@@ -826,6 +1041,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 isRunning: true,
                 abortRequested: false,
                 progress: { current: 0, total: session.totalMoves },
+                queuePreview: null,
             },
         };
     },
@@ -835,10 +1051,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
+        commitQueuePreviewIfNeeded(state);
+
         const resolved = resolveTopBranchSearchInput(state);
         if (!resolved.input) {
             showSearchValidationError(resolved.error ?? 'targetNotFound');
-            return undefined;
+            return clearQueuePreviewIfNeeded(state);
         }
         const { page, parsed, tree, target } = resolved.input;
         const shouldEnableTree = !state.tree.enabled;
@@ -864,6 +1082,10 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             targetNodeId: target.nodeId,
             hold: parsed.hold,
             queue: parsed.queue.slice(),
+            b2b: parsed.b2b,
+            combo: normalizeCombo(parsed.combo),
+            holdAllowed: state.coldClear.holdAllowed,
+            speculate: state.coldClear.speculate,
             colorize: page.flags.colorize,
             srs: page.flags.srs,
         };
@@ -871,15 +1093,20 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
         const ccField = fieldToCC(field);
         const ccHold = parsed.hold !== null ? PIECE_TO_CC[parsed.hold] : CC_HOLD_NONE;
-        const ccQueue = parsed.queue.map(p => PIECE_TO_CC[p]);
+        const initQueue = state.coldClear.nextLimit === null
+            ? parsed.queue
+            : parsed.queue.slice(0, state.coldClear.nextLimit);
+        const ccQueue = initQueue.map(p => PIECE_TO_CC[p]);
 
         const initMsg: CCInitMessage = {
             type: 'init',
             field: ccField,
             hold: ccHold,
             b2b: parsed.b2b,
-            combo: parsed.combo,
+            combo: normalizeCombo(parsed.combo),
             queue: ccQueue,
+            holdAllowed: state.coldClear.holdAllowed,
+            speculate: state.coldClear.speculate,
             thinkMs: THINK_MS,
         };
 
@@ -901,6 +1128,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 isRunning: true,
                 abortRequested: false,
                 progress: { current: 0, total: 1 },
+                queuePreview: null,
             },
         };
     },
@@ -915,10 +1143,68 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
+        saveColdClearViewSettings(state, { topBranchCount: normalizedCount });
+
         return {
             coldClear: {
                 ...state.coldClear,
                 topBranchCount: normalizedCount,
+            },
+        };
+    },
+
+    setColdClearHoldAllowed: ({ holdAllowed }) => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+        if (state.coldClear.holdAllowed === holdAllowed) {
+            return undefined;
+        }
+
+        saveColdClearViewSettings(state, { holdAllowed });
+
+        return {
+            coldClear: {
+                ...state.coldClear,
+                holdAllowed,
+            },
+        };
+    },
+
+    setColdClearSpeculate: ({ speculate }) => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+        if (state.coldClear.speculate === speculate) {
+            return undefined;
+        }
+
+        saveColdClearViewSettings(state, { speculate });
+
+        return {
+            coldClear: {
+                ...state.coldClear,
+                speculate,
+            },
+        };
+    },
+
+    setColdClearNextLimit: ({ nextLimit }) => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const normalizedNextLimit = normalizeNextLimit(nextLimit);
+        if (state.coldClear.nextLimit === normalizedNextLimit) {
+            return undefined;
+        }
+
+        saveColdClearViewSettings(state, { nextLimit: normalizedNextLimit });
+
+        return {
+            coldClear: {
+                ...state.coldClear,
+                nextLimit: normalizedNextLimit,
             },
         };
     },
@@ -928,10 +1214,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
+        commitQueuePreviewIfNeeded(state);
+
         const resolved = resolvePlacedSpawnInput(state);
         if (!resolved.input) {
             showPlacedSpawnValidationError(resolved.error ?? 'targetNotFound');
-            return undefined;
+            return clearQueuePreviewIfNeeded(state);
         }
 
         const {
@@ -970,9 +1258,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             hold: parsed.hold,
             queue: parsed.queue.slice(),
             b2b: parsed.b2b,
-            combo: parsed.combo,
+            combo: normalizeCombo(parsed.combo),
             searchHold: searchState.hold,
             searchQueue: searchState.queue,
+            holdAllowed: state.coldClear.holdAllowed,
+            speculate: state.coldClear.speculate,
+            nextLimit: state.coldClear.nextLimit,
         };
         currentSession = session;
 
@@ -999,6 +1290,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 isRunning: true,
                 abortRequested: false,
                 progress: { current: 0, total: 1 },
+                queuePreview: null,
             },
         };
     },
@@ -1008,10 +1300,16 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
+        commitQueuePreviewIfNeeded(state);
+
         const pageIndex = state.fumen.currentIndex;
-        const currentComment = resolveCommentTextFromPage(state.fumen.pages, pageIndex);
+        const currentComment = resolveCommentTextWithPreview(
+            state.fumen.pages,
+            pageIndex,
+            state.coldClear.queuePreview,
+        );
         if (currentComment === null) {
-            return undefined;
+            return clearQueuePreviewIfNeeded(state);
         }
 
         const nextComment = buildCommentWithAppendedOneBag(currentComment);
@@ -1032,11 +1330,20 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 runtimeActions.setCommentText({ pageIndex, text: nextComment });
                 return undefined;
             },
+            () => ({
+                coldClear: {
+                    ...state.coldClear,
+                    queuePreview: null,
+                },
+            }),
         ]);
     },
 
     swapCurrentPieceWithHoldQueue: () => (state): NextState => {
         if (state.coldClear.isRunning) {
+            return undefined;
+        }
+        if (!state.coldClear.holdAllowed) {
             return undefined;
         }
 
@@ -1047,7 +1354,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        const parsed = parseQueueCommentFromPage(state.fumen.pages, pageIndex);
+        const parsed = parseQueueCommentFromPage(state.fumen.pages, pageIndex, state.coldClear.queuePreview);
         if (!parsed || parsed.queue.length === 0) {
             showSwapValidationError('missingQueue');
             return undefined;
@@ -1074,6 +1381,75 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 return undefined;
             },
         ]);
+    },
+
+    previewColdClearQueueComment: ({ hold, queue, b2b, combo }) => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const pageIndex = state.fumen.currentIndex;
+        const currentComment = resolveCommentTextWithPreview(
+            state.fumen.pages,
+            pageIndex,
+            state.coldClear.queuePreview,
+        );
+        if (currentComment === null) {
+            return undefined;
+        }
+
+        const score = parseScoreFromComment(currentComment);
+        const nextText = buildScoredQueueComment(
+            score === null ? undefined : score,
+            hold,
+            queue,
+            b2b,
+            combo,
+        );
+        if (
+            state.coldClear.queuePreview
+            && state.coldClear.queuePreview.pageIndex === pageIndex
+            && state.coldClear.queuePreview.text === nextText
+        ) {
+            return undefined;
+        }
+
+        return {
+            coldClear: {
+                ...state.coldClear,
+                queuePreview: { pageIndex, text: nextText },
+            },
+        };
+    },
+
+    commitColdClearQueueComment: () => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const preview = state.coldClear.queuePreview;
+        if (!preview) {
+            return undefined;
+        }
+
+        const currentComment = resolveCommentTextFromPage(state.fumen.pages, preview.pageIndex);
+        if (!appActions) {
+            return undefined;
+        }
+
+        if (currentComment !== null && currentComment !== preview.text) {
+            appActions.setCommentText({
+                pageIndex: preview.pageIndex,
+                text: preview.text,
+            });
+        }
+
+        return {
+            coldClear: {
+                ...state.coldClear,
+                queuePreview: null,
+            },
+        };
     },
 
     stopColdClearSearch: () => (state): NextState => {
@@ -1113,7 +1489,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         }
 
         if (currentSession.runType === 'single') {
-            currentSession.wrapper.requestSequence(currentSession.totalMoves);
+            if (currentSession.nextLimit === null) {
+                currentSession.wrapper.requestSequence(currentSession.totalMoves);
+            } else {
+                currentSession.wrapper.requestMove();
+            }
         } else if (currentSession.runType === 'top3') {
             currentSession.wrapper.requestTopMoves(currentSession.topBranchCount);
         } else {
@@ -1151,8 +1531,16 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
         session.hold = queueState.hold;
         session.queue = queueState.queue;
+        session.b2b = result.b2b === undefined ? session.b2b : result.b2b;
+        session.combo = normalizeCombo(result.combo);
 
-        const nextComment = buildScoredQueueComment(result.score, session.hold, session.queue);
+        const nextComment = buildScoredQueueComment(
+            result.score,
+            session.hold,
+            session.queue,
+            session.b2b,
+            session.combo,
+        );
 
         const resultPage: Page = {
             index: session.resultPages.length,
@@ -1177,6 +1565,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         if (session.queue.length === 0) {
             finishSingleSearch(runId);
             return undefined;
+        }
+
+        if (session.nextLimit !== null) {
+            terminateSession(session);
+            session.wrapper = new ColdClearWrapper();
+            startWorkerSession(session, buildSingleInitMessage(session), () => session.resultPages.length > 0);
         }
 
         return {
@@ -1252,6 +1646,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 exactResult.score,
                 session.hold,
                 session.queue,
+                session.b2b,
+                session.combo,
             );
             if (nextComment === null) {
                 finishPlacedSpawnEvaluation(runId, true);
@@ -1338,7 +1734,13 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 field: { obj: displayField },
                 piece: move,
                 comment: {
-                    text: buildScoredQueueComment(result.score, queueState.hold, queueState.queue),
+                    text: buildScoredQueueComment(
+                        result.score,
+                        queueState.hold,
+                        queueState.queue,
+                        result.b2b === true,
+                        normalizeCombo(result.combo),
+                    ),
                 },
                 flags: {
                     ...parentPage.flags,
@@ -1457,6 +1859,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 runType: 'single',
                 targetNodeId: null,
                 progress: null,
+                queuePreview: null,
             },
         };
     },

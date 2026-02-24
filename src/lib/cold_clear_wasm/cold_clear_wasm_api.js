@@ -1,8 +1,5 @@
 /* @ts-self-types="./cold_clear_wasm_api.d.ts" */
 
-/**
- * Result of a single move suggestion from Cold Clear.
- */
 export class CCMove {
     static __wrap(ptr) {
         ptr = ptr >>> 0;
@@ -20,6 +17,20 @@ export class CCMove {
     free() {
         const ptr = this.__destroy_into_raw();
         wasm.__wbg_ccmove_free(ptr, 0);
+    }
+    /**
+     * @returns {boolean}
+     */
+    get b2b() {
+        const ret = wasm.__wbg_get_ccmove_b2b(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get combo() {
+        const ret = wasm.__wbg_get_ccmove_combo(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * @returns {boolean}
@@ -66,6 +77,18 @@ export class CCMove {
     /**
      * @param {boolean} arg0
      */
+    set b2b(arg0) {
+        wasm.__wbg_set_ccmove_b2b(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set combo(arg0) {
+        wasm.__wbg_set_ccmove_combo(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {boolean} arg0
+     */
     set hold(arg0) {
         wasm.__wbg_set_ccmove_hold(this.__wbg_ptr, arg0);
     }
@@ -102,18 +125,7 @@ export class CCMove {
 }
 if (Symbol.dispose) CCMove.prototype[Symbol.dispose] = CCMove.prototype.free;
 
-/**
- * Cold Clear bot wrapper for WASM.
- * Uses BotState directly (no internal Worker/Interface).
- */
 export class ColdClearBot {
-    static __wrap(ptr) {
-        ptr = ptr >>> 0;
-        const obj = Object.create(ColdClearBot.prototype);
-        obj.__wbg_ptr = ptr;
-        ColdClearBotFinalization.register(obj, obj.__wbg_ptr, obj);
-        return obj;
-    }
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -125,39 +137,31 @@ export class ColdClearBot {
         wasm.__wbg_coldclearbot_free(ptr, 0);
     }
     /**
-     * Add a piece to the next queue.
-     * piece: piece value (0-6)
      * @param {number} piece
      */
     add_next_piece(piece) {
         wasm.coldclearbot_add_next_piece(this.__wbg_ptr, piece);
     }
     /**
-     * Create a new bot.
-     * field: 400 bytes (40 rows x 10 cols, bottom to top, 0=empty, 1=filled)
-     * hold: piece value (0-6) or 255 for none
-     * b2b: back-to-back state
-     * combo: combo count
-     * queue: next queue pieces (0-6)
      * @param {Uint8Array} field
      * @param {number} hold
      * @param {boolean} b2b
      * @param {number} combo
      * @param {Uint8Array} queue
-     * @returns {ColdClearBot}
+     * @param {boolean} hold_allowed
+     * @param {boolean} speculate
      */
-    static new(field, hold, b2b, combo, queue) {
+    constructor(field, hold, b2b, combo, queue, hold_allowed, speculate) {
         const ptr0 = passArray8ToWasm0(field, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
         const ptr1 = passArray8ToWasm0(queue, wasm.__wbindgen_malloc);
         const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.coldclearbot_new(ptr0, len0, hold, b2b, combo, ptr1, len1);
-        return ColdClearBot.__wrap(ret);
+        const ret = wasm.coldclearbot_new(ptr0, len0, hold, b2b, combo, ptr1, len1, hold_allowed, speculate);
+        this.__wbg_ptr = ret >>> 0;
+        ColdClearBotFinalization.register(this, this.__wbg_ptr, this);
+        return this;
     }
     /**
-     * Run the think loop for up to think_ms milliseconds,
-     * then suggest and advance one move.
-     * Returns None if no move can be found (game over, etc.)
      * @param {number} think_ms
      * @returns {CCMove | undefined}
      */
@@ -166,9 +170,6 @@ export class ColdClearBot {
         return ret === 0 ? undefined : CCMove.__wrap(ret);
     }
     /**
-     * Run the think loop for up to think_ms milliseconds,
-     * then return up to `count` top-ranked next-move candidates.
-     * This does not advance bot state.
      * @param {number} think_ms
      * @param {number} count
      * @returns {CCMove[]}
@@ -196,21 +197,21 @@ export function init_panic_hook() {
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
-        __wbg___wbindgen_debug_string_a1b3fd0656850da8: function(arg0, arg1) {
+        __wbg___wbindgen_debug_string_6cf0badf0b90f6ef: function(arg0, arg1) {
             const ret = debugString(arg1);
             const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             const len1 = WASM_VECTOR_LEN;
             getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
             getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
         },
-        __wbg___wbindgen_is_undefined_7b12045c262a3121: function(arg0) {
+        __wbg___wbindgen_is_undefined_1296fcc83c2da07a: function(arg0) {
             const ret = arg0 === undefined;
             return ret;
         },
-        __wbg___wbindgen_throw_83ebd457a191bc2a: function(arg0, arg1) {
+        __wbg___wbindgen_throw_89ca9e2c67795ec1: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
         },
-        __wbg_addEventListener_efd4886fba5bd716: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
+        __wbg_addEventListener_9c262aa8c9cf1a27: function() { return handleError(function (arg0, arg1, arg2, arg3, arg4) {
             arg0.addEventListener(getStringFromWasm0(arg1, arg2), arg3, arg4);
         }, arguments); },
         __wbg_ccmove_new: function(arg0) {
@@ -221,7 +222,7 @@ function __wbg_get_imports() {
             const ret = arg0.crypto;
             return ret;
         },
-        __wbg_data_5a5cdd7c188783c7: function(arg0) {
+        __wbg_data_946ee98fc7c8524e: function(arg0) {
             const ret = arg0.data;
             return ret;
         },
@@ -243,7 +244,7 @@ function __wbg_get_imports() {
         __wbg_getRandomValues_fc2c42282aa7250c: function(arg0, arg1) {
             arg0.getRandomValues(arg1);
         },
-        __wbg_instanceof_Uint8Array_c21f42d2acffa054: function(arg0) {
+        __wbg_instanceof_Uint8Array_6482c66fce35827d: function(arg0) {
             let result;
             try {
                 result = arg0 instanceof Uint8Array;
@@ -253,7 +254,7 @@ function __wbg_get_imports() {
             const ret = result;
             return ret;
         },
-        __wbg_length_684e7f4ac265724c: function(arg0) {
+        __wbg_length_f875d3a041bab91a: function(arg0) {
             const ret = arg0.length;
             return ret;
         },
@@ -265,22 +266,22 @@ function __wbg_get_imports() {
             const ret = new Error();
             return ret;
         },
-        __wbg_new_5c365a7570baea64: function() {
+        __wbg_new_6feff3e11e4d0799: function() {
             const ret = new Object();
             return ret;
         },
-        __wbg_new_with_length_875a3f1ab82a1a1f: function(arg0) {
+        __wbg_new_with_length_3217a89bbca17214: function(arg0) {
             const ret = new Uint8Array(arg0 >>> 0);
             return ret;
         },
-        __wbg_now_32876b40a1bb9696: function() {
+        __wbg_now_054cfe5280165f10: function() {
             const ret = Date.now();
             return ret;
         },
-        __wbg_postMessage_8b4a9227a929fd1a: function() { return handleError(function (arg0, arg1) {
+        __wbg_postMessage_a2a9830d1295203a: function() { return handleError(function (arg0, arg1) {
             arg0.postMessage(arg1);
         }, arguments); },
-        __wbg_prototypesetcall_7c3092bff32833dc: function(arg0, arg1, arg2) {
+        __wbg_prototypesetcall_37f00e1be5c4015a: function(arg0, arg1, arg2) {
             Uint8Array.prototype.set.call(getArrayU8FromWasm0(arg0, arg1), arg2);
         },
         __wbg_randomFillSync_1afd9d46e5907320: function(arg0, arg1, arg2) {
@@ -294,7 +295,7 @@ function __wbg_get_imports() {
             const ret = self.self;
             return ret;
         }, arguments); },
-        __wbg_set_once_61cc6316ac3f5a01: function(arg0, arg1) {
+        __wbg_set_once_fb7c4671a877eae7: function(arg0, arg1) {
             arg0.once = arg1 !== 0;
         },
         __wbg_stack_3b0d974bbf31e44f: function(arg0, arg1) {
@@ -308,13 +309,13 @@ function __wbg_get_imports() {
             const ret = module;
             return ret;
         },
-        __wbg_subarray_22ac454570db4e4f: function(arg0, arg1, arg2) {
+        __wbg_subarray_a61f483a625b1793: function(arg0, arg1, arg2) {
             const ret = arg0.subarray(arg1 >>> 0, arg2 >>> 0);
             return ret;
         },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 136, function: Function { arguments: [NamedExternref("Event")], shim_idx: 137, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-            const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h469194238f790361, wasm_bindgen__convert__closures_____invoke__h359933c86cfc0a84);
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 135, function: Function { arguments: [NamedExternref("Event")], shim_idx: 136, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h29b29866006a5fde, wasm_bindgen__convert__closures_____invoke__hbc8449b88765385b);
             return ret;
         },
         __wbindgen_init_externref_table: function() {
@@ -333,8 +334,8 @@ function __wbg_get_imports() {
     };
 }
 
-function wasm_bindgen__convert__closures_____invoke__h359933c86cfc0a84(arg0, arg1, arg2) {
-    wasm.wasm_bindgen__convert__closures_____invoke__h359933c86cfc0a84(arg0, arg1, arg2);
+function wasm_bindgen__convert__closures_____invoke__hbc8449b88765385b(arg0, arg1, arg2) {
+    wasm.wasm_bindgen__convert__closures_____invoke__hbc8449b88765385b(arg0, arg1, arg2);
 }
 
 const CCMoveFinalization = (typeof FinalizationRegistry === 'undefined')

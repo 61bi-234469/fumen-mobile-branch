@@ -8,15 +8,16 @@ Upstream source:
 - Commit: `279edd7c3177ff8077f6a930193397814b281f27`
 
 Local modifications used for the distributed wasm artifacts:
-- Patch: `third_party/cold-clear/patches/0001-export-move-score-to-wasm.patch`
+- Patch: `third_party/cold-clear/patches/0002-add-hold-speculate-and-b2b-combo-feedback.patch`
+  - Note: this patch supersedes `0001-export-move-score-to-wasm.patch` for current artifacts.
 
 Distributed artifact checksums (SHA-256):
 - `src/lib/cold_clear_wasm/cold_clear_wasm_api_bg.wasm`
-  - `96DA5C7970A578FE2C05A7A79BF5B198D09D8119A67F363E46C0EE1B819CC5DB`
+  - `B62A4822BB7176260F4A6ADE400ABD2B1C5731823A2F8B7DFFD4E77F6F015DA6`
 - `src/lib/cold_clear_wasm/cold_clear_wasm_api.js`
-  - `73743008086897D5E7DA5B4139EEA92786705E8C0E07D16AD79FE23A2A385C6B`
+  - `75C2E0A31CFB1B50BCC7BB473AF706235CBEE99F05DB3ABDA3DFD7B0B4F9F944`
 - `src/lib/cold_clear_wasm/cold_clear_wasm_api.d.ts`
-  - `4D7A7F1AEFC317D8D153953B5F9C03E53EA816A4C0010DF4369D8E523D35D923`
+  - `171A5313F5CB115164A0D1B35C7AAEC50D42BFD782672985431391C05484CFF4`
 
 ## Rebuild Steps
 
