@@ -200,5 +200,6 @@ export const resources = {
         PlacedPieceRequired: 'AI: 配置済みミノが必要です',
         FloatingPieceUnsupported: 'AI: 浮遊ミノは未対応です',
         CannotEvaluatePlacedSpawn: 'AI: 現在の配置は評価できません',
+        InsufficientQueueForHold: 'AI: Hold有効かつNEXT=1の場合、Hold空時はキューに2個以上必要です',
     },
 };

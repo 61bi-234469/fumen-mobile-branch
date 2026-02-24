@@ -233,5 +233,6 @@ export const i18n = {
         PlacedPieceRequired: () => t('ColdClear.PlacedPieceRequired'),
         FloatingPieceUnsupported: () => t('ColdClear.FloatingPieceUnsupported'),
         CannotEvaluatePlacedSpawn: () => t('ColdClear.CannotEvaluatePlacedSpawn'),
+        InsufficientQueueForHold: () => t('ColdClear.InsufficientQueueForHold'),
     },
 };

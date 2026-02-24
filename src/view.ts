@@ -21,12 +21,14 @@ import {
     canStartColdClearSequenceSearch,
     canStartColdClearTopBranchesSearch,
     canEvaluatePlacedSpawnMinoScore,
+    isColdClearSearchBlockedByHoldQueue,
     resolveCurrentColdClearMenuQueueState,
 } from './actions/cold_clear';
 
 export const view: View<State, Actions> = (state, actions) => {
-    const canSequenceSearch = canStartColdClearSequenceSearch(state);
-    const canTopBranchesSearch = canStartColdClearTopBranchesSearch(state);
+    const searchBlockedByHoldQueue = isColdClearSearchBlockedByHoldQueue(state);
+    const canSequenceSearch = !searchBlockedByHoldQueue && canStartColdClearSequenceSearch(state);
+    const canTopBranchesSearch = !searchBlockedByHoldQueue && canStartColdClearTopBranchesSearch(state);
     const canPlacedSpawnScore = canEvaluatePlacedSpawnMinoScore(state);
     const currentQueueState = resolveCurrentColdClearMenuQueueState(state);
 
@@ -113,6 +115,7 @@ export const view: View<State, Actions> = (state, actions) => {
             canSequenceSearch,
             canTopBranchesSearch,
             canPlacedSpawnScore,
+            searchBlockedByHoldQueue,
             actions,
             currentQueueState,
             isRunning: state.coldClear.isRunning,

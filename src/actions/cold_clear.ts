@@ -548,6 +548,16 @@ export const canEvaluatePlacedSpawnMinoScore = (state: Readonly<State>): boolean
     return resolvePlacedSpawnInput(state).input !== undefined;
 };
 
+export const isColdClearSearchBlockedByHoldQueue = (
+    state: Readonly<State>,
+): boolean => {
+    if (!state.coldClear.holdAllowed || state.coldClear.nextLimit !== 1) {
+        return false;
+    }
+    const queueState = resolveCurrentColdClearMenuQueueState(state);
+    return queueState !== null && queueState.hold === null;
+};
+
 export const canSwapCurrentPieceWithHoldQueue = (state: Readonly<State>): boolean => {
     if (!state.coldClear.holdAllowed) {
         return false;
@@ -983,6 +993,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
+        if (isColdClearSearchBlockedByHoldQueue(state)) {
+            M.toast({ html: i18n.ColdClear.InsufficientQueueForHold(), classes: 'top-toast', displayLength: 1500 });
+            return undefined;
+        }
+
         commitQueuePreviewIfNeeded(state);
 
         const resolved = resolveSingleSearchInput(state);
@@ -1048,6 +1063,11 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
     startColdClearTopThreeSearch: () => (state): NextState => {
         if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        if (isColdClearSearchBlockedByHoldQueue(state)) {
+            M.toast({ html: i18n.ColdClear.InsufficientQueueForHold(), classes: 'top-toast', displayLength: 1500 });
             return undefined;
         }
 

@@ -1590,7 +1590,7 @@ describe('coldClearActions run isolation', () => {
     });
 
     test('nextLimit enabled uses requestMove loop for single search', () => {
-        const state = makeColdClearState({ commentText: 'IOT', nextLimit: 1 });
+        const state = makeColdClearState({ commentText: 'T:IOT', nextLimit: 1 });
         const startResult = coldClearActions.startColdClearSearch()(state) as any;
         const runId = startResult.coldClear.runId;
 
@@ -1602,7 +1602,7 @@ describe('coldClearActions run isolation', () => {
             runId,
             isRunning: true,
             runType: 'single',
-            commentText: 'IOT',
+            commentText: 'T:IOT',
             nextLimit: 1,
             treeEnabled: true,
         });

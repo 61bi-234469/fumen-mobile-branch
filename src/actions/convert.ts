@@ -492,7 +492,7 @@ const convertAllToMirror = () => (state: State): NextState => {
     const tasks: OperationTask[] = [];
 
     // すべてのページを反転させる
-    for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+    for (let pageIndex = pages.length - 1; 0 <= pageIndex; pageIndex -= 1) {
         const page = pages[pageIndex];
 
         // ページをKeyにする

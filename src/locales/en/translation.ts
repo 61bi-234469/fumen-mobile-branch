@@ -225,5 +225,6 @@
         PlacedPieceRequired: 'AI: Place a piece before running this action',
         FloatingPieceUnsupported: 'AI: Floating piece is not supported',
         CannotEvaluatePlacedSpawn: 'AI: Cannot evaluate current placement',
+        InsufficientQueueForHold: 'AI: NEXT=1 with Hold enabled requires at least 2 pieces when hold is empty',
     },
 };

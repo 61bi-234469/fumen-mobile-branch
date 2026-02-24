@@ -32,6 +32,7 @@ interface ColdClearMenuModalProps {
     canSequenceSearch: boolean;
     canTopBranchesSearch: boolean;
     canPlacedSpawnScore: boolean;
+    searchBlockedByHoldQueue: boolean;
     actions: {
         closeColdClearMenuModal: () => void;
         startColdClearSearch: () => void;
@@ -128,6 +129,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         canSequenceSearch,
         canTopBranchesSearch,
         canPlacedSpawnScore,
+        searchBlockedByHoldQueue,
         actions,
     },
 ) => {
@@ -353,7 +355,12 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             },
             onDisabledClick: () => {
                 if (!isRunning) {
-                    actions.startColdClearSearch();
+                    if (searchBlockedByHoldQueue) {
+                        const msg = i18n.ColdClear.InsufficientQueueForHold();
+                        M.toast({ html: msg, classes: 'top-toast', displayLength: 1500 });
+                    } else {
+                        actions.startColdClearSearch();
+                    }
                 }
             },
         },
@@ -369,7 +376,12 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             },
             onDisabledClick: () => {
                 if (!isRunning) {
-                    actions.startColdClearTopThreeSearch();
+                    if (searchBlockedByHoldQueue) {
+                        const msg = i18n.ColdClear.InsufficientQueueForHold();
+                        M.toast({ html: msg, classes: 'top-toast', displayLength: 1500 });
+                    } else {
+                        actions.startColdClearTopThreeSearch();
+                    }
                 }
             },
         },
