@@ -204,10 +204,12 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         fontSize: px(12),
     });
     const sectionTitleStyle = style({
-        margin: `${px(2)} 0px`,
+        margin: '0px',
+        padding: `${px(8)} 0px`,
         fontSize: px(14),
         fontWeight: 700,
         color: '#111827',
+        borderTop: '2px solid #e5e7eb',
     });
     const rowStyle = style({
         margin: `${px(8)} 0px`,
@@ -401,17 +403,6 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                 }
             },
         },
-        {
-            key: 'btn-cold-clear-append-one-bag',
-            datatest: 'btn-cold-clear-append-one-bag',
-            iconName: 'shuffle',
-            title: i18n.ColdClear.OneBagAddLabel(),
-            description: i18n.ColdClear.OneBagAddDescription(),
-            enabled: !isRunning,
-            onclick: () => {
-                actions.appendColdClearOneBagToComment();
-            },
-        },
     ];
 
     return (
@@ -467,25 +458,6 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
 
                     <div key="cold-clear-settings" style={sectionStyle}>
                         <p style={sectionTitleStyle}>{i18n.ColdClear.SettingsSectionTitle()}</p>
-
-                        <div key="cold-clear-top-branch-count-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.TopBranchCountLabel()}</p>
-                                <p style={descriptionStyle}>{i18n.ColdClear.TopBranchCountDescription()}</p>
-                            </div>
-                            <input
-                                key="input-cold-clear-top-branch-count"
-                                datatest="input-cold-clear-top-branch-count"
-                                type="number"
-                                value={topBranchCount}
-                                min={COLD_CLEAR_TOP_BRANCH_COUNT_MIN}
-                                max={COLD_CLEAR_TOP_BRANCH_COUNT_MAX}
-                                step={1}
-                                disabled={isRunning}
-                                onchange={onChangeTopBranchCount}
-                                style={numberInputStyle}
-                            />
-                        </div>
 
                         <div key="cold-clear-hold-allowed-row" style={rowStyle}>
                             <div>
@@ -578,6 +550,25 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                         {speculate && nextLimit !== null
                             ? <p style={warningStyle}>{i18n.ColdClear.SpeculateNextLimitHint()}</p>
                             : undefined}
+
+                        <div key="cold-clear-top-branch-count-row" style={rowStyle}>
+                            <div>
+                                <p style={labelStyle}>{i18n.ColdClear.TopBranchCountLabel()}</p>
+                                <p style={descriptionStyle}>{i18n.ColdClear.TopBranchCountDescription()}</p>
+                            </div>
+                            <input
+                                key="input-cold-clear-top-branch-count"
+                                datatest="input-cold-clear-top-branch-count"
+                                type="number"
+                                value={topBranchCount}
+                                min={COLD_CLEAR_TOP_BRANCH_COUNT_MIN}
+                                max={COLD_CLEAR_TOP_BRANCH_COUNT_MAX}
+                                step={1}
+                                disabled={isRunning}
+                                onchange={onChangeTopBranchCount}
+                                style={numberInputStyle}
+                            />
+                        </div>
                     </div>
 
                     <div key="cold-clear-queue-state" style={sectionStyle}>
@@ -674,6 +665,18 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                             style={queueButtonStyle}
                                         >
                                             {i18n.ColdClear.QueueClearHoldLabel()}
+                                        </button>
+                                        <button
+                                            key="cold-clear-append-one-bag"
+                                            datatest="btn-cold-clear-append-one-bag"
+                                            disabled={isRunning}
+                                            onclick={(event: MouseEvent) => {
+                                                event.preventDefault();
+                                                actions.appendColdClearOneBagToComment();
+                                            }}
+                                            style={queueButtonStyle}
+                                        >
+                                            {i18n.ColdClear.OneBagAddShortLabel()}
                                         </button>
                                     </div>
                                 </div>,

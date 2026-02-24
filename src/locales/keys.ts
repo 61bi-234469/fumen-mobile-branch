@@ -221,6 +221,7 @@ export const i18n = {
         ShortPressTopBranches: (count: number) => t('ColdClear.ShortPressTopBranches', { count }),
         LongPressSequenceSearch: () => t('ColdClear.LongPressSequenceSearch'),
         OneBagAddLabel: () => t('ColdClear.OneBagAddLabel'),
+        OneBagAddShortLabel: () => t('ColdClear.OneBagAddShortLabel'),
         OneBagAddDescription: () => t('ColdClear.OneBagAddDescription'),
         OneBagAdded: () => t('ColdClear.OneBagAdded'),
         HoldSwapLabel: () => t('ColdClear.HoldSwapLabel'),
