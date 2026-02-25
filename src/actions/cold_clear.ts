@@ -378,6 +378,16 @@ export const resolveCurrentColdClearMenuQueueState = (
     if (commentText === null) {
         return null;
     }
+    if (commentText === '') {
+        return {
+            pageIndex,
+            hold: null,
+            queue: [],
+            b2b: false,
+            combo: 0,
+            score: null,
+        };
+    }
 
     const parsed = parseQueueStateComment(commentText);
     if (!parsed) {

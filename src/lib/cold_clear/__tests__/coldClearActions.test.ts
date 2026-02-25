@@ -3,6 +3,7 @@ import {
     canSwapCurrentPieceWithHoldQueue,
     coldClearActions,
     initColdClearActions,
+    resolveCurrentColdClearMenuQueueState,
     resetForTesting,
 } from '../../../actions/cold_clear';
 import { Piece, Rotation } from '../../enums';
@@ -118,13 +119,13 @@ function makeColdClearState(overrides: {
                 flags,
                 field: { obj: initialField.copy() },
                 piece: undefined,
-                comment: { text: overrides.commentText || 'IOTLJSZ' },
+                comment: { text: overrides.commentText !== undefined ? overrides.commentText : 'IOTLJSZ' },
                 index: 0,
             }],
             maxPage: 1,
             guideLineColor: true,
         },
-        comment: { text: overrides.commentText || 'IOTLJSZ', changeKey: 0 },
+        comment: { text: overrides.commentText !== undefined ? overrides.commentText : 'IOTLJSZ', changeKey: 0 },
         cache: {
             currentInitField: new Field({}),
         },
@@ -1698,5 +1699,17 @@ describe('coldClearActions run isolation', () => {
     test('canSwapCurrentPieceWithHoldQueue returns false when holdAllowed is false', () => {
         const state = makeColdClearState({ commentText: 'IOT', holdAllowed: false });
         expect(canSwapCurrentPieceWithHoldQueue(state as any)).toBe(false);
+    });
+
+    test('resolveCurrentColdClearMenuQueueState returns editable empty state for empty comment', () => {
+        const state = makeColdClearState({ commentText: '' });
+        expect(resolveCurrentColdClearMenuQueueState(state as any)).toEqual({
+            pageIndex: 0,
+            hold: null,
+            queue: [],
+            b2b: false,
+            combo: 0,
+            score: null,
+        });
     });
 });
