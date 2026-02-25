@@ -23,6 +23,7 @@ import {
     canEvaluatePlacedSpawnMinoScore,
     isColdClearSearchBlockedByHoldQueue,
     resolveCurrentColdClearMenuQueueState,
+    canClearCommentForColdClearQueue,
 } from './actions/cold_clear';
 
 export const view: View<State, Actions> = (state, actions) => {
@@ -31,6 +32,7 @@ export const view: View<State, Actions> = (state, actions) => {
     const canTopBranchesSearch = !searchBlockedByHoldQueue && canStartColdClearTopBranchesSearch(state);
     const canPlacedSpawnScore = canEvaluatePlacedSpawnMinoScore(state);
     const currentQueueState = resolveCurrentColdClearMenuQueueState(state);
+    const canClearComment = canClearCommentForColdClearQueue(state);
 
     const selectView = () => {
         const screens = state.mode.screen;
@@ -116,6 +118,7 @@ export const view: View<State, Actions> = (state, actions) => {
             canTopBranchesSearch,
             canPlacedSpawnScore,
             searchBlockedByHoldQueue,
+            canClearComment,
             actions,
             currentQueueState,
             isRunning: state.coldClear.isRunning,

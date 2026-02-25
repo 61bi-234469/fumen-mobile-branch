@@ -165,6 +165,7 @@ export const resources = {
         SpeculateNextLimitHint: 'SpeculateがONかつNEXT制限ありの場合、未知ピース分岐が残ることがあります。',
         QueueStateSectionTitle: 'Queue State',
         QueueStateUnavailable: 'このページのコメントはキュー編集できません。',
+        QueueStateClearAndEdit: 'コメントを削除してキューを編集する',
         QueueStateSummary: '{{hold}}:{{queue}}',
         QueueStateScore: 'Score: {{score}}',
         QueueHoldLabel: 'Hold',

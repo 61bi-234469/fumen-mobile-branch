@@ -153,6 +153,7 @@ export interface ColdClearActions {
         combo: number;
     }) => action;
     commitColdClearQueueComment: () => action;
+    clearCommentForColdClearQueue: () => action;
     stopColdClearSearch: () => action;
     onColdClearMoveResult: (data: { runId: number, result: CCMoveResult }) => action;
     onColdClearTopMovesResult: (data: { runId: number, results: CCMove[] }) => action;
@@ -365,6 +366,22 @@ export interface ColdClearMenuQueueState {
     combo: number;
     score: number | null;
 }
+
+export const canClearCommentForColdClearQueue = (
+    state: Readonly<State>,
+): boolean => {
+    const pageIndex = state.fumen.currentIndex;
+    const commentText = resolveCommentTextWithPreview(
+        state.fumen.pages,
+        pageIndex,
+        state.coldClear.queuePreview,
+    );
+    if (commentText === null || commentText === '') {
+        return false;
+    }
+    const parsed = parseQueueStateComment(commentText);
+    return !parsed;
+};
 
 export const resolveCurrentColdClearMenuQueueState = (
     state: Readonly<State>,
@@ -1473,6 +1490,26 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 text: preview.text,
             });
         }
+
+        return {
+            coldClear: {
+                ...state.coldClear,
+                queuePreview: null,
+            },
+        };
+    },
+
+    clearCommentForColdClearQueue: () => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const pageIndex = state.fumen.currentIndex;
+        if (!appActions) {
+            return undefined;
+        }
+
+        appActions.setCommentText({ pageIndex, text: '' });
 
         return {
             coldClear: {

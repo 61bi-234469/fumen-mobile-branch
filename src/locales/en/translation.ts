@@ -190,6 +190,7 @@
         SpeculateNextLimitHint: 'With speculate ON + NEXT limit, search may still branch on unknown pieces.',
         QueueStateSectionTitle: 'Queue State',
         QueueStateUnavailable: 'Queue comment is not editable from this page.',
+        QueueStateClearAndEdit: 'Clear comment and edit queue',
         QueueStateSummary: '{{hold}}:{{queue}}',
         QueueStateScore: 'Score: {{score}}',
         QueueHoldLabel: 'Hold',

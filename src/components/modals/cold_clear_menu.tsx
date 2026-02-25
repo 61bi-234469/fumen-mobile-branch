@@ -33,6 +33,7 @@ interface ColdClearMenuModalProps {
     canTopBranchesSearch: boolean;
     canPlacedSpawnScore: boolean;
     searchBlockedByHoldQueue: boolean;
+    canClearComment: boolean;
     actions: {
         closeColdClearMenuModal: () => void;
         startColdClearSearch: () => void;
@@ -48,6 +49,7 @@ interface ColdClearMenuModalProps {
             combo: number;
         }) => void;
         commitColdClearQueueComment: () => void;
+        clearCommentForColdClearQueue: () => void;
         evaluatePlacedSpawnMinoScore: () => void;
         appendColdClearOneBagToComment: () => void;
         stopColdClearSearch: () => void;
@@ -133,6 +135,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         canTopBranchesSearch,
         canPlacedSpawnScore,
         searchBlockedByHoldQueue,
+        canClearComment,
         actions,
     },
 ) => {
@@ -607,7 +610,34 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                     <div key="cold-clear-queue-state" style={sectionStyle}>
                         <p style={sectionTitleStyle}>{i18n.ColdClear.QueueStateSectionTitle()}</p>
                         {!currentQueueState
-                            ? <p style={descriptionStyle}>{i18n.ColdClear.QueueStateUnavailable()}</p>
+                            ? (canClearComment
+                                ? <div>
+                                    <p style={descriptionStyle}>{i18n.ColdClear.QueueStateUnavailable()}</p>
+                                    <button
+                                        key="btn-cold-clear-clear-comment"
+                                        datatest="btn-cold-clear-clear-comment"
+                                        disabled={isRunning}
+                                        onclick={(event: MouseEvent) => {
+                                            event.preventDefault();
+                                            actions.clearCommentForColdClearQueue();
+                                        }}
+                                        style={style({
+                                            width: '100%',
+                                            marginTop: px(8),
+                                            padding: `${px(8)} ${px(12)}`,
+                                            border: '1px solid #e5e7eb',
+                                            borderRadius: '6px',
+                                            background: '#fff',
+                                            cursor: isRunning ? 'default' : 'pointer',
+                                            fontSize: px(13),
+                                            color: '#2563eb',
+                                        })}
+                                    >
+                                        {i18n.ColdClear.QueueStateClearAndEdit()}
+                                    </button>
+                                </div>
+                                : <p style={descriptionStyle}>{i18n.ColdClear.QueueStateUnavailable()}</p>
+                            )
                             : [
                                 <p key="cold-clear-queue-summary" style={summaryStyle}>
                                     {i18n.ColdClear.QueueStateSummary(

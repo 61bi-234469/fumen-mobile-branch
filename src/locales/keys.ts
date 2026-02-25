@@ -198,6 +198,7 @@ export const i18n = {
         SpeculateNextLimitHint: () => t('ColdClear.SpeculateNextLimitHint'),
         QueueStateSectionTitle: () => t('ColdClear.QueueStateSectionTitle'),
         QueueStateUnavailable: () => t('ColdClear.QueueStateUnavailable'),
+        QueueStateClearAndEdit: () => t('ColdClear.QueueStateClearAndEdit'),
         QueueStateSummary: (hold: string, queue: string) => t('ColdClear.QueueStateSummary', { hold, queue }),
         QueueStateScore: (score: string) => t('ColdClear.QueueStateScore', { score }),
         QueueHoldLabel: () => t('ColdClear.QueueHoldLabel'),
