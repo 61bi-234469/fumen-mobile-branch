@@ -859,8 +859,8 @@ export const FumenGraph: Component<Props> = ({
         // Check if this node can be deleted
         const canDelete = isDragSource && canDeleteNode(tree, node.id, buttonDropMovesSubtree, pages.length);
 
-        // Check if this node can be copied (must have a parent - not root-level)
-        const canCopy = node.parentId !== null && !isVirtualNode(findNode(tree, node.parentId) ?? node);
+        // Copy button is available for all renderable nodes, including top-level roots.
+        const canCopy = !isVirtualNode(node);
 
         const nodeLayout = treeViewLayout.nodeLayouts.get(node.id);
         if (!nodeLayout) {

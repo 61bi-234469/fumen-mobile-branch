@@ -1,4 +1,5 @@
 import {
+    isColdClearSearchBlockedByHoldQueue,
     canSwapCurrentPieceWithHoldQueue,
     coldClearActions,
     initColdClearActions,
@@ -62,6 +63,7 @@ jest.mock('../../../locales/keys', () => ({
             PlacedPieceRequired: () => 'Placed piece required',
             FloatingPieceUnsupported: () => 'Floating piece unsupported',
             CannotEvaluatePlacedSpawn: () => 'Cannot evaluate current placement',
+            InsufficientQueueForHold: () => 'Insufficient queue for hold',
         },
     },
 }));
@@ -1617,7 +1619,7 @@ describe('coldClearActions run isolation', () => {
         expect(wrapperCtor).toHaveBeenCalledTimes(2);
         const secondWrapper = wrapperCtor.mock.results[1].value;
         const secondInit = secondWrapper.start.mock.calls[0][0];
-        expect(secondInit.queue.length).toBe(1);
+        expect(secondInit.queue.length).toBe(2);
     });
 
     test('nextLimit slices queue for top branch search', () => {
@@ -1627,7 +1629,28 @@ describe('coldClearActions run isolation', () => {
         const wrapperCtor = ColdClearWrapper as any as jest.Mock;
         const wrapperInstance = wrapperCtor.mock.results[0].value;
         const initMsg = wrapperInstance.start.mock.calls[0][0];
-        expect(initMsg.queue).toEqual([0, 1]);
+        expect(initMsg.queue).toEqual([0, 1, 2]);
+    });
+
+    test('nextLimit=0 sends only current piece to top branch search', () => {
+        const state = makeColdClearState({ commentText: 'IOTL', nextLimit: 0, holdAllowed: false });
+        coldClearActions.startColdClearTopThreeSearch()(state);
+
+        const wrapperCtor = ColdClearWrapper as any as jest.Mock;
+        const wrapperInstance = wrapperCtor.mock.results[0].value;
+        const initMsg = wrapperInstance.start.mock.calls[0][0];
+        expect(initMsg.queue).toEqual([0]);
+    });
+
+    test('isColdClearSearchBlockedByHoldQueue only blocks when nextLimit=0 and hold is empty', () => {
+        const blocked = makeColdClearState({ commentText: 'I', holdAllowed: true, nextLimit: 0 });
+        expect(isColdClearSearchBlockedByHoldQueue(blocked as any)).toBe(true);
+
+        const hasHold = makeColdClearState({ commentText: 'T:I', holdAllowed: true, nextLimit: 0 });
+        expect(isColdClearSearchBlockedByHoldQueue(hasHold as any)).toBe(false);
+
+        const otherLimit = makeColdClearState({ commentText: 'I', holdAllowed: true, nextLimit: 1 });
+        expect(isColdClearSearchBlockedByHoldQueue(otherLimit as any)).toBe(false);
     });
 
     test('single result comment reflects b2b/combo metadata', () => {

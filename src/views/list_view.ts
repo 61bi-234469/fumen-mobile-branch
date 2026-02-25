@@ -252,8 +252,7 @@ export const view: View<State, Actions> = (state, actions) => {
             const nodeX = nodeLayout.x;
             const nodeY = nodeLayout.y;
             const nodeHeight = nodeLayout.height;
-            const parentNode = node.parentId !== null ? findNode(tree, node.parentId) : null;
-            const canCopy = node.parentId !== null && !isVirtualNode(parentNode ?? node);
+            const canCopy = !isVirtualNode(node);
 
             const copyButtonCenterX = nodeX + TREE_NODE_WIDTH / 2;
             const copyButtonCenterY = nodeY + nodeHeight

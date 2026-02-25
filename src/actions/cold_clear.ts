@@ -116,7 +116,7 @@ const INIT_TIMEOUT_MS = 10000;
 export const COLD_CLEAR_TOP_BRANCH_COUNT_DEFAULT = 5;
 export const COLD_CLEAR_TOP_BRANCH_COUNT_MIN = 1;
 export const COLD_CLEAR_TOP_BRANCH_COUNT_MAX = 20;
-export const COLD_CLEAR_NEXT_LIMIT_MIN = 1;
+export const COLD_CLEAR_NEXT_LIMIT_MIN = 0;
 export const COLD_CLEAR_NEXT_LIMIT_MAX = 30;
 export const COLD_CLEAR_NEXT_LIMIT_DEFAULT = 5;
 const PLACED_SCORE_INITIAL_THINK_MS = THINK_MS;
@@ -551,7 +551,7 @@ export const canEvaluatePlacedSpawnMinoScore = (state: Readonly<State>): boolean
 export const isColdClearSearchBlockedByHoldQueue = (
     state: Readonly<State>,
 ): boolean => {
-    if (!state.coldClear.holdAllowed || state.coldClear.nextLimit !== 1) {
+    if (!state.coldClear.holdAllowed || state.coldClear.nextLimit !== 0) {
         return false;
     }
     const queueState = resolveCurrentColdClearMenuQueueState(state);
@@ -875,7 +875,7 @@ const buildPlacedSpawnInitMessage = (session: PlacedRunSession): CCInitMessage =
     const ccHold = session.searchHold !== null ? PIECE_TO_CC[session.searchHold] : CC_HOLD_NONE;
     const initQueue = session.nextLimit === null
         ? session.searchQueue
-        : session.searchQueue.slice(0, session.nextLimit);
+        : session.searchQueue.slice(0, session.nextLimit + 1);
     const ccQueue = initQueue.map(piece => PIECE_TO_CC[piece]);
     return {
         type: 'init',
@@ -895,7 +895,7 @@ const buildSingleInitMessage = (session: SingleRunSession): CCInitMessage => {
     const ccHold = session.hold !== null ? PIECE_TO_CC[session.hold] : CC_HOLD_NONE;
     const initQueue = session.nextLimit === null
         ? session.queue
-        : session.queue.slice(0, session.nextLimit);
+        : session.queue.slice(0, session.nextLimit + 1);
     const ccQueue = initQueue.map(p => PIECE_TO_CC[p]);
     return {
         type: 'init',
@@ -1115,7 +1115,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         const ccHold = parsed.hold !== null ? PIECE_TO_CC[parsed.hold] : CC_HOLD_NONE;
         const initQueue = state.coldClear.nextLimit === null
             ? parsed.queue
-            : parsed.queue.slice(0, state.coldClear.nextLimit);
+            : parsed.queue.slice(0, state.coldClear.nextLimit + 1);
         const ccQueue = initQueue.map(p => PIECE_TO_CC[p]);
 
         const initMsg: CCInitMessage = {

@@ -186,7 +186,7 @@
         SpeculateLabel: 'Speculate',
         SpeculateDescription: 'Allow speculative search beyond known queue',
         NextLimitLabel: 'NEXT limit',
-        NextLimitDescription: 'Limit known next pieces to 1-30 (hold excluded)',
+        NextLimitDescription: 'Limit known next pieces to 0-30 (hold excluded)',
         SpeculateNextLimitHint: 'With speculate ON + NEXT limit, search may still branch on unknown pieces.',
         QueueStateSectionTitle: 'Queue State',
         QueueStateUnavailable: 'Queue comment is not editable from this page.',
@@ -226,6 +226,6 @@
         PlacedPieceRequired: 'AI: Place a piece before running this action',
         FloatingPieceUnsupported: 'AI: Floating piece is not supported',
         CannotEvaluatePlacedSpawn: 'AI: Cannot evaluate current placement',
-        InsufficientQueueForHold: 'AI: NEXT=1 with Hold enabled requires at least 2 pieces when hold is empty',
+        InsufficientQueueForHold: 'AI: NEXT=0 with Hold enabled requires at least 2 pieces when hold is empty',
     },
 };

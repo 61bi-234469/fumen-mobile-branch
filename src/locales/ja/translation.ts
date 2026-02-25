@@ -161,7 +161,7 @@ export const resources = {
         SpeculateLabel: 'Speculate',
         SpeculateDescription: '既知キューの先を推測して探索する',
         NextLimitLabel: 'NEXT制限',
-        NextLimitDescription: '既知NEXT数を1〜30に制限（Holdは除外）',
+        NextLimitDescription: '既知NEXT数を0〜30に制限（Holdは除外）',
         SpeculateNextLimitHint: 'SpeculateがONかつNEXT制限ありの場合、未知ピース分岐が残ることがあります。',
         QueueStateSectionTitle: 'Queue State',
         QueueStateUnavailable: 'このページのコメントはキュー編集できません。',
@@ -201,6 +201,6 @@ export const resources = {
         PlacedPieceRequired: 'AI: 配置済みミノが必要です',
         FloatingPieceUnsupported: 'AI: 浮遊ミノは未対応です',
         CannotEvaluatePlacedSpawn: 'AI: 現在の配置は評価できません',
-        InsufficientQueueForHold: 'AI: Hold有効かつNEXT=1の場合、Hold空時はキューに2個以上必要です',
+        InsufficientQueueForHold: 'AI: Hold有効かつNEXT=0の場合、Hold空時はキューに2個以上必要です',
     },
 };
