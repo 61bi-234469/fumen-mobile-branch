@@ -107,8 +107,12 @@ export const ToolButton: Component<Props & SizedIconProps> = (
         longPressState.activeKey = null;
 
         // 通常のクリック処理
+        // setTimeout で遅延させ、先にブラウザの合成 click イベントが <a> の onclick で
+        // 抑制されてからアクションを実行する。これにより、モーダルオーバーレイが click
+        // イベントより先に表示されて即閉じする問題を防ぐ。
         if (onclick !== undefined) {
-            onclick(event as any);
+            const handler = onclick;
+            setTimeout(() => handler(event as any), 0);
             event.stopPropagation();
             event.preventDefault();
         }
