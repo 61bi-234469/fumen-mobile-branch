@@ -117,6 +117,9 @@ const parseHoldText = (text: string): Piece | null | undefined => {
     return CHAR_TO_PIECE[trimmed.toUpperCase()];
 };
 
+type QueueFocusTarget = 'hold' | 'next';
+let queueFocusTarget: QueueFocusTarget = 'next';
+
 export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
     {
         isRunning,
@@ -283,6 +286,36 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             return;
         }
         actions.setColdClearTopBranchCount({ count: value });
+    };
+
+    const applyFocusHighlight = (target: QueueFocusTarget) => {
+        const holdPane = document.querySelector('[datatest="pane-cold-clear-hold"]') as HTMLElement | null;
+        const nextPane = document.querySelector('[datatest="pane-cold-clear-next"]') as HTMLElement | null;
+        if (holdPane) {
+            holdPane.style.border = target === 'hold' ? '2px solid #3b82f6' : '2px solid #e5e7eb';
+            holdPane.style.background = target === 'hold' ? '#eff6ff' : '#fff';
+            const label = holdPane.querySelector('p') as HTMLElement | null;
+            if (label) {
+                label.style.color = target === 'hold' ? '#2563eb' : '#374151';
+            }
+        }
+        if (nextPane) {
+            nextPane.style.border = target === 'next' ? '2px solid #3b82f6' : '2px solid #e5e7eb';
+            nextPane.style.background = target === 'next' ? '#eff6ff' : '#fff';
+            const label = nextPane.querySelector('p') as HTMLElement | null;
+            if (label) {
+                label.style.color = target === 'next' ? '#2563eb' : '#374151';
+            }
+        }
+        const oneBagBtn = document.querySelector('[datatest="btn-cold-clear-append-one-bag"]') as HTMLButtonElement | null;
+        if (oneBagBtn) {
+            oneBagBtn.disabled = isRunning || target === 'hold';
+        }
+    };
+
+    const setQueueFocus = (target: QueueFocusTarget) => {
+        queueFocusTarget = target;
+        applyFocusHighlight(target);
     };
 
     const queueEditorDisabled = isRunning || currentQueueState === null;
@@ -587,98 +620,178 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                         {i18n.ColdClear.QueueStateScore(currentQueueState.score.toFixed(2))}
                                     </p>
                                     : undefined as any,
-                                <div key="cold-clear-hold-input-row" style={rowStyle}>
-                                    <p style={labelStyle}>{i18n.ColdClear.QueueHoldLabel()}</p>
-                                    <input
-                                        datatest="input-cold-clear-queue-hold"
-                                        type="text"
-                                        maxLength={1}
-                                        value={
-                                            currentQueueState.hold === null
-                                                ? ''
-                                                : PIECE_TO_CHAR[currentQueueState.hold]
-                                        }
-                                        disabled={queueEditorDisabled}
-                                        onchange={(event: Event) => {
-                                            const target = event.target as HTMLInputElement;
-                                            const parsed = parseHoldText(target.value);
-                                            if (parsed === undefined) {
-                                                return;
-                                            }
-                                            updateQueueState(queueState => ({
-                                                ...queueState,
-                                                hold: parsed,
-                                            }));
+                                <div key="cold-clear-hold-next-row" style={style({
+                                    display: 'flex',
+                                    gap: px(8),
+                                    marginTop: px(8),
+                                })}>
+                                    <div
+                                        key="cold-clear-hold-pane"
+                                        datatest="pane-cold-clear-hold"
+                                        onclick={() => {
+                                            setQueueFocus('hold');
                                         }}
-                                        style={numberInputStyle}
-                                    />
+                                        style={style({
+                                            minWidth: px(64),
+                                            padding: px(8),
+                                            borderRadius: '6px',
+                                            cursor: queueEditorDisabled ? 'default' : 'pointer',
+                                            border: queueFocusTarget === 'hold'
+                                                ? '2px solid #3b82f6'
+                                                : '2px solid #e5e7eb',
+                                            background: queueFocusTarget === 'hold'
+                                                ? '#eff6ff'
+                                                : '#fff',
+                                        })}
+                                    >
+                                        <p style={style({
+                                            margin: '0px',
+                                            fontSize: px(11),
+                                            fontWeight: 700,
+                                            color: queueFocusTarget === 'hold' ? '#2563eb' : '#374151',
+                                            marginBottom: px(4),
+                                        })}>{i18n.ColdClear.QueueHoldLabel()}</p>
+                                        <input
+                                            datatest="input-cold-clear-queue-hold"
+                                            type="text"
+                                            maxLength={1}
+                                            value={
+                                                currentQueueState.hold === null
+                                                    ? ''
+                                                    : PIECE_TO_CHAR[currentQueueState.hold]
+                                            }
+                                            disabled={queueEditorDisabled}
+                                            onfocus={() => {
+                                                setQueueFocus('hold');
+                                            }}
+                                            onchange={(event: Event) => {
+                                                const target = event.target as HTMLInputElement;
+                                                const parsed = parseHoldText(target.value);
+                                                if (parsed === undefined) {
+                                                    return;
+                                                }
+                                                updateQueueState(queueState => ({
+                                                    ...queueState,
+                                                    hold: parsed,
+                                                }));
+                                            }}
+                                            style={style({
+                                                width: '100%',
+                                                margin: '0px',
+                                                textAlign: 'center',
+                                                height: px(32),
+                                                boxSizing: 'border-box',
+                                            })}
+                                        />
+                                    </div>
+                                    <div
+                                        key="cold-clear-next-pane"
+                                        datatest="pane-cold-clear-next"
+                                        onclick={() => {
+                                            setQueueFocus('next');
+                                        }}
+                                        style={style({
+                                            flex: '1',
+                                            padding: px(8),
+                                            borderRadius: '6px',
+                                            cursor: queueEditorDisabled ? 'default' : 'pointer',
+                                            border: queueFocusTarget === 'next'
+                                                ? '2px solid #3b82f6'
+                                                : '2px solid #e5e7eb',
+                                            background: queueFocusTarget === 'next'
+                                                ? '#eff6ff'
+                                                : '#fff',
+                                        })}
+                                    >
+                                        <p style={style({
+                                            margin: '0px',
+                                            fontSize: px(11),
+                                            fontWeight: 700,
+                                            color: queueFocusTarget === 'next' ? '#2563eb' : '#374151',
+                                            marginBottom: px(4),
+                                        })}>{i18n.ColdClear.QueuePiecesLabel()}</p>
+                                        <input
+                                            datatest="input-cold-clear-queue"
+                                            type="text"
+                                            value={toQueueText(currentQueueState.queue)}
+                                            disabled={queueEditorDisabled}
+                                            onfocus={() => {
+                                                setQueueFocus('next');
+                                            }}
+                                            onchange={(event: Event) => {
+                                                const target = event.target as HTMLInputElement;
+                                                const parsed = parseQueueText(target.value);
+                                                if (parsed === null) {
+                                                    return;
+                                                }
+                                                updateQueueState(queueState => ({
+                                                    ...queueState,
+                                                    queue: parsed,
+                                                }));
+                                            }}
+                                            style={textInputStyle}
+                                        />
+                                    </div>
                                 </div>,
-                                <div key="cold-clear-queue-input-row" style={style({ marginTop: px(8) })}>
-                                    <p style={labelStyle}>{i18n.ColdClear.QueuePiecesLabel()}</p>
-                                    <input
-                                        datatest="input-cold-clear-queue"
-                                        type="text"
-                                        value={toQueueText(currentQueueState.queue)}
-                                        disabled={queueEditorDisabled}
-                                        onchange={(event: Event) => {
-                                            const target = event.target as HTMLInputElement;
-                                            const parsed = parseQueueText(target.value);
-                                            if (parsed === null) {
-                                                return;
-                                            }
-                                            updateQueueState(queueState => ({
-                                                ...queueState,
-                                                queue: parsed,
-                                            }));
-                                        }}
-                                        style={textInputStyle}
-                                    />
-                                    <div style={queueButtonsStyle}>
-                                        {PIECE_ORDER.map(piece => (
-                                            <button
-                                                key={`cold-clear-add-piece-${PIECE_TO_CHAR[piece]}`}
-                                                datatest={`btn-cold-clear-queue-add-${PIECE_TO_CHAR[piece]}`}
-                                                disabled={queueEditorDisabled}
-                                                onclick={(event: MouseEvent) => {
-                                                    event.preventDefault();
+                                <div key="cold-clear-queue-buttons-row" style={queueButtonsStyle}>
+                                    {PIECE_ORDER.map(piece => (
+                                        <button
+                                            key={`cold-clear-add-piece-${PIECE_TO_CHAR[piece]}`}
+                                            datatest={`btn-cold-clear-queue-add-${PIECE_TO_CHAR[piece]}`}
+                                            disabled={queueEditorDisabled}
+                                            onclick={(event: MouseEvent) => {
+                                                event.preventDefault();
+                                                if (queueFocusTarget === 'hold') {
+                                                    updateQueueState(queueState => ({
+                                                        ...queueState,
+                                                        hold: piece,
+                                                    }));
+                                                } else {
                                                     updateQueueState(queueState => ({
                                                         ...queueState,
                                                         queue: queueState.queue.concat(piece),
                                                     }));
-                                                }}
-                                                style={queueButtonStyle}
-                                            >
-                                                {PIECE_TO_CHAR[piece]}
-                                            </button>
-                                        ))}
-                                        <button
-                                            key="cold-clear-clear-hold"
-                                            datatest="btn-cold-clear-queue-clear-hold"
-                                            disabled={queueEditorDisabled}
-                                            onclick={(event: MouseEvent) => {
-                                                event.preventDefault();
+                                                }
+                                            }}
+                                            style={queueButtonStyle}
+                                        >
+                                            {PIECE_TO_CHAR[piece]}
+                                        </button>
+                                    ))}
+                                    <button
+                                        key="cold-clear-clear-target"
+                                        datatest="btn-cold-clear-queue-clear"
+                                        disabled={queueEditorDisabled}
+                                        onclick={(event: MouseEvent) => {
+                                            event.preventDefault();
+                                            if (queueFocusTarget === 'hold') {
                                                 updateQueueState(queueState => ({
                                                     ...queueState,
                                                     hold: null,
                                                 }));
-                                            }}
-                                            style={queueButtonStyle}
-                                        >
-                                            {i18n.ColdClear.QueueClearHoldLabel()}
-                                        </button>
-                                        <button
-                                            key="cold-clear-append-one-bag"
-                                            datatest="btn-cold-clear-append-one-bag"
-                                            disabled={isRunning}
-                                            onclick={(event: MouseEvent) => {
-                                                event.preventDefault();
-                                                actions.appendColdClearOneBagToComment();
-                                            }}
-                                            style={queueButtonStyle}
-                                        >
-                                            {i18n.ColdClear.OneBagAddShortLabel()}
-                                        </button>
-                                    </div>
+                                            } else {
+                                                updateQueueState(queueState => ({
+                                                    ...queueState,
+                                                    queue: [],
+                                                }));
+                                            }
+                                        }}
+                                        style={queueButtonStyle}
+                                    >
+                                        {i18n.ColdClear.QueueClearLabel()}
+                                    </button>
+                                    <button
+                                        key="cold-clear-append-one-bag"
+                                        datatest="btn-cold-clear-append-one-bag"
+                                        disabled={isRunning || queueFocusTarget === 'hold'}
+                                        onclick={(event: MouseEvent) => {
+                                            event.preventDefault();
+                                            actions.appendColdClearOneBagToComment();
+                                        }}
+                                        style={queueButtonStyle}
+                                    >
+                                        {i18n.ColdClear.OneBagAddShortLabel()}
+                                    </button>
                                 </div>,
                                 <div key="cold-clear-b2b-row" style={rowStyle}>
                                     <p style={labelStyle}>{i18n.ColdClear.QueueB2BLabel()}</p>

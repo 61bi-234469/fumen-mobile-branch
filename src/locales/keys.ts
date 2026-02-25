@@ -203,6 +203,7 @@ export const i18n = {
         QueueHoldLabel: () => t('ColdClear.QueueHoldLabel'),
         QueuePiecesLabel: () => t('ColdClear.QueuePiecesLabel'),
         QueueClearHoldLabel: () => t('ColdClear.QueueClearHoldLabel'),
+        QueueClearLabel: () => t('ColdClear.QueueClearLabel'),
         QueueB2BLabel: () => t('ColdClear.QueueB2BLabel'),
         QueueComboLabel: () => t('ColdClear.QueueComboLabel'),
         StopSearchLabel: () => t('ColdClear.StopSearchLabel'),
