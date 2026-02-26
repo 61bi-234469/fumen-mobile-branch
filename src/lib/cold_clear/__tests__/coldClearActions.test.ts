@@ -340,7 +340,7 @@ describe('coldClearActions run isolation', () => {
         expect(result).toBeUndefined();
     });
 
-    test('onColdClearError retries single search once, then finalizes with partial results', () => {
+    test('onColdClearError finishes immediately and shows error details in toast', () => {
         const mockActions: any = {
             addColdClearBranches: jest.fn().mockReturnValue(() => ({ tree: { enabled: true } })),
             coldClearFinishSearch: jest.fn().mockReturnValue(() => ({ coldClear: { isRunning: false } })),
@@ -371,13 +371,12 @@ describe('coldClearActions run isolation', () => {
         expect(wrapperCtor).toHaveBeenCalledTimes(1);
 
         coldClearActions.onColdClearError({ runId, error: 'RuntimeError: unreachable' })(runningState);
-        expect(wrapperCtor).toHaveBeenCalledTimes(2);
         expect(mockActions.addColdClearBranches).not.toHaveBeenCalled();
-
-        coldClearActions.onColdClearError({ runId, error: 'RuntimeError: unreachable' })(runningState);
-        expect(mockActions.addColdClearBranches).toHaveBeenCalledTimes(1);
         expect(mockActions.coldClearFinishSearch).toHaveBeenCalledWith(runId);
-        expect(mockActions.changeToTreeViewScreen).toHaveBeenCalledTimes(1);
+        expect(mockActions.changeToTreeViewScreen).not.toHaveBeenCalled();
+        expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({
+            html: 'Worker error: RuntimeError: unreachable',
+        }));
     });
 
     test('onColdClearNoMove ignores stale runId', () => {

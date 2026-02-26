@@ -66,7 +66,6 @@ interface SingleRunSession extends SessionBase {
     nextLimit: number | null;
     colorize: boolean;
     srs: boolean;
-    retryCount: number;
 }
 
 interface Top3RunSession extends SessionBase {
@@ -122,12 +121,11 @@ export const COLD_CLEAR_TOP_BRANCH_COUNT_MAX = 20;
 export const COLD_CLEAR_NEXT_LIMIT_MIN = 0;
 export const COLD_CLEAR_NEXT_LIMIT_MAX = 30;
 export const COLD_CLEAR_NEXT_LIMIT_DEFAULT = 5;
-export const COLD_CLEAR_THINK_MS_PRESETS = [500, 1000, 2000, 5000];
+export const COLD_CLEAR_THINK_MS_PRESETS = [500, 1000, 2000];
 const PLACED_SCORE_MAX_THINK_MS_MULTIPLIER = 8;
 const PLACED_SCORE_INITIAL_CANDIDATE_COUNT = 5000;
 const PLACED_SCORE_MAX_CANDIDATE_COUNT = 20000;
 const PLACED_SCORE_MAX_RETRY = 1;
-const SINGLE_SEARCH_MAX_RETRY = 1;
 const MAX_PRINTABLE_SCORE = 1000000;
 const OUTSIDE_TOP_CANDIDATES_COMMENT_PREFIX = 'outsideTop';
 const SCORE_SEGMENT_REGEX = /^score=(-?(?:0|[1-9]\d*)\.\d{2})$/;
@@ -974,21 +972,6 @@ function retryPlacedSpawnEvaluation(session: PlacedRunSession): boolean {
     return true;
 }
 
-function retrySingleSearch(session: SingleRunSession): boolean {
-    if (session.retryCount >= SINGLE_SEARCH_MAX_RETRY) {
-        return false;
-    }
-    if (session.queue.length === 0 || session.resultPages.length >= session.totalMoves) {
-        return false;
-    }
-
-    terminateSession(session);
-    session.wrapper = new ColdClearWrapper();
-    session.retryCount += 1;
-    startWorkerSession(session, buildSingleInitMessage(session), () => session.resultPages.length > 0);
-    return true;
-}
-
 function handleWorkerMessage(runId: number, msg: WorkerResponse) {
     if (!appActions) { return; }
 
@@ -1094,7 +1077,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             thinkMs: state.coldClear.thinkMs,
             colorize: page.flags.colorize,
             srs: page.flags.srs,
-            retryCount: 0,
         };
         currentSession = session;
 
@@ -1975,16 +1957,6 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             return undefined;
         }
 
-        if (currentSession && currentSession.runId === runId && currentSession.runType === 'single') {
-            if (retrySingleSearch(currentSession)) {
-                return undefined;
-            }
-            if (currentSession.resultPages.length > 0) {
-                finishSingleSearch(runId);
-                return undefined;
-            }
-        }
-
         // tslint:disable-next-line:no-console
         console.error('Cold Clear error:', error);
 
@@ -1993,7 +1965,12 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             currentSession = null;
         }
 
-        M.toast({ html: i18n.ColdClear.WorkerError(), classes: 'top-toast', displayLength: 1500 });
+        const errorText = error && error.trim() !== '' ? error : 'unknown error';
+        M.toast({
+            html: `${i18n.ColdClear.WorkerError()}: ${errorText}`,
+            classes: 'top-toast',
+            displayLength: 2500,
+        });
 
         emitFinish(runId);
 
