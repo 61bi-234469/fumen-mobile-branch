@@ -499,182 +499,6 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                         })}
                     </div>
 
-                    <div key="cold-clear-settings" style={sectionStyle}>
-                        <p style={sectionTitleStyle}>{i18n.ColdClear.SettingsSectionTitle()}</p>
-
-                        <div key="cold-clear-hold-allowed-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.HoldAllowedLabel()}</p>
-                                <p style={descriptionStyle}>{i18n.ColdClear.HoldAllowedDescription()}</p>
-                            </div>
-                            <label>
-                                <input
-                                    datatest="toggle-cold-clear-hold-allowed"
-                                    type="checkbox"
-                                    checked={holdAllowed}
-                                    disabled={isRunning}
-                                    style={checkboxStyle}
-                                    onchange={(event: Event) => {
-                                        const target = event.target as HTMLInputElement;
-                                        actions.setColdClearHoldAllowed({ holdAllowed: target.checked });
-                                    }}
-                                />
-                                <span />
-                            </label>
-                        </div>
-
-                        <div key="cold-clear-speculate-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.SpeculateLabel()}</p>
-                                <p style={descriptionStyle}>{i18n.ColdClear.SpeculateDescription()}</p>
-                            </div>
-                            <label>
-                                <input
-                                    datatest="toggle-cold-clear-speculate"
-                                    type="checkbox"
-                                    checked={speculate}
-                                    disabled={isRunning}
-                                    style={checkboxStyle}
-                                    onchange={(event: Event) => {
-                                        const target = event.target as HTMLInputElement;
-                                        actions.setColdClearSpeculate({ speculate: target.checked });
-                                    }}
-                                />
-                                <span />
-                            </label>
-                        </div>
-
-                        <div key="cold-clear-next-limit-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.NextLimitLabel()}</p>
-                                <p style={descriptionStyle}>{i18n.ColdClear.NextLimitDescription()}</p>
-                            </div>
-                            <div style={style({ display: 'flex', alignItems: 'center', gap: px(8) })}>
-                                <label>
-                                    <input
-                                        datatest="toggle-cold-clear-next-limit-enabled"
-                                        type="checkbox"
-                                        checked={nextLimit !== null}
-                                        disabled={isRunning}
-                                        onchange={(event: Event) => {
-                                            const target = event.target as HTMLInputElement;
-                                            actions.setColdClearNextLimit({
-                                                nextLimit: target.checked ? COLD_CLEAR_NEXT_LIMIT_DEFAULT : null,
-                                            });
-                                        }}
-                                    />
-                                    <span />
-                                </label>
-                                <input
-                                    datatest="input-cold-clear-next-limit"
-                                    type="number"
-                                    value={nextLimit === null ? '' : nextLimit}
-                                    min={COLD_CLEAR_NEXT_LIMIT_MIN}
-                                    max={COLD_CLEAR_NEXT_LIMIT_MAX}
-                                    step={1}
-                                    disabled={isRunning || nextLimit === null}
-                                    onchange={(event: Event) => {
-                                        const target = event.target as HTMLInputElement;
-                                        const value = Number(target.value);
-                                        if (Number.isNaN(value)) {
-                                            return;
-                                        }
-                                        const normalized = Math.max(
-                                            COLD_CLEAR_NEXT_LIMIT_MIN,
-                                            Math.min(COLD_CLEAR_NEXT_LIMIT_MAX, Math.floor(value)),
-                                        );
-                                        actions.setColdClearNextLimit({ nextLimit: normalized });
-                                    }}
-                                    style={numberInputStyle}
-                                />
-                            </div>
-                        </div>
-
-                        {speculate && nextLimit !== null
-                            ? <p style={warningStyle}>{i18n.ColdClear.SpeculateNextLimitHint()}</p>
-                            : undefined}
-
-                        <div key="cold-clear-top-branch-count-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.TopBranchCountLabel()}</p>
-                                <p style={descriptionStyle}>{i18n.ColdClear.TopBranchCountDescription()}</p>
-                            </div>
-                            <input
-                                key="input-cold-clear-top-branch-count"
-                                datatest="input-cold-clear-top-branch-count"
-                                type="number"
-                                value={topBranchCount}
-                                min={COLD_CLEAR_TOP_BRANCH_COUNT_MIN}
-                                max={COLD_CLEAR_TOP_BRANCH_COUNT_MAX}
-                                step={1}
-                                disabled={isRunning}
-                                onchange={onChangeTopBranchCount}
-                                style={numberInputStyle}
-                            />
-                        </div>
-
-                        <div key="cold-clear-weights-preset-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.WeightsPresetLabel()}</p>
-                                <p style={descriptionStyle}>{i18n.ColdClear.WeightsPresetDescription()}</p>
-                            </div>
-                            <select
-                                key="select-cold-clear-weights-preset"
-                                datatest="select-cold-clear-weights-preset"
-                                value={String(weightsPreset)}
-                                disabled={isRunning}
-                                onchange={(event: Event) => {
-                                    const target = event.target as HTMLSelectElement;
-                                    actions.setColdClearWeightsPreset({
-                                        weightsPreset: Number(target.value),
-                                    });
-                                }}
-                                style={style({
-                                    width: px(120),
-                                    height: px(32),
-                                    margin: '0px',
-                                    fontSize: px(13),
-                                    display: 'block',
-                                })}
-                            >
-                                <option value="0">{i18n.ColdClear.WeightsPresetDefault()}</option>
-                                <option value="1">{i18n.ColdClear.WeightsPresetFast()}</option>
-                            </select>
-                        </div>
-
-                        <div key="cold-clear-think-time-row" style={rowStyle}>
-                            <div>
-                                <p style={labelStyle}>{i18n.ColdClear.ThinkTimeLabel()}</p>
-                                <p style={descriptionStyle}>{i18n.ColdClear.ThinkTimeDescription()}</p>
-                            </div>
-                            <select
-                                key="select-cold-clear-think-time"
-                                datatest="select-cold-clear-think-time"
-                                value={String(thinkMs)}
-                                disabled={isRunning}
-                                onchange={(event: Event) => {
-                                    const target = event.target as HTMLSelectElement;
-                                    actions.setColdClearThinkMs({
-                                        thinkMs: Number(target.value),
-                                    });
-                                }}
-                                style={style({
-                                    width: px(120),
-                                    height: px(32),
-                                    margin: '0px',
-                                    fontSize: px(13),
-                                    display: 'block',
-                                })}
-                            >
-                                {COLD_CLEAR_THINK_MS_PRESETS.map(ms =>
-                                    <option key={`think-${ms}`} value={String(ms)}>
-                                        {ms >= 1000 ? `${ms / 1000}s` : `${ms}ms`}
-                                    </option>,
-                                )}
-                            </select>
-                        </div>
-                    </div>
-
                     <div key="cold-clear-queue-state" style={sectionStyle}>
                         <p style={sectionTitleStyle}>{i18n.ColdClear.QueueStateSectionTitle()}</p>
                         {!currentQueueState
@@ -709,7 +533,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                             : [
                                 <p key="cold-clear-queue-summary" style={summaryStyle}>
                                     {i18n.ColdClear.QueueStateSummary(
-                                        currentQueueState.hold === null ? '-' : PIECE_TO_CHAR[currentQueueState.hold],
+                                        currentQueueState.hold === null ? '' : PIECE_TO_CHAR[currentQueueState.hold],
                                         toQueueText(currentQueueState.queue),
                                     )}
                                 </p>,
@@ -730,7 +554,8 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                             setQueueFocus('hold');
                                         }}
                                         style={style({
-                                            minWidth: px(64),
+                                            flex: '1',
+                                            minWidth: '0',
                                             padding: px(8),
                                             borderRadius: '6px',
                                             cursor: queueEditorDisabled ? 'default' : 'pointer',
@@ -789,7 +614,8 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                             setQueueFocus('next');
                                         }}
                                         style={style({
-                                            flex: '1',
+                                            flex: '2',
+                                            minWidth: '0',
                                             padding: px(8),
                                             borderRadius: '6px',
                                             cursor: queueEditorDisabled ? 'default' : 'pointer',
@@ -891,7 +717,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                         {i18n.ColdClear.OneBagAddShortLabel()}
                                     </button>
                                 </div>,
-                                <div key="cold-clear-b2b-row" style={rowStyle}>
+                                <div key="cold-clear-b2b-combo-row" style={rowStyle}>
                                     <p style={labelStyle}>{i18n.ColdClear.QueueB2BLabel()}</p>
                                     <label>
                                         <input
@@ -909,8 +735,7 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                         />
                                         <span />
                                     </label>
-                                </div>,
-                                <div key="cold-clear-combo-row" style={rowStyle}>
+                                    <div style={style({ width: px(16) })} />
                                     <p style={labelStyle}>{i18n.ColdClear.QueueComboLabel()}</p>
                                     <input
                                         datatest="input-cold-clear-queue-combo"
@@ -934,6 +759,182 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                     />
                                 </div>,
                             ]}
+                    </div>
+
+                    <div key="cold-clear-settings" style={sectionStyle}>
+                        <p style={sectionTitleStyle}>{i18n.ColdClear.SettingsSectionTitle()}</p>
+
+                        <div key="cold-clear-hold-allowed-row" style={rowStyle}>
+                            <div>
+                                <p style={labelStyle}>{i18n.ColdClear.HoldAllowedLabel()}</p>
+                                <p style={descriptionStyle}>{i18n.ColdClear.HoldAllowedDescription()}</p>
+                            </div>
+                            <label>
+                                <input
+                                    datatest="toggle-cold-clear-hold-allowed"
+                                    type="checkbox"
+                                    checked={holdAllowed}
+                                    disabled={isRunning}
+                                    style={checkboxStyle}
+                                    onchange={(event: Event) => {
+                                        const target = event.target as HTMLInputElement;
+                                        actions.setColdClearHoldAllowed({ holdAllowed: target.checked });
+                                    }}
+                                />
+                                <span />
+                            </label>
+                        </div>
+
+                        <div key="cold-clear-next-limit-row" style={rowStyle}>
+                            <div>
+                                <p style={labelStyle}>{i18n.ColdClear.NextLimitLabel()}</p>
+                                <p style={descriptionStyle}>{i18n.ColdClear.NextLimitDescription()}</p>
+                            </div>
+                            <div style={style({ display: 'flex', alignItems: 'center', gap: px(8) })}>
+                                <label>
+                                    <input
+                                        datatest="toggle-cold-clear-next-limit-enabled"
+                                        type="checkbox"
+                                        checked={nextLimit !== null}
+                                        disabled={isRunning}
+                                        onchange={(event: Event) => {
+                                            const target = event.target as HTMLInputElement;
+                                            actions.setColdClearNextLimit({
+                                                nextLimit: target.checked ? COLD_CLEAR_NEXT_LIMIT_DEFAULT : null,
+                                            });
+                                        }}
+                                    />
+                                    <span />
+                                </label>
+                                <input
+                                    datatest="input-cold-clear-next-limit"
+                                    type="number"
+                                    value={nextLimit === null ? '' : nextLimit}
+                                    min={COLD_CLEAR_NEXT_LIMIT_MIN}
+                                    max={COLD_CLEAR_NEXT_LIMIT_MAX}
+                                    step={1}
+                                    disabled={isRunning || nextLimit === null}
+                                    onchange={(event: Event) => {
+                                        const target = event.target as HTMLInputElement;
+                                        const value = Number(target.value);
+                                        if (Number.isNaN(value)) {
+                                            return;
+                                        }
+                                        const normalized = Math.max(
+                                            COLD_CLEAR_NEXT_LIMIT_MIN,
+                                            Math.min(COLD_CLEAR_NEXT_LIMIT_MAX, Math.floor(value)),
+                                        );
+                                        actions.setColdClearNextLimit({ nextLimit: normalized });
+                                    }}
+                                    style={numberInputStyle}
+                                />
+                            </div>
+                        </div>
+
+                        <div key="cold-clear-think-time-row" style={rowStyle}>
+                            <div>
+                                <p style={labelStyle}>{i18n.ColdClear.ThinkTimeLabel()}</p>
+                                <p style={descriptionStyle}>{i18n.ColdClear.ThinkTimeDescription()}</p>
+                            </div>
+                            <select
+                                key="select-cold-clear-think-time"
+                                datatest="select-cold-clear-think-time"
+                                value={String(thinkMs)}
+                                disabled={isRunning}
+                                onchange={(event: Event) => {
+                                    const target = event.target as HTMLSelectElement;
+                                    actions.setColdClearThinkMs({
+                                        thinkMs: Number(target.value),
+                                    });
+                                }}
+                                style={style({
+                                    width: px(120),
+                                    height: px(32),
+                                    margin: '0px',
+                                    fontSize: px(13),
+                                    display: 'block',
+                                })}
+                            >
+                                {COLD_CLEAR_THINK_MS_PRESETS.map(ms =>
+                                    <option key={`think-${ms}`} value={String(ms)}>
+                                        {ms >= 1000 ? `${ms / 1000}s` : `${ms}ms`}
+                                    </option>,
+                                )}
+                            </select>
+                        </div>
+
+                        <div key="cold-clear-weights-preset-row" style={rowStyle}>
+                            <div>
+                                <p style={labelStyle}>{i18n.ColdClear.WeightsPresetLabel()}</p>
+                                <p style={descriptionStyle}>{i18n.ColdClear.WeightsPresetDescription()}</p>
+                            </div>
+                            <select
+                                key="select-cold-clear-weights-preset"
+                                datatest="select-cold-clear-weights-preset"
+                                value={String(weightsPreset)}
+                                disabled={isRunning}
+                                onchange={(event: Event) => {
+                                    const target = event.target as HTMLSelectElement;
+                                    actions.setColdClearWeightsPreset({
+                                        weightsPreset: Number(target.value),
+                                    });
+                                }}
+                                style={style({
+                                    width: px(120),
+                                    height: px(32),
+                                    margin: '0px',
+                                    fontSize: px(13),
+                                    display: 'block',
+                                })}
+                            >
+                                <option value="0">{i18n.ColdClear.WeightsPresetDefault()}</option>
+                                <option value="1">{i18n.ColdClear.WeightsPresetFast()}</option>
+                            </select>
+                        </div>
+
+                        <div key="cold-clear-speculate-row" style={rowStyle}>
+                            <div>
+                                <p style={labelStyle}>{i18n.ColdClear.SpeculateLabel()}</p>
+                                <p style={descriptionStyle}>{i18n.ColdClear.SpeculateDescription()}</p>
+                            </div>
+                            <label>
+                                <input
+                                    datatest="toggle-cold-clear-speculate"
+                                    type="checkbox"
+                                    checked={speculate}
+                                    disabled={isRunning}
+                                    style={checkboxStyle}
+                                    onchange={(event: Event) => {
+                                        const target = event.target as HTMLInputElement;
+                                        actions.setColdClearSpeculate({ speculate: target.checked });
+                                    }}
+                                />
+                                <span />
+                            </label>
+                        </div>
+
+                        {speculate && nextLimit !== null
+                            ? <p style={warningStyle}>{i18n.ColdClear.SpeculateNextLimitHint()}</p>
+                            : undefined}
+
+                        <div key="cold-clear-top-branch-count-row" style={rowStyle}>
+                            <div>
+                                <p style={labelStyle}>{i18n.ColdClear.TopBranchCountLabel()}</p>
+                                <p style={descriptionStyle}>{i18n.ColdClear.TopBranchCountDescription()}</p>
+                            </div>
+                            <input
+                                key="input-cold-clear-top-branch-count"
+                                datatest="input-cold-clear-top-branch-count"
+                                type="number"
+                                value={topBranchCount}
+                                min={COLD_CLEAR_TOP_BRANCH_COUNT_MIN}
+                                max={COLD_CLEAR_TOP_BRANCH_COUNT_MAX}
+                                step={1}
+                                disabled={isRunning}
+                                onchange={onChangeTopBranchCount}
+                                style={numberInputStyle}
+                            />
+                        </div>
                     </div>
                 </div>
 
