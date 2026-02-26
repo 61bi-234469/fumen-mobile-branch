@@ -176,6 +176,8 @@ interface ViewSettings {
     coldClearHoldAllowed: boolean;
     coldClearSpeculate: boolean;
     coldClearNextLimit: number | null;
+    coldClearWeightsPreset: number;
+    coldClearThinkMs: number;
 }
 
 const safer = {
@@ -252,6 +254,8 @@ export const localStorageWrapper = {
             coldClearNextLimit: obj.coldClearNextLimit === null
                 ? null
                 : safer.number(obj.coldClearNextLimit),
+            coldClearWeightsPreset: safer.number(obj.coldClearWeightsPreset),
+            coldClearThinkMs: safer.number(obj.coldClearThinkMs),
         };
     },
 };

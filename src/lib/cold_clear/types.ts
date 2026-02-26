@@ -11,6 +11,7 @@ export interface CCInitMessage {
     queue: number[];    // CC piece values (0-6)
     holdAllowed: boolean;
     speculate: boolean;
+    weightsPreset: number;
     thinkMs: number;
 }
 

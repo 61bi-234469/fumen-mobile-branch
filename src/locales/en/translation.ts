@@ -229,5 +229,11 @@
         FloatingPieceUnsupported: 'AI: Floating piece is not supported',
         CannotEvaluatePlacedSpawn: 'AI: Cannot evaluate current placement',
         InsufficientQueueForHold: 'AI: NEXT=0 with Hold enabled requires at least 2 pieces when hold is empty',
+        WeightsPresetLabel: 'Weights',
+        WeightsPresetDescription: 'Evaluation strategy (not thinking time)',
+        WeightsPresetDefault: 'Default',
+        WeightsPresetFast: 'Fast',
+        ThinkTimeLabel: 'Think Time',
+        ThinkTimeDescription: 'Time for AI to search per move',
     },
 };

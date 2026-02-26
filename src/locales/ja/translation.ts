@@ -204,5 +204,11 @@ export const resources = {
         FloatingPieceUnsupported: 'AI: 浮遊ミノは未対応です',
         CannotEvaluatePlacedSpawn: 'AI: 現在の配置は評価できません',
         InsufficientQueueForHold: 'AI: Hold有効かつNEXT=0の場合、Hold空時はキューに2個以上必要です',
+        WeightsPresetLabel: '重み',
+        WeightsPresetDescription: '評価戦略（思考時間ではありません）',
+        WeightsPresetDefault: 'Default',
+        WeightsPresetFast: 'Fast',
+        ThinkTimeLabel: '思考時間',
+        ThinkTimeDescription: '1手あたりのAI探索時間',
     },
 };

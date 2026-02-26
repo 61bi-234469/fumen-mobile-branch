@@ -380,6 +380,12 @@ const loadUserSettings = () => {
     if (viewSettings.coldClearNextLimit !== undefined) {
         main.setColdClearNextLimit({ nextLimit: viewSettings.coldClearNextLimit });
     }
+    if (viewSettings.coldClearWeightsPreset !== undefined) {
+        main.setColdClearWeightsPreset({ weightsPreset: viewSettings.coldClearWeightsPreset });
+    }
+    if (viewSettings.coldClearThinkMs !== undefined) {
+        main.setColdClearThinkMs({ thinkMs: viewSettings.coldClearThinkMs });
+    }
 
     const treeViewSettings: Partial<State['tree']> = {};
     if (viewSettings.buttonDropMovesSubtree !== undefined) {

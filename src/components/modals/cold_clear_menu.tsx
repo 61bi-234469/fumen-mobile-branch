@@ -9,6 +9,7 @@ import {
     COLD_CLEAR_NEXT_LIMIT_MIN,
     COLD_CLEAR_TOP_BRANCH_COUNT_MAX,
     COLD_CLEAR_TOP_BRANCH_COUNT_MIN,
+    COLD_CLEAR_THINK_MS_PRESETS,
 } from '../../actions/cold_clear';
 
 declare const M: any;
@@ -28,6 +29,8 @@ interface ColdClearMenuModalProps {
     holdAllowed: boolean;
     speculate: boolean;
     nextLimit: number | null;
+    weightsPreset: number;
+    thinkMs: number;
     currentQueueState: ColdClearQueueState | null;
     canSequenceSearch: boolean;
     canTopBranchesSearch: boolean;
@@ -42,6 +45,8 @@ interface ColdClearMenuModalProps {
         setColdClearHoldAllowed: (data: { holdAllowed: boolean }) => void;
         setColdClearSpeculate: (data: { speculate: boolean }) => void;
         setColdClearNextLimit: (data: { nextLimit: number | null }) => void;
+        setColdClearWeightsPreset: (data: { weightsPreset: number }) => void;
+        setColdClearThinkMs: (data: { thinkMs: number }) => void;
         previewColdClearQueueComment: (data: {
             hold: Piece | null;
             queue: Piece[];
@@ -130,6 +135,8 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         holdAllowed,
         speculate,
         nextLimit,
+        weightsPreset,
+        thinkMs,
         currentQueueState,
         canSequenceSearch,
         canTopBranchesSearch,
@@ -604,6 +611,67 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                 onchange={onChangeTopBranchCount}
                                 style={numberInputStyle}
                             />
+                        </div>
+
+                        <div key="cold-clear-weights-preset-row" style={rowStyle}>
+                            <div>
+                                <p style={labelStyle}>{i18n.ColdClear.WeightsPresetLabel()}</p>
+                                <p style={descriptionStyle}>{i18n.ColdClear.WeightsPresetDescription()}</p>
+                            </div>
+                            <select
+                                key="select-cold-clear-weights-preset"
+                                datatest="select-cold-clear-weights-preset"
+                                value={String(weightsPreset)}
+                                disabled={isRunning}
+                                onchange={(event: Event) => {
+                                    const target = event.target as HTMLSelectElement;
+                                    actions.setColdClearWeightsPreset({
+                                        weightsPreset: Number(target.value),
+                                    });
+                                }}
+                                style={style({
+                                    width: px(120),
+                                    height: px(32),
+                                    margin: '0px',
+                                    fontSize: px(13),
+                                    display: 'block',
+                                })}
+                            >
+                                <option value="0">{i18n.ColdClear.WeightsPresetDefault()}</option>
+                                <option value="1">{i18n.ColdClear.WeightsPresetFast()}</option>
+                            </select>
+                        </div>
+
+                        <div key="cold-clear-think-time-row" style={rowStyle}>
+                            <div>
+                                <p style={labelStyle}>{i18n.ColdClear.ThinkTimeLabel()}</p>
+                                <p style={descriptionStyle}>{i18n.ColdClear.ThinkTimeDescription()}</p>
+                            </div>
+                            <select
+                                key="select-cold-clear-think-time"
+                                datatest="select-cold-clear-think-time"
+                                value={String(thinkMs)}
+                                disabled={isRunning}
+                                onchange={(event: Event) => {
+                                    const target = event.target as HTMLSelectElement;
+                                    actions.setColdClearThinkMs({
+                                        thinkMs: Number(target.value),
+                                    });
+                                }}
+                                style={style({
+                                    width: px(120),
+                                    height: px(32),
+                                    margin: '0px',
+                                    fontSize: px(13),
+                                    display: 'block',
+                                })}
+                            >
+                                {COLD_CLEAR_THINK_MS_PRESETS.map(ms =>
+                                    <option key={`think-${ms}`} value={String(ms)}>
+                                        {ms >= 1000 ? `${ms / 1000}s` : `${ms}ms`}
+                                    </option>,
+                                )}
+                            </select>
                         </div>
                     </div>
 

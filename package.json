@@ -11,7 +11,8 @@
     "cy-run": "node scripts/cypress_wrapper.js run",
     "cy-open": "node scripts/cypress_wrapper.js open",
     "test-ci": "yarn test",
-    "cy-run-ci": "node scripts/cypress_wrapper.js run"
+    "cy-run-ci": "node scripts/cypress_wrapper.js run",
+    "dev": "concurrently \"webpack --mode development --watch\" \"node serve.js\""
   },
   "devDependencies": {
     "@hyperapp/html": "1.1.1",
@@ -21,6 +22,7 @@
     "@types/jest": "27.4.1",
     "@types/lodash": "4.14.181",
     "@types/materialize-css": "1.0.11",
+    "concurrently": "^9.2.1",
     "connect": "3.7.0",
     "copy-webpack-plugin": "^10.2.4",
     "css-loader": "6.7.1",

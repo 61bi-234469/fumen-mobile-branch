@@ -178,6 +178,8 @@ export interface State {
         holdAllowed: boolean;
         speculate: boolean;
         nextLimit: number | null;
+        weightsPreset: number;
+        thinkMs: number;
         queuePreview: { pageIndex: number; text: string } | null;
     };
     version: string;
@@ -306,6 +308,8 @@ export const initState: Readonly<State> = {
         holdAllowed: true,
         speculate: true,
         nextLimit: null,
+        weightsPreset: 0,
+        thinkMs: 1000,
         queuePreview: null,
     },
     version: VERSION,

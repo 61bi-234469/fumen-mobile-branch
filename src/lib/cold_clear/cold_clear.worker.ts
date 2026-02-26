@@ -34,6 +34,9 @@ const toMove = (result: any): CCMove => ({
                 msg.holdAllowed,
                 msg.speculate,
             );
+            if (msg.weightsPreset !== 0) {
+                bot.set_weights_preset(msg.weightsPreset);
+            }
             thinkMs = msg.thinkMs;
             postResponse({ type: 'initDone' });
         } else if (msg.type === 'requestMove') {

@@ -237,5 +237,11 @@ export const i18n = {
         FloatingPieceUnsupported: () => t('ColdClear.FloatingPieceUnsupported'),
         CannotEvaluatePlacedSpawn: () => t('ColdClear.CannotEvaluatePlacedSpawn'),
         InsufficientQueueForHold: () => t('ColdClear.InsufficientQueueForHold'),
+        WeightsPresetLabel: () => t('ColdClear.WeightsPresetLabel'),
+        WeightsPresetDescription: () => t('ColdClear.WeightsPresetDescription'),
+        WeightsPresetDefault: () => t('ColdClear.WeightsPresetDefault'),
+        WeightsPresetFast: () => t('ColdClear.WeightsPresetFast'),
+        ThinkTimeLabel: () => t('ColdClear.ThinkTimeLabel'),
+        ThinkTimeDescription: () => t('ColdClear.ThinkTimeDescription'),
     },
 };

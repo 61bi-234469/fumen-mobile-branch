@@ -47,6 +47,8 @@ interface SessionBase {
     runId: number;
     runType: RunType;
     wrapper: ColdClearWrapper;
+    weightsPreset: number;
+    thinkMs: number;
 }
 
 interface SingleRunSession extends SessionBase {
@@ -64,6 +66,7 @@ interface SingleRunSession extends SessionBase {
     nextLimit: number | null;
     colorize: boolean;
     srs: boolean;
+    retryCount: number;
 }
 
 interface Top3RunSession extends SessionBase {
@@ -87,6 +90,7 @@ interface PlacedRunSession extends SessionBase {
     targetPageIndex: number;
     placedPiece: Move;
     field: Field;
+    initialThinkMs: number;
     thinkMs: number;
     requestedCandidateCount: number;
     retryCount: number;
@@ -111,7 +115,6 @@ type ColdClearRuntimeActions = ColdClearActions
 
 let currentSession: RunSession | null = null;
 
-const THINK_MS = 1000;
 const INIT_TIMEOUT_MS = 10000;
 export const COLD_CLEAR_TOP_BRANCH_COUNT_DEFAULT = 5;
 export const COLD_CLEAR_TOP_BRANCH_COUNT_MIN = 1;
@@ -119,11 +122,12 @@ export const COLD_CLEAR_TOP_BRANCH_COUNT_MAX = 20;
 export const COLD_CLEAR_NEXT_LIMIT_MIN = 0;
 export const COLD_CLEAR_NEXT_LIMIT_MAX = 30;
 export const COLD_CLEAR_NEXT_LIMIT_DEFAULT = 5;
-const PLACED_SCORE_INITIAL_THINK_MS = THINK_MS;
-const PLACED_SCORE_MAX_THINK_MS = THINK_MS * 8;
+export const COLD_CLEAR_THINK_MS_PRESETS = [500, 1000, 2000, 5000];
+const PLACED_SCORE_MAX_THINK_MS_MULTIPLIER = 8;
 const PLACED_SCORE_INITIAL_CANDIDATE_COUNT = 5000;
 const PLACED_SCORE_MAX_CANDIDATE_COUNT = 20000;
 const PLACED_SCORE_MAX_RETRY = 1;
+const SINGLE_SEARCH_MAX_RETRY = 1;
 const MAX_PRINTABLE_SCORE = 1000000;
 const OUTSIDE_TOP_CANDIDATES_COMMENT_PREFIX = 'outsideTop';
 const SCORE_SEGMENT_REGEX = /^score=(-?(?:0|[1-9]\d*)\.\d{2})$/;
@@ -143,6 +147,8 @@ export interface ColdClearActions {
     setColdClearHoldAllowed: (data: { holdAllowed: boolean }) => action;
     setColdClearSpeculate: (data: { speculate: boolean }) => action;
     setColdClearNextLimit: (data: { nextLimit: number | null }) => action;
+    setColdClearWeightsPreset: (data: { weightsPreset: number }) => action;
+    setColdClearThinkMs: (data: { thinkMs: number }) => action;
     evaluatePlacedSpawnMinoScore: () => action;
     appendColdClearOneBagToComment: () => action;
     swapCurrentPieceWithHoldQueue: () => action;
@@ -202,6 +208,8 @@ const saveColdClearViewSettings = (
         holdAllowed: boolean;
         speculate: boolean;
         nextLimit: number | null;
+        weightsPreset: number;
+        thinkMs: number;
     }>,
 ) => {
     if (typeof localStorage === 'undefined') {
@@ -218,6 +226,8 @@ const saveColdClearViewSettings = (
         coldClearNextLimit: overrides?.nextLimit !== undefined
             ? overrides.nextLimit
             : state.coldClear.nextLimit,
+        coldClearWeightsPreset: overrides?.weightsPreset ?? state.coldClear.weightsPreset,
+        coldClearThinkMs: overrides?.thinkMs ?? state.coldClear.thinkMs,
     });
 };
 
@@ -913,6 +923,7 @@ const buildPlacedSpawnInitMessage = (session: PlacedRunSession): CCInitMessage =
         queue: ccQueue,
         holdAllowed: session.holdAllowed,
         speculate: session.speculate,
+        weightsPreset: session.weightsPreset,
         thinkMs: session.thinkMs,
     };
 };
@@ -933,7 +944,8 @@ const buildSingleInitMessage = (session: SingleRunSession): CCInitMessage => {
         queue: ccQueue,
         holdAllowed: session.holdAllowed,
         speculate: session.speculate,
-        thinkMs: THINK_MS,
+        weightsPreset: session.weightsPreset,
+        thinkMs: session.thinkMs,
     };
 };
 
@@ -942,7 +954,8 @@ function retryPlacedSpawnEvaluation(session: PlacedRunSession): boolean {
         return false;
     }
 
-    const nextThinkMs = Math.min(PLACED_SCORE_MAX_THINK_MS, session.thinkMs * 2);
+    const maxThinkMs = session.initialThinkMs * PLACED_SCORE_MAX_THINK_MS_MULTIPLIER;
+    const nextThinkMs = Math.min(maxThinkMs, session.thinkMs * 2);
     const nextCandidateCount = Math.min(
         PLACED_SCORE_MAX_CANDIDATE_COUNT,
         session.requestedCandidateCount * 2,
@@ -958,6 +971,21 @@ function retryPlacedSpawnEvaluation(session: PlacedRunSession): boolean {
     session.retryCount += 1;
 
     startWorkerSession(session, buildPlacedSpawnInitMessage(session), () => false);
+    return true;
+}
+
+function retrySingleSearch(session: SingleRunSession): boolean {
+    if (session.retryCount >= SINGLE_SEARCH_MAX_RETRY) {
+        return false;
+    }
+    if (session.queue.length === 0 || session.resultPages.length >= session.totalMoves) {
+        return false;
+    }
+
+    terminateSession(session);
+    session.wrapper = new ColdClearWrapper();
+    session.retryCount += 1;
+    startWorkerSession(session, buildSingleInitMessage(session), () => session.resultPages.length > 0);
     return true;
 }
 
@@ -1056,12 +1084,17 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             queue: parsed.queue.slice(),
             b2b: parsed.b2b,
             combo: normalizeCombo(parsed.combo),
-            totalMoves: parsed.queue.length,
+            totalMoves: (state.coldClear.holdAllowed && parsed.hold === null)
+                ? Math.max(0, parsed.queue.length - 1)
+                : parsed.queue.length,
             holdAllowed: state.coldClear.holdAllowed,
             speculate: state.coldClear.speculate,
             nextLimit: state.coldClear.nextLimit,
+            weightsPreset: state.coldClear.weightsPreset,
+            thinkMs: state.coldClear.thinkMs,
             colorize: page.flags.colorize,
             srs: page.flags.srs,
+            retryCount: 0,
         };
         currentSession = session;
 
@@ -1133,6 +1166,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             combo: normalizeCombo(parsed.combo),
             holdAllowed: state.coldClear.holdAllowed,
             speculate: state.coldClear.speculate,
+            weightsPreset: state.coldClear.weightsPreset,
+            thinkMs: state.coldClear.thinkMs,
             colorize: page.flags.colorize,
             srs: page.flags.srs,
         };
@@ -1154,7 +1189,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             queue: ccQueue,
             holdAllowed: state.coldClear.holdAllowed,
             speculate: state.coldClear.speculate,
-            thinkMs: THINK_MS,
+            weightsPreset: state.coldClear.weightsPreset,
+            thinkMs: state.coldClear.thinkMs,
         };
 
         startWorkerSession(session, initMsg, () => false);
@@ -1256,6 +1292,48 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         };
     },
 
+    setColdClearWeightsPreset: ({ weightsPreset }) => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const preset = weightsPreset === 1 ? 1 : 0;
+        if (state.coldClear.weightsPreset === preset) {
+            return undefined;
+        }
+
+        saveColdClearViewSettings(state, { weightsPreset: preset });
+
+        return {
+            coldClear: {
+                ...state.coldClear,
+                weightsPreset: preset,
+            },
+        };
+    },
+
+    setColdClearThinkMs: ({ thinkMs }) => (state): NextState => {
+        if (state.coldClear.isRunning) {
+            return undefined;
+        }
+
+        const validMs = COLD_CLEAR_THINK_MS_PRESETS.includes(thinkMs)
+            ? thinkMs
+            : COLD_CLEAR_THINK_MS_PRESETS[1]; // default 1000
+        if (state.coldClear.thinkMs === validMs) {
+            return undefined;
+        }
+
+        saveColdClearViewSettings(state, { thinkMs: validMs });
+
+        return {
+            coldClear: {
+                ...state.coldClear,
+                thinkMs: validMs,
+            },
+        };
+    },
+
     evaluatePlacedSpawnMinoScore: () => (state): NextState => {
         if (state.coldClear.isRunning) {
             return undefined;
@@ -1299,7 +1377,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             targetNodeId: target.nodeId,
             targetPageIndex: target.pageIndex,
             field: preLockField.copy(),
-            thinkMs: PLACED_SCORE_INITIAL_THINK_MS,
+            initialThinkMs: state.coldClear.thinkMs,
+            thinkMs: state.coldClear.thinkMs,
             requestedCandidateCount: PLACED_SCORE_INITIAL_CANDIDATE_COUNT,
             retryCount: 0,
             hold: parsed.hold,
@@ -1311,6 +1390,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
             holdAllowed: state.coldClear.holdAllowed,
             speculate: state.coldClear.speculate,
             nextLimit: state.coldClear.nextLimit,
+            weightsPreset: state.coldClear.weightsPreset,
         };
         currentSession = session;
 
@@ -1557,7 +1637,8 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
         if (currentSession.runType === 'single') {
             if (currentSession.nextLimit === null) {
-                currentSession.wrapper.requestSequence(currentSession.totalMoves);
+                const remainingMoves = Math.max(0, currentSession.totalMoves - currentSession.resultPages.length);
+                currentSession.wrapper.requestSequence(remainingMoves);
             } else {
                 currentSession.wrapper.requestMove();
             }
@@ -1629,7 +1710,7 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         session.field.put(move);
         session.field.clearLine();
 
-        if (session.queue.length === 0) {
+        if (session.queue.length === 0 || session.resultPages.length >= session.totalMoves) {
             finishSingleSearch(runId);
             return undefined;
         }
@@ -1892,6 +1973,16 @@ export const coldClearActions: Readonly<ColdClearActions> = {
     onColdClearError: ({ runId, error }) => (state): NextState => {
         if (!state.coldClear.isRunning || state.coldClear.runId !== runId) {
             return undefined;
+        }
+
+        if (currentSession && currentSession.runId === runId && currentSession.runType === 'single') {
+            if (retrySingleSearch(currentSession)) {
+                return undefined;
+            }
+            if (currentSession.resultPages.length > 0) {
+                finishSingleSearch(runId);
+                return undefined;
+            }
         }
 
         // tslint:disable-next-line:no-console

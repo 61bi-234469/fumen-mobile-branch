@@ -542,6 +542,8 @@ export const listViewActions: Readonly<ListViewActions> = {
             coldClearHoldAllowed: state.coldClear.holdAllowed,
             coldClearSpeculate: state.coldClear.speculate,
             coldClearNextLimit: state.coldClear.nextLimit,
+            coldClearWeightsPreset: state.coldClear.weightsPreset,
+            coldClearThinkMs: state.coldClear.thinkMs,
         });
         return {
             listView: {

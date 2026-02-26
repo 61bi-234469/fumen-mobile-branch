@@ -126,6 +126,13 @@ export class CCMove {
 if (Symbol.dispose) CCMove.prototype[Symbol.dispose] = CCMove.prototype.free;
 
 export class ColdClearBot {
+    static __wrap(ptr) {
+        ptr = ptr >>> 0;
+        const obj = Object.create(ColdClearBot.prototype);
+        obj.__wbg_ptr = ptr;
+        ColdClearBotFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
         this.__wbg_ptr = 0;
@@ -141,6 +148,16 @@ export class ColdClearBot {
      */
     add_next_piece(piece) {
         wasm.coldclearbot_add_next_piece(this.__wbg_ptr, piece);
+    }
+    /**
+     * @param {Uint8Array} book_data
+     * @returns {boolean}
+     */
+    load_book(book_data) {
+        const ptr0 = passArray8ToWasm0(book_data, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.coldclearbot_load_book(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
     }
     /**
      * @param {Uint8Array} field
@@ -162,6 +179,56 @@ export class ColdClearBot {
         return this;
     }
     /**
+     * @param {Uint8Array} field
+     * @param {number} hold
+     * @param {boolean} b2b
+     * @param {number} combo
+     * @param {Uint8Array} queue
+     * @param {boolean} hold_allowed
+     * @param {boolean} speculate
+     * @param {number} movement_mode
+     * @param {number} spawn_rule
+     * @param {number} min_nodes
+     * @param {number} max_nodes
+     * @returns {ColdClearBot}
+     */
+    static new_with_options(field, hold, b2b, combo, queue, hold_allowed, speculate, movement_mode, spawn_rule, min_nodes, max_nodes) {
+        const ptr0 = passArray8ToWasm0(field, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArray8ToWasm0(queue, wasm.__wbindgen_malloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.coldclearbot_new_with_options(ptr0, len0, hold, b2b, combo, ptr1, len1, hold_allowed, speculate, movement_mode, spawn_rule, min_nodes, max_nodes);
+        return ColdClearBot.__wrap(ret);
+    }
+    /**
+     * @param {Uint8Array} field
+     * @param {boolean} b2b
+     * @param {number} combo
+     */
+    reset(field, b2b, combo) {
+        const ptr0 = passArray8ToWasm0(field, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.coldclearbot_reset(this.__wbg_ptr, ptr0, len0, b2b, combo);
+    }
+    /**
+     * @param {string} json
+     * @returns {boolean}
+     */
+    set_weights_json(json) {
+        const ptr0 = passStringToWasm0(json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.coldclearbot_set_weights_json(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
+     * @param {number} preset
+     * @returns {boolean}
+     */
+    set_weights_preset(preset) {
+        const ret = wasm.coldclearbot_set_weights_preset(this.__wbg_ptr, preset);
+        return ret !== 0;
+    }
+    /**
      * @param {number} think_ms
      * @returns {CCMove | undefined}
      */
@@ -171,11 +238,32 @@ export class ColdClearBot {
     }
     /**
      * @param {number} think_ms
+     * @param {number} incoming
+     * @returns {CCMove | undefined}
+     */
+    suggest_move_sync_with_incoming(think_ms, incoming) {
+        const ret = wasm.coldclearbot_suggest_move_sync_with_incoming(this.__wbg_ptr, think_ms, incoming);
+        return ret === 0 ? undefined : CCMove.__wrap(ret);
+    }
+    /**
+     * @param {number} think_ms
      * @param {number} count
      * @returns {CCMove[]}
      */
     suggest_top_moves_sync(think_ms, count) {
         const ret = wasm.coldclearbot_suggest_top_moves_sync(this.__wbg_ptr, think_ms, count);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * @param {number} think_ms
+     * @param {number} count
+     * @param {number} incoming
+     * @returns {CCMove[]}
+     */
+    suggest_top_moves_sync_with_incoming(think_ms, count, incoming) {
+        const ret = wasm.coldclearbot_suggest_top_moves_sync_with_incoming(this.__wbg_ptr, think_ms, count, incoming);
         var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
@@ -314,7 +402,7 @@ function __wbg_get_imports() {
             return ret;
         },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { dtor_idx: 135, function: Function { arguments: [NamedExternref("Event")], shim_idx: 136, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { dtor_idx: 169, function: Function { arguments: [NamedExternref("Event")], shim_idx: 170, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h29b29866006a5fde, wasm_bindgen__convert__closures_____invoke__hbc8449b88765385b);
             return ret;
         },

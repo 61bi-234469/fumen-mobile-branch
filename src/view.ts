@@ -127,6 +127,8 @@ export const view: View<State, Actions> = (state, actions) => {
             holdAllowed: state.coldClear.holdAllowed,
             speculate: state.coldClear.speculate,
             nextLimit: state.coldClear.nextLimit,
+            weightsPreset: state.coldClear.weightsPreset,
+            thinkMs: state.coldClear.thinkMs,
         }) : undefined as any,
 
         div({ key: 'view-end' }),
