@@ -2,7 +2,7 @@ import { NextState, sequence } from './commons';
 import { action, actions, main } from '../actions';
 import { Screens } from '../lib/enums';
 import { resources, State } from '../states';
-import { Pages } from '../lib/pages';
+import { PageFieldOperation, Pages } from '../lib/pages';
 import { OperationTask, PrimitivePage, toInsertPageTask, toPage, toPrimitivePage } from '../history_task';
 import { generateKey } from '../lib/random';
 import { Page } from '../lib/fumen/types';
@@ -246,7 +246,7 @@ const createTimestampedImageFileName = (prefix: string): string => {
     return `${prefix}_${yyyy}_${mm}_${dd}_${hh}${min}${ss}.png`;
 };
 
-const extractRootToActiveSegmentPages = (state: Readonly<State>): { pages: Page[] } | { error: string } => {
+export const extractRootToActiveSegmentPages = (state: Readonly<State>): { pages: Page[] } | { error: string } => {
     const tree: SerializedTree = {
         nodes: state.tree.nodes,
         rootId: state.tree.rootId,
@@ -273,6 +273,7 @@ const extractRootToActiveSegmentPages = (state: Readonly<State>): { pages: Page[
     }
 
     const allPages = state.fumen.pages;
+    const pagesObj = new Pages(allPages);
     const extractedPages: Page[] = [];
 
     for (const node of chainNodes) {
@@ -281,22 +282,11 @@ const extractRootToActiveSegmentPages = (state: Readonly<State>): { pages: Page[
             return { error: `Page not found at index ${node.pageIndex}` };
         }
 
-        let resolvedField = page.field;
-        if (page.field.ref !== undefined) {
-            let refIndex: number | undefined = page.field.ref;
-            let resolvedObj: Page['field']['obj'] | undefined;
-            while (refIndex !== undefined) {
-                const refPage: Page | undefined = allPages[refIndex];
-                if (refPage && refPage.field.obj) {
-                    resolvedObj = refPage.field.obj.copy();
-                    break;
-                }
-                refIndex = refPage?.field.ref;
-            }
-            if (!resolvedObj) {
-                return { error: 'Failed to resolve field reference' };
-            }
-            resolvedField = { obj: resolvedObj };
+        let resolvedField: Page['field'];
+        try {
+            resolvedField = { obj: pagesObj.getField(node.pageIndex, PageFieldOperation.None) };
+        } catch {
+            return { error: 'Failed to resolve field reference' };
         }
 
         let resolvedComment = page.comment;

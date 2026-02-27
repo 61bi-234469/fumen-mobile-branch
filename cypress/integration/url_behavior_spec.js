@@ -88,4 +88,36 @@ describe('URL behavior', () => {
         cy.location('href').should('include', 'tree=0');
         cy.get('[title="Enable tree mode"]').should('be.visible');
     });
+
+    it('exports left segment URL and can reopen it as list screen with tree=0', () => {
+        visit({ mode: 'edit', fumen: 'v115@vhAAgH' });
+
+        cy.window().then((win) => {
+            cy.stub(win, 'open').as('windowOpen');
+        });
+
+        cy.get(datatest('btn-list-view')).click();
+        cy.wait(400);
+
+        cy.get('[title="Enable tree mode"]').click();
+        cy.get('[title="Show pages in tree graph view"]').click();
+        cy.wait(300);
+
+        cy.get(datatest('btn-export-image')).click();
+        cy.get(datatest('mdl-list-view-export')).should('be.visible');
+        cy.get(datatest('btn-export-left-segment')).click();
+
+        cy.get('@windowOpen').should('have.been.called');
+        cy.get('@windowOpen').then((windowOpen) => {
+            const exportedUrl = windowOpen.getCall(0).args[0];
+            expect(exportedUrl).to.include('screen=list');
+            expect(exportedUrl).to.include('tree=0');
+            cy.visit(exportedUrl);
+        });
+
+        cy.wait(800);
+        cy.location('href').should('include', 'screen=list');
+        cy.location('href').should('include', 'tree=0');
+        cy.get(datatest('list-view-tools')).should('be.visible');
+    });
 });
