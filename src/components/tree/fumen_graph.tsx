@@ -1126,6 +1126,11 @@ export const FumenGraph: Component<Props> = ({
 
         const onPanStart = (e: MouseEvent) => {
             if (e.button !== 0) return;
+            // Blur textarea when clicking on empty space
+            const active = document.activeElement;
+            if (active instanceof HTMLTextAreaElement) {
+                active.blur();
+            }
             isPanning = true;
             panStartX          = e.clientX;
             panStartY          = e.clientY;

@@ -577,7 +577,11 @@ export const view: View<State, Actions> = (state, actions) => {
                 }
             }
 
-            // Not a button tap - do not navigate on field tap
+            // Not a button tap - blur textarea on empty space tap
+            const active = document.activeElement;
+            if (active instanceof HTMLTextAreaElement) {
+                active.blur();
+            }
             if (state.tree.dragState.sourceNodeId !== null) {
                 actions.endTreeDrag();
             }
