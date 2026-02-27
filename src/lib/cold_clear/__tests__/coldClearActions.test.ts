@@ -1599,12 +1599,40 @@ describe('coldClearActions run isolation', () => {
         }));
     });
 
-    test('swapCurrentPieceWithHoldQueue fails with toast when current piece is missing', () => {
+    test('swapCurrentPieceWithHoldQueue spawns leftmost queue piece when current piece is missing', () => {
         const setCommentText = jest.fn().mockReturnValue(() => ({}));
         const spawnPiece = jest.fn().mockReturnValue(() => ({}));
         initColdClearActions({ setCommentText, spawnPiece } as any);
 
         const state = makeColdClearState({ commentText: 'LZJI' });
+        state.fumen.pages[0].piece = undefined;
+
+        const result = coldClearActions.swapCurrentPieceWithHoldQueue()(state);
+        expect(result).toBeDefined();
+        expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: 'ZJI' });
+        expect(spawnPiece).toHaveBeenCalledWith({ srs: true, piece: Piece.L });
+    });
+
+    test('swapCurrentPieceWithHoldQueue spawns leftmost queue piece preserving hold when current piece is missing', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'S:LZJI' });
+        state.fumen.pages[0].piece = undefined;
+
+        const result = coldClearActions.swapCurrentPieceWithHoldQueue()(state);
+        expect(result).toBeDefined();
+        expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: 'S:ZJI' });
+        expect(spawnPiece).toHaveBeenCalledWith({ srs: true, piece: Piece.L });
+    });
+
+    test('swapCurrentPieceWithHoldQueue fails with toast when no current piece and no queue', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const spawnPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, spawnPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'memo' });
         state.fumen.pages[0].piece = undefined;
 
         const result = coldClearActions.swapCurrentPieceWithHoldQueue()(state);
@@ -1614,6 +1642,73 @@ describe('coldClearActions run isolation', () => {
         expect((global as any).M.toast).toHaveBeenCalledWith(expect.objectContaining({
             html: 'Current piece required',
         }));
+    });
+
+    test('returnCurrentPieceToQueue prepends piece to queue and clears piece', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const clearPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, clearPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'S:IOLJ' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+
+        const result = coldClearActions.returnCurrentPieceToQueue()(state);
+        expect(result).toBeDefined();
+        expect(clearPiece).toHaveBeenCalled();
+        expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: 'S:TIOLJ' });
+    });
+
+    test('returnCurrentPieceToQueue prepends piece to queue without hold', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const clearPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, clearPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'IOLJ' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+
+        const result = coldClearActions.returnCurrentPieceToQueue()(state);
+        expect(result).toBeDefined();
+        expect(clearPiece).toHaveBeenCalled();
+        expect(setCommentText).toHaveBeenCalledWith({ pageIndex: 0, text: 'TIOLJ' });
+    });
+
+    test('returnCurrentPieceToQueue clears piece without changing comment when no queue', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const clearPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, clearPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'hello' });
+        state.fumen.pages[0].piece = {
+            type: Piece.T,
+            rotation: Rotation.Spawn,
+            coordinate: { x: 4, y: 0 },
+        };
+
+        coldClearActions.returnCurrentPieceToQueue()(state);
+        expect(clearPiece).toHaveBeenCalled();
+        expect(setCommentText).not.toHaveBeenCalled();
+    });
+
+    test('returnCurrentPieceToQueue returns undefined when no current piece', () => {
+        const setCommentText = jest.fn().mockReturnValue(() => ({}));
+        const clearPiece = jest.fn().mockReturnValue(() => ({}));
+        initColdClearActions({ setCommentText, clearPiece } as any);
+
+        const state = makeColdClearState({ commentText: 'IOLJ' });
+        state.fumen.pages[0].piece = undefined;
+
+        const result = coldClearActions.returnCurrentPieceToQueue()(state);
+        expect(result).toBeUndefined();
+        expect(clearPiece).not.toHaveBeenCalled();
+        expect(setCommentText).not.toHaveBeenCalled();
     });
 
     test('startColdClearSearch passes holdAllowed/speculate to init message', () => {

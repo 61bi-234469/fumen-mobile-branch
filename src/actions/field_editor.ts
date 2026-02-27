@@ -1,4 +1,4 @@
-import { ModeTypes, Piece, Rotation, toPositionIndex, TouchTypes } from '../lib/enums';
+import { isMinoPiece, ModeTypes, Piece, Rotation, toPositionIndex, TouchTypes } from '../lib/enums';
 import { action, actions } from '../actions';
 import { NextState, sequence } from './commons';
 import { putPieceActions } from './put_piece';
@@ -10,6 +10,7 @@ import { PageFieldOperation, Pages } from '../lib/pages';
 import { testLeftRotation, testRightRotation } from '../lib/srs';
 import { classicTestLeftRotation, classicTestRightRotation } from '../lib/classic_rotation';
 import { fillRowActions } from './fill_row';
+import { coldClearActions } from './cold_clear';
 import { ViewError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
 import { getBlockPositions } from '../lib/piece';
@@ -194,6 +195,13 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return undefined;
     },
     onrightStartField: ({ index }) => (state): NextState => {
+        // In Piece mode with a current mino: return piece to queue instead of erase
+        if (state.mode.type === ModeTypes.Piece) {
+            const page = state.fumen.pages[state.fumen.currentIndex];
+            if (page?.piece && isMinoPiece(page.piece.type)) {
+                return coldClearActions.returnCurrentPieceToQueue()(state);
+            }
+        }
         return runWithOverride(state, (patchedState) => {
             return fieldEditorActions.ontouchStartField({ index })(patchedState);
         });

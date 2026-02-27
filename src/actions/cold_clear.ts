@@ -110,7 +110,7 @@ type ColdClearRuntimeActions = ColdClearActions
     & Pick<TreeOperationActions, 'addColdClearBranches'>
     & Pick<ScreenActions, 'changeToTreeViewScreen' | 'changeToDrawerScreen' | 'changeToMovePieceMode'>
     & Pick<CommentActions, 'setCommentText'>
-    & Pick<FieldEditorActions, 'spawnPiece'>;
+    & Pick<FieldEditorActions, 'spawnPiece' | 'clearPiece'>;
 
 let currentSession: RunSession | null = null;
 
@@ -150,6 +150,7 @@ export interface ColdClearActions {
     evaluatePlacedSpawnMinoScore: () => action;
     appendColdClearOneBagToComment: () => action;
     swapCurrentPieceWithHoldQueue: () => action;
+    returnCurrentPieceToQueue: () => action;
     previewColdClearQueueComment: (data: {
         hold: Piece | null;
         queue: Piece[];
@@ -1458,21 +1459,29 @@ export const coldClearActions: Readonly<ColdClearActions> = {
 
         const pageIndex = state.fumen.currentIndex;
         const page = state.fumen.pages[pageIndex];
-        if (!page || !page.piece || !isMinoPiece(page.piece.type)) {
-            showSwapValidationError('missingCurrentPiece');
-            return undefined;
-        }
+        const hasCurrentPiece = page && page.piece && isMinoPiece(page.piece.type);
 
         const parsed = parseQueueCommentFromPage(state.fumen.pages, pageIndex, state.coldClear.queuePreview);
         if (!parsed || parsed.queue.length === 0) {
-            showSwapValidationError('missingQueue');
+            showSwapValidationError(hasCurrentPiece ? 'missingQueue' : 'missingCurrentPiece');
             return undefined;
         }
 
-        const currentPiece = page.piece.type;
-        const nextSpawnPiece = parsed.hold !== null ? parsed.hold : parsed.queue[0];
-        const nextQueue = parsed.hold !== null ? parsed.queue.slice() : parsed.queue.slice(1);
-        const nextComment = buildQueueComment(currentPiece, nextQueue);
+        let nextSpawnPiece: Piece;
+        let nextComment: string;
+
+        if (!hasCurrentPiece) {
+            // No current piece: pop the leftmost queue piece and spawn it
+            nextSpawnPiece = parsed.queue[0];
+            const remainingQueue = parsed.queue.slice(1);
+            nextComment = buildQueueComment(parsed.hold, remainingQueue);
+        } else {
+            // Current piece exists: swap current with hold (existing behavior)
+            const currentPiece = page!.piece!.type;
+            nextSpawnPiece = parsed.hold !== null ? parsed.hold : parsed.queue[0];
+            const nextQueue = parsed.hold !== null ? parsed.queue.slice() : parsed.queue.slice(1);
+            nextComment = buildQueueComment(currentPiece, nextQueue);
+        }
 
         if (!appActions) {
             return undefined;
@@ -1490,6 +1499,41 @@ export const coldClearActions: Readonly<ColdClearActions> = {
                 return undefined;
             },
         ]);
+    },
+
+    returnCurrentPieceToQueue: () => (state): NextState => {
+        const pageIndex = state.fumen.currentIndex;
+        const page = state.fumen.pages[pageIndex];
+        if (!page?.piece || !isMinoPiece(page.piece.type)) {
+            return undefined;
+        }
+
+        const pieceType = page.piece.type;
+        const commentText = resolveCommentTextFromPage(state.fumen.pages, pageIndex);
+        const parsed = commentText ? parseQueueComment(commentText) : null;
+
+        if (!appActions) {
+            return undefined;
+        }
+        const runtimeActions = appActions;
+
+        if (parsed) {
+            const newQueue = [pieceType, ...parsed.queue];
+            const newComment = buildQueueComment(parsed.hold, newQueue);
+            return sequence(state, [
+                () => {
+                    runtimeActions.clearPiece();
+                    return undefined;
+                },
+                () => {
+                    runtimeActions.setCommentText({ pageIndex, text: newComment });
+                    return undefined;
+                },
+            ]);
+        }
+
+        runtimeActions.clearPiece();
+        return undefined;
     },
 
     previewColdClearQueueComment: ({ hold, queue, b2b, combo }) => (state): NextState => {
