@@ -195,8 +195,8 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return undefined;
     },
     onrightStartField: ({ index }) => (state): NextState => {
-        // In Piece mode with a current mino: return piece to queue instead of erase
-        if (state.mode.type === ModeTypes.Piece) {
+        // In Piece/DrawingTool mode with a current mino: return piece to queue instead of erase
+        if (state.mode.type === ModeTypes.Piece || state.mode.type === ModeTypes.DrawingTool) {
             const page = state.fumen.pages[state.fumen.currentIndex];
             if (page?.piece && isMinoPiece(page.piece.type)) {
                 return coldClearActions.returnCurrentPieceToQueue()(state);
