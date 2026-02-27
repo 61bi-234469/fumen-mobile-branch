@@ -236,6 +236,7 @@ export const i18n = {
         PlacedPieceRequired: () => t('ColdClear.PlacedPieceRequired'),
         FloatingPieceUnsupported: () => t('ColdClear.FloatingPieceUnsupported'),
         CannotEvaluatePlacedSpawn: () => t('ColdClear.CannotEvaluatePlacedSpawn'),
+        PlacedSpawnRetrying: () => t('ColdClear.PlacedSpawnRetrying'),
         InsufficientQueueForHold: () => t('ColdClear.InsufficientQueueForHold'),
         WeightsPresetLabel: () => t('ColdClear.WeightsPresetLabel'),
         WeightsPresetDescription: () => t('ColdClear.WeightsPresetDescription'),

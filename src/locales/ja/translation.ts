@@ -203,6 +203,7 @@ export const resources = {
         PlacedPieceRequired: 'AI: 配置済みミノが必要です',
         FloatingPieceUnsupported: 'AI: 浮遊ミノは未対応です',
         CannotEvaluatePlacedSpawn: 'AI: 現在の配置は評価できません',
+        PlacedSpawnRetrying: 'AI: 深く探索中...',
         InsufficientQueueForHold: 'AI: Hold有効かつNEXT=0の場合、Hold空時はキューに2個以上必要です',
         WeightsPresetLabel: '重み',
         WeightsPresetDescription: '評価戦略（思考時間ではありません）',

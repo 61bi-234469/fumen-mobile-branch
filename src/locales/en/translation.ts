@@ -228,6 +228,7 @@
         PlacedPieceRequired: 'AI: Place a piece before running this action',
         FloatingPieceUnsupported: 'AI: Floating piece is not supported',
         CannotEvaluatePlacedSpawn: 'AI: Cannot evaluate current placement',
+        PlacedSpawnRetrying: 'AI: Deepening search...',
         InsufficientQueueForHold: 'AI: NEXT=0 with Hold enabled requires at least 2 pieces when hold is empty',
         WeightsPresetLabel: 'Weights',
         WeightsPresetDescription: 'Evaluation strategy (not thinking time)',

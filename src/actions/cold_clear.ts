@@ -121,7 +121,7 @@ export const COLD_CLEAR_TOP_BRANCH_COUNT_MAX = 20;
 export const COLD_CLEAR_NEXT_LIMIT_MIN = 0;
 export const COLD_CLEAR_NEXT_LIMIT_MAX = 30;
 export const COLD_CLEAR_NEXT_LIMIT_DEFAULT = 5;
-export const COLD_CLEAR_THINK_MS_PRESETS = [500, 1000, 2000];
+export const COLD_CLEAR_THINK_MS_PRESETS = [200, 500, 1000, 2000, 5000];
 const PLACED_SCORE_MAX_THINK_MS_MULTIPLIER = 8;
 const PLACED_SCORE_INITIAL_CANDIDATE_COUNT = 5000;
 const PLACED_SCORE_MAX_CANDIDATE_COUNT = 20000;
@@ -968,6 +968,8 @@ function retryPlacedSpawnEvaluation(session: PlacedRunSession): boolean {
     session.thinkMs = nextThinkMs;
     session.requestedCandidateCount = nextCandidateCount;
     session.retryCount += 1;
+
+    M.toast({ html: i18n.ColdClear.PlacedSpawnRetrying(), classes: 'top-toast', displayLength: 1500 });
 
     startWorkerSession(session, buildPlacedSpawnInitMessage(session), () => false);
     return true;
