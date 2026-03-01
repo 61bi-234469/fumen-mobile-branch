@@ -492,12 +492,11 @@ const handleKeyUp = (event: KeyboardEvent) => {
 
         if (activeShortcut) {
             if (activeShortcut.type === 'edit') {
-                // 非Editor画面では Copy/Cut の短押しを無効化（長押しのみ有効）
-                // Insert は Reader/ListView で短押し有効
+                // 非Editor画面では Cut の短押しを無効化（長押しのみ有効）
+                // Copy/Insert は Reader/ListView で短押し有効
                 const screen = state.mode.screen;
-                const isCopyCutShortcut = activeShortcut.key === 'Copy'
-                    || activeShortcut.key === 'Cut';
-                if (!(screen !== Screens.Editor && isCopyCutShortcut)) {
+                const isCutShortcut = activeShortcut.key === 'Cut';
+                if (!(screen !== Screens.Editor && isCutShortcut)) {
                     executeEditShortPress(activeShortcut.key, state, actions);
                 }
             } else if (activeShortcut.type === 'palette') {
