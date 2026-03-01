@@ -67,6 +67,7 @@ type MenuItem = {
     iconName: string;
     title: string;
     description: string;
+    warning?: string;
     enabled: boolean;
     danger?: boolean;
     onclick: () => void;
@@ -242,6 +243,12 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
         color: '#6b7280',
         fontSize: px(11),
     });
+    const menuItemWarningStyle = style({
+        margin: `${px(2)} 0px 0px 0px`,
+        color: '#e65100',
+        fontSize: px(11),
+        fontWeight: 600,
+    });
     const numberInputStyle = style({
         width: px(84),
         margin: '0px',
@@ -394,6 +401,8 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
             iconName: 'timeline',
             title: i18n.ColdClear.SequenceSearchLabel(),
             description: i18n.ColdClear.SequenceSearchDescription(),
+            warning: (thinkMs >= 5000 && speculate && nextLimit === null)
+                ? i18n.ColdClear.SequenceSearchCrashWarning() : undefined,
             enabled: !isRunning && canSequenceSearch,
             onclick: () => {
                 actions.startColdClearSearch();
@@ -494,6 +503,10 @@ export const ColdClearMenuModal: Component<ColdClearMenuModalProps> = (
                                         key: `${item.key}-description`,
                                         style: itemDescriptionStyle(item.enabled),
                                     }, item.description),
+                                    ...(item.warning ? [h('p', {
+                                        key: `${item.key}-warning`,
+                                        style: menuItemWarningStyle,
+                                    }, `⚠ ${item.warning}`)] : []),
                                 ]),
                             ]);
                         })}

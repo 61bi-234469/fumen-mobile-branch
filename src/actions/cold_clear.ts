@@ -2006,6 +2006,24 @@ export const coldClearActions: Readonly<ColdClearActions> = {
         // tslint:disable-next-line:no-console
         console.error('Cold Clear error:', error);
 
+        const session = currentSession;
+        const hasPartialResults = session
+            && session.runId === runId
+            && session.runType === 'single'
+            && session.resultPages.length > 0;
+
+        if (hasPartialResults) {
+            finishSingleSearch(runId);
+
+            M.toast({
+                html: i18n.ColdClear.WorkerErrorPartialSaved(session.resultPages.length),
+                classes: 'top-toast',
+                displayLength: 2500,
+            });
+
+            return undefined;
+        }
+
         if (currentSession && currentSession.runId === runId) {
             terminateSession(currentSession);
             currentSession = null;
