@@ -13,8 +13,8 @@ import { fillRowActions } from './fill_row';
 import { coldClearActions } from './cold_clear';
 import { ViewError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
-import { getBlockPositions } from '../lib/piece';
 import { State } from '../states';
+import { shouldReturnCurrentPieceOnRightClick } from './field_editor_right_click';
 
 export interface FieldEditorActions {
     fixInferencePiece(): action;
@@ -199,7 +199,9 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         if (state.mode.type === ModeTypes.Piece || state.mode.type === ModeTypes.DrawingTool) {
             const page = state.fumen.pages[state.fumen.currentIndex];
             if (page?.piece && isMinoPiece(page.piece.type)) {
-                return coldClearActions.returnCurrentPieceToQueue()(state);
+                if (shouldReturnCurrentPieceOnRightClick(state.field[index], page.piece, index)) {
+                    return coldClearActions.returnCurrentPieceToQueue()(state);
+                }
             }
         }
         return runWithOverride(state, (patchedState) => {
