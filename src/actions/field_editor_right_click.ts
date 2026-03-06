@@ -1,7 +1,6 @@
 import { isMinoPiece, Piece, toPositionIndex } from '../lib/enums';
 import { Move } from '../lib/fumen/types';
 import { getBlockPositions } from '../lib/piece';
-import { Block, HighlightType } from '../state_types';
 
 export const isCurrentPieceIndex = (piece: Move | undefined, index: number): boolean => {
     if (piece === undefined || !isMinoPiece(piece.type)) {
@@ -13,20 +12,14 @@ export const isCurrentPieceIndex = (piece: Move | undefined, index: number): boo
         .some(positionIndex => positionIndex === index);
 };
 
-export const isNormalBlock = (block: Block | undefined): boolean => {
-    if (block === undefined) {
-        return false;
-    }
-
-    return block.piece !== Piece.Empty
-        && block.piece !== 'inference'
-        && block.highlight !== HighlightType.Lighter;
-};
-
+// Returns true only when the clicked cell is part of the SPAWN mino AND
+// the underlying raw field block is empty (no normal block beneath the SPAWN mino).
+// Normal block erase is prioritized: if a field block exists at a SPAWN mino position,
+// the field block is erased instead of removing the SPAWN mino.
 export const shouldReturnCurrentPieceOnRightClick = (
-    block: Block | undefined,
+    rawFieldPiece: Piece,
     piece: Move | undefined,
     index: number,
 ): boolean => {
-    return isCurrentPieceIndex(piece, index) || !isNormalBlock(block);
+    return isCurrentPieceIndex(piece, index) && rawFieldPiece === Piece.Empty;
 };

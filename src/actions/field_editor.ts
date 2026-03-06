@@ -196,11 +196,15 @@ export const fieldEditorActions: Readonly<FieldEditorActions> = {
         return undefined;
     },
     onrightStartField: ({ index }) => (state): NextState => {
-        // In Piece/DrawingTool mode with a current mino: return piece to queue instead of erase
+        // In Piece/DrawingTool mode with a current mino: return piece to queue instead of erase,
+        // but only when the clicked cell is part of the SPAWN mino AND has no underlying field block.
+        // Normal blocks take priority: if a field block exists beneath the SPAWN mino, erase it instead.
         if (state.mode.type === ModeTypes.Piece || state.mode.type === ModeTypes.DrawingTool) {
             const page = state.fumen.pages[state.fumen.currentIndex];
             if (page?.piece && isMinoPiece(page.piece.type)) {
-                if (shouldReturnCurrentPieceOnRightClick(state.field[index], page.piece, index)) {
+                const rawField = new Pages(state.fumen.pages).getField(state.fumen.currentIndex, PageFieldOperation.Command);
+                const rawPiece = rawField.getAtIndex(index, true);
+                if (shouldReturnCurrentPieceOnRightClick(rawPiece, page.piece, index)) {
                     return coldClearActions.returnCurrentPieceToQueue()(state);
                 }
             }
