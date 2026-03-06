@@ -14,6 +14,7 @@ import { coldClearActions } from './cold_clear';
 import { ViewError } from '../lib/errors';
 import { Field } from '../lib/fumen/field';
 import { State } from '../states';
+import { getBlockPositions } from '../lib/piece';
 import { shouldReturnCurrentPieceOnRightClick } from './field_editor_right_click';
 
 export interface FieldEditorActions {
