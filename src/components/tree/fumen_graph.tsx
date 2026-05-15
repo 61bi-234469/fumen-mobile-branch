@@ -769,12 +769,26 @@ export const FumenGraph: Component<Props> = ({
     // Calculate layout
     const treeViewLayout = calculateTreeViewLayout(tree, pages, trimTopBlank);
     const { layout } = treeViewLayout;
+    const isDragging = dragSourceNodeId !== null;
     const minGhostNodeHeight = TREE_THUMBNAIL_HEIGHT + TREE_NODE_EXTRA_HEIGHT;
     const ghostNodeWidth = Math.max(72, Math.round(TREE_NODE_WIDTH * 0.72));
     const ghostNodeHeight = Math.max(56, Math.round(minGhostNodeHeight * 0.38));
     const ghostNodeX = TREE_PADDING + (TREE_NODE_WIDTH - ghostNodeWidth) / 2;
     const ghostNodeY = TREE_PADDING + treeViewLayout.contentHeight + TREE_VERTICAL_GAP;
     const ghostTreeContentHeight = treeViewLayout.contentHeight + TREE_VERTICAL_GAP + ghostNodeHeight;
+    const rootNode = tree.rootId ? findNode(tree, tree.rootId) : undefined;
+    const canDropOnRootGhost = isDragging
+        && tree.rootId !== null
+        && dragSourceNodeId !== null
+        && dragSourceNodeId !== tree.rootId
+        && rootNode !== undefined
+        && isVirtualNode(rootNode)
+        && canMoveNode(tree, dragSourceNodeId, tree.rootId, {
+            allowDescendant: !buttonDropMovesSubtree,
+        });
+    const isRootGhostHighlighted = canDropOnRootGhost
+        && dragTargetButtonParentId === tree.rootId
+        && dragTargetButtonType === 'branch';
 
     // Calculate SVG dimensions (add extra space for add button on the right and ghost add row at bottom)
     const buttonExtraWidth = TREE_ADD_BUTTON_SIZE + 10;
@@ -814,7 +828,6 @@ export const FumenGraph: Component<Props> = ({
     );
 
     // Calculate source page index for drag operations
-    const isDragging = dragSourceNodeId !== null;
     const sourceNode = isDragging ? findNode(tree, dragSourceNodeId) : null;
     // Render nodes with page numbers and drag state
     const nodes = renderableNodes.map((node) => {
@@ -905,8 +918,8 @@ export const FumenGraph: Component<Props> = ({
 
     const ghostNodeStyle = style({
         cursor: isDragging ? 'default' : 'pointer',
-        pointerEvents: isDragging ? 'none' : 'auto',
-        opacity: isDragging ? 0.45 : 1,
+        pointerEvents: 'auto',
+        opacity: isDragging && !canDropOnRootGhost ? 0.45 : 1,
     });
 
     const rootAddGhostButton = (
@@ -936,8 +949,8 @@ export const FumenGraph: Component<Props> = ({
                 rx={TREE_NODE_RADIUS}
                 ry={TREE_NODE_RADIUS}
                 fill="#F1F3F5"
-                stroke="#9AA1A9"
-                stroke-width={1.5}
+                stroke={isRootGhostHighlighted ? '#FF9800' : '#9AA1A9'}
+                stroke-width={isRootGhostHighlighted ? 3 : 1.5}
                 stroke-dasharray="4 3"
             />
             <g transform={`translate(${ghostNodeWidth / 2}, ${ghostNodeHeight / 2})`}>
@@ -1215,6 +1228,17 @@ export const FumenGraph: Component<Props> = ({
                         foundButton = { nodeId: dragSourceNodeId, type: 'delete' };
                     }
                 }
+            }
+        }
+
+        // Check the top-level ghost frame as a branch drop onto the virtual root.
+        if (foundButton === null && canDropOnRootGhost && tree.rootId !== null) {
+            const isInsideRootGhost = mouseX >= ghostNodeX
+                && mouseX <= ghostNodeX + ghostNodeWidth
+                && mouseY >= ghostNodeY
+                && mouseY <= ghostNodeY + ghostNodeHeight;
+            if (isInsideRootGhost) {
+                foundButton = { nodeId: tree.rootId, type: 'branch' };
             }
         }
 

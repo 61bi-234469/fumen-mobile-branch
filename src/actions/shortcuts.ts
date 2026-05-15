@@ -38,13 +38,13 @@ type EditShortcutKey = keyof EditShortcuts;
 
 // ピースショートカットキーの種類
 // 画面ごとに許可される編集用ショートカット
-const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = {
+export const allowedEditShortcuts: { [screen in Screens]: EditShortcutKey[] } = {
     [Screens.Editor]: [
         'InsertPage', 'PrevPage', 'NextPage', 'Menu', 'ListView', 'TreeView', 'EditHome',
         'Undo', 'Redo', 'Add', 'Insert', 'Copy', 'Cut',
     ],
     [Screens.Reader]: ['Menu', 'ListView', 'TreeView', 'PrevPage', 'NextPage', 'EditHome', 'Insert', 'Copy', 'Cut'],
-    [Screens.ListView]: ['ListView', 'TreeView', 'EditHome', 'Insert', 'Copy', 'Cut'],
+    [Screens.ListView]: ['ListView', 'TreeView', 'EditHome', 'Undo', 'Redo', 'Insert', 'Copy', 'Cut'],
 };
 
 // モーダルが開いているかチェック

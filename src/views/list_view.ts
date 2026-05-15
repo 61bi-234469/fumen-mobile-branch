@@ -21,7 +21,11 @@ import {
     TREE_DELETE_BADGE_OFFSET_X,
     TREE_DELETE_BADGE_OFFSET_Y,
     TREE_DELETE_BADGE_SIZE,
+    TREE_NODE_EXTRA_HEIGHT,
     TREE_NODE_WIDTH,
+    TREE_PADDING,
+    TREE_THUMBNAIL_HEIGHT,
+    TREE_VERTICAL_GAP,
     calculateTreeViewLayout,
     shouldShowDeleteBadge,
 } from '../lib/fumen/tree_view_layout';
@@ -364,6 +368,15 @@ export const view: View<State, Actions> = (state, actions) => {
         let foundButtonType: 'insert' | 'branch' | 'delete' | null = null;
 
         const buttonHitRadius = TREE_ADD_BUTTON_SIZE / 2 + 6;
+        const rootNode = tree.rootId ? findNode(tree, tree.rootId) : undefined;
+        const canDropOnRootGhost = tree.rootId !== null
+            && sourceNodeId !== null
+            && sourceNodeId !== tree.rootId
+            && rootNode !== undefined
+            && isVirtualNode(rootNode)
+            && canMoveNode(tree, sourceNodeId, tree.rootId, {
+                allowDescendant: allowDescendantOnButtonDrop,
+            });
 
         // Keep delete badge visibility/hit test criteria in sync with desktop rendering.
         const minDepth = calculateTreeMinDepth(tree, treeViewLayout.layout);
@@ -397,6 +410,24 @@ export const view: View<State, Actions> = (state, actions) => {
                         foundButtonType = 'delete';
                     }
                 }
+            }
+        }
+
+        // Check the top-level ghost frame as a branch drop onto the virtual root.
+        if (foundButtonParentId === null && canDropOnRootGhost && tree.rootId !== null) {
+            const minGhostNodeHeight = TREE_THUMBNAIL_HEIGHT + TREE_NODE_EXTRA_HEIGHT;
+            const ghostNodeWidth = Math.max(72, Math.round(TREE_NODE_WIDTH * 0.72));
+            const ghostNodeHeight = Math.max(56, Math.round(minGhostNodeHeight * 0.38));
+            const ghostNodeX = TREE_PADDING + (TREE_NODE_WIDTH - ghostNodeWidth) / 2;
+            const ghostNodeY = TREE_PADDING + treeViewLayout.contentHeight + TREE_VERTICAL_GAP;
+            const isInsideRootGhost = svgX >= ghostNodeX
+                && svgX <= ghostNodeX + ghostNodeWidth
+                && svgY >= ghostNodeY
+                && svgY <= ghostNodeY + ghostNodeHeight;
+
+            if (isInsideRootGhost) {
+                foundButtonParentId = tree.rootId;
+                foundButtonType = 'branch';
             }
         }
 
