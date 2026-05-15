@@ -10,15 +10,43 @@ import { calculateTreeLayout, findNode, getNodeDfsNumbers } from './fumen/tree_u
 export const THUMBNAIL_WIDTH = 100;
 export const THUMBNAIL_HEIGHT = 230;
 const BLOCK_SIZE = THUMBNAIL_WIDTH / FieldConstants.Width;
+const MAX_THUMBNAIL_RENDER_SCALE = 2;
+
+const thumbnailCache = new WeakMap<Page[], Map<string, string>>();
+
+const normalizeThumbnailRenderScale = (renderScale: number | undefined): number => {
+    if (renderScale === undefined || !isFinite(renderScale)) {
+        return 1;
+    }
+    return Math.max(1, Math.min(MAX_THUMBNAIL_RENDER_SCALE, Math.ceil(renderScale * 4) / 4));
+};
 
 export function generateThumbnail(
     pages: Page[],
     pageIndex: number,
     guideLineColor: boolean,
     trimTopBlank: boolean = false,
+    renderScale?: number,
 ): string {
+    const normalizedRenderScale = normalizeThumbnailRenderScale(renderScale);
+    const cacheKey = [
+        pageIndex,
+        guideLineColor ? '1' : '0',
+        trimTopBlank ? '1' : '0',
+        normalizedRenderScale,
+    ].join(':');
+    let cache = thumbnailCache.get(pages);
+    if (!cache) {
+        cache = new Map<string, string>();
+        thumbnailCache.set(pages, cache);
+    }
+    const cached = cache.get(cacheKey);
+    if (cached !== undefined) {
+        return cached;
+    }
+
     const canvas = document.createElement('canvas');
-    canvas.width = THUMBNAIL_WIDTH;
+    canvas.width = Math.ceil(THUMBNAIL_WIDTH * normalizedRenderScale);
 
     const pagesObj = new Pages(pages);
     const field = pagesObj.getField(pageIndex, PageFieldOperation.Command);
@@ -31,15 +59,16 @@ export function generateThumbnail(
         : FieldConstants.Height - 1;
     const visibleRows = visibleTopRow + 1;
 
-    canvas.height = visibleRows * BLOCK_SIZE;
+    canvas.height = Math.ceil(visibleRows * BLOCK_SIZE * normalizedRenderScale);
 
     const ctx = canvas.getContext('2d');
     if (!ctx) {
         return '';
     }
+    ctx.scale(normalizedRenderScale, normalizedRenderScale);
 
     ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, THUMBNAIL_WIDTH, canvas.height);
+    ctx.fillRect(0, 0, THUMBNAIL_WIDTH, visibleRows * BLOCK_SIZE);
     if (visibleTopRow >= 20) {
         const upperFieldRows = visibleTopRow - 20 + 1;
         ctx.fillStyle = decideBackgroundColor(20);
@@ -110,7 +139,9 @@ export function generateThumbnail(
         }
     }
 
-    return canvas.toDataURL('image/png');
+    const dataUrl = canvas.toDataURL('image/png');
+    cache.set(cacheKey, dataUrl);
+    return dataUrl;
 }
 
 export function getThumbnailHeight(

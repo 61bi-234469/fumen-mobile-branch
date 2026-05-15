@@ -2,7 +2,7 @@ import { Component, px, style } from '../../lib/types';
 import { h } from 'hyperapp';
 import { Page } from '../../lib/fumen/types';
 import { ListViewItem } from './list_view_item';
-import { generateThumbnail } from '../../lib/thumbnail';
+import { generateThumbnail, THUMBNAIL_WIDTH } from '../../lib/thumbnail';
 import { Pages, isTextCommentResult } from '../../lib/pages';
 
 interface Props {
@@ -45,6 +45,9 @@ export const ListViewGrid: Component<Props> = ({
         Math.min(ITEM_MAX_WIDTH, Math.floor((containerWidth - 20) / COLUMNS)),
     );
     const itemSize = Math.round(baseItemSize * scale);
+    const thumbnailCssWidth = Math.max(1, itemSize - 8);
+    const devicePixelRatio = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
+    const thumbnailRenderScale = (thumbnailCssWidth / THUMBNAIL_WIDTH) * devicePixelRatio;
 
     const containerStyle = style({
         width: '100%',
@@ -87,7 +90,13 @@ export const ListViewGrid: Component<Props> = ({
     };
 
     const items = pages.map((page, index) => {
-        const thumbnailSrc = generateThumbnail(pages, index, guideLineColor, trimTopBlank);
+        const thumbnailSrc = generateThumbnail(
+            pages,
+            index,
+            guideLineColor,
+            trimTopBlank,
+            thumbnailRenderScale,
+        );
         const commentText = getCommentText(index);
         const commentChanged = isCommentChanged(index);
 
