@@ -451,6 +451,7 @@ export const createSnapshot = (
 
 const rebuildPageRefsForOrder = (
     pages: Page[],
+    originalPages: Page[],
     originalFirstPageColorize: boolean,
     originalFirstPageSrs: boolean,
 ): Page[] => {
@@ -459,7 +460,13 @@ const rebuildPageRefsForOrder = (
         oldIndexToNewIndex.set(page.index, newIndex);
     });
 
-    return pages.map((page, newIndex) => {
+    const originalPagesObj = new Pages(originalPages);
+    const originalFields = new Map<number, Field>();
+    originalPages.forEach((page) => {
+        originalFields.set(page.index, originalPagesObj.getField(page.index, PageFieldOperation.None));
+    });
+
+    const newPages = pages.map((page, newIndex) => {
         const newPage = { ...page, index: newIndex };
 
         if (newIndex === 0) {
@@ -511,9 +518,28 @@ const rebuildPageRefsForOrder = (
 
         return newPage;
     });
+
+    newPages.forEach((page, newIndex) => {
+        const originalField = originalFields.get(pages[newIndex].index);
+        if (!originalField) return;
+
+        try {
+            const currentField = new Pages(newPages).getField(newIndex, PageFieldOperation.None);
+            if (currentField.equals(originalField)) return;
+        } catch (e) {
+            // A reordered ref can point to a page that no longer carries a direct field object.
+        }
+
+        newPages[newIndex] = {
+            ...page,
+            field: { obj: originalField.copy() },
+        };
+    });
+
+    return newPages;
 };
 
-const normalizeTreeAndPages = (
+export const normalizeTreeAndPages = (
     tree: SerializedTree,
     pages: Page[],
     currentIndex: number,
@@ -554,6 +580,7 @@ const normalizeTreeAndPages = (
     const originalFirstPageSrs = pages[0]?.flags.srs ?? true;
     const newPages = rebuildPageRefsForOrder(
         reorderedPages,
+        pages,
         originalFirstPageColorize,
         originalFirstPageSrs,
     );
