@@ -15,7 +15,7 @@ const ensureTreeGraphView = () => {
 };
 
 const visitWithNoMoveWorkerMock = () => {
-    cy.visit('fumen-for-mobile/#/edit?lng=en&mobile=1', {
+    cy.visit('fumen-mobile-branch/#/edit?lng=en&mobile=1', {
         onBeforeLoad(win) {
             class MockWorker {
                 constructor() {
@@ -56,7 +56,7 @@ const visitWithNoMoveWorkerMock = () => {
 };
 
 const visitWithPendingTopMovesWorkerMock = () => {
-    cy.visit('fumen-for-mobile/#/edit?lng=en&mobile=1', {
+    cy.visit('fumen-mobile-branch/#/edit?lng=en&mobile=1', {
         onBeforeLoad(win) {
             win.__topMoveRequestCounts = [];
 

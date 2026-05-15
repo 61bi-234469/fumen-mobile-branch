@@ -77,7 +77,7 @@ describe('URL behavior', () => {
     });
 
     it('keeps tree=0 after disabling tree toggle and reload', () => {
-        cy.visit('fumen-for-mobile/#?screen=list&tree=1&treeView=tree&lng=en&mobile=1');
+        cy.visit('fumen-mobile-branch/#?screen=list&tree=1&treeView=tree&lng=en&mobile=1');
         cy.wait(800);
 
         cy.get('[title="Disable tree mode"]').click();

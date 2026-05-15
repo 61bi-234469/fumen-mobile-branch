@@ -1,4 +1,4 @@
-# fumen-for-mobile
+# fumen-mobile-branch
 
 ## Third-Party Source Availability
 
@@ -23,8 +23,8 @@ if (
     value = document.getElementById('tx').value;
 }
 
-// window.location.href='https://knewjade.github.io/fumen-for-mobile/#?d='+value;
-window.open('https://knewjade.github.io/fumen-for-mobile/#?d='+value, '_blank');
+// window.location.href='https://61bi-234469.github.io/fumen-mobile-branch/#?d='+value;
+window.open('https://61bi-234469.github.io/fumen-mobile-branch/#?d='+value, '_blank');
 ```
 
 ```

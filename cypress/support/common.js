@@ -171,7 +171,7 @@ const getPieces = (piece) => {
 export const visit = (
     { fumen, sleepInMill = 800, lng = 'en', mode = 'readonly', mobile = true, reload = false },
 ) => {
-    let baseUrl = 'fumen-for-mobile/#';
+    let baseUrl = 'fumen-mobile-branch/#';
 
     if (mode !== 'readonly') {
         baseUrl += `/${mode}`;

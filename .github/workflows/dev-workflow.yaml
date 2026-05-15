@@ -22,23 +22,3 @@ jobs:
         if: ${{ failure() }}
         with:
           path: cypress/screenshots/
-
-  deploy:
-    runs-on: ubuntu-latest
-    if: ${{ github.actor != 'dependabot[bot]' }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-      - run: yarn install --frozen-lockfile
-      - run: yarn webpack-prod
-      - run: sed s/fumen-for-mobile/fumen-for-mobile-dev/ dest/manifest.json > dest/manifest.json
-      - run: cat dest/manifest.json
-      - uses: peaceiris/actions-gh-pages@068dc23d9710f1ba62e86896f84735d869951305
-        with:
-          personal_token: ${{ secrets.PERSONAL_TOKEN }}
-          external_repository: knewjade/fumen-for-mobile-dev
-          publish_branch: master
-          enable_jekyll: false
-          publish_dir: ./dest
