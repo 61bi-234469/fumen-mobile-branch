@@ -116,6 +116,7 @@ describe('convertAllToMirror regression', () => {
         expect(partial).toBeDefined();
 
         const convertedPages = partial.fumen.pages as Page[];
+        expect(convertedPages).not.toBe(pages);
         const convertedPagesObj = new Pages(convertedPages);
 
         expectedMirroredFields.forEach((expectedField, index) => {

@@ -313,7 +313,7 @@ const convertToGoalField = (callback: (field: Field) => Field) => (state: State)
         () => ({
             fumen: {
                 ...state.fumen,
-                pages,
+                pages: [...pages],
             },
         }),
         actions.reopenCurrentPage(),
@@ -478,7 +478,7 @@ const convertToMirror = () => (state: State): NextState => {
         () => ({
             fumen: {
                 ...state.fumen,
-                pages,
+                pages: [...pages],
             },
         }),
         actions.reopenCurrentPage(),
@@ -539,7 +539,7 @@ const convertAllToMirror = () => (state: State): NextState => {
         () => ({
             fumen: {
                 ...state.fumen,
-                pages,
+                pages: [...pages],
             },
         }),
         actions.reopenCurrentPage(),
